@@ -70,3 +70,45 @@ def fixture_experiment(tmp_path: Path):
         return dump(tmp_path / "fixtures" / f"{exp_id}.yaml", data)
 
     return make
+
+
+def make_datasets(days: int = 120, start: str = "2024-01-01T00:00:00Z") -> list[str]:
+    """Create BTC (seed 42) and ETH (seed 43) synthetic 4h datasets; return their IDs."""
+    from datetime import timedelta
+    from decimal import Decimal
+
+    from trader.common.clock import parse_utc
+    from trader.data.providers.synthetic import SyntheticCandleProvider
+    from trader.data.store import DatasetStore
+    from trader.domain.market import SourceRef
+
+    s = parse_utc(start)
+    ids = []
+    for inst, seed, px in (("BTC-USD", 42, "30000"), ("ETH-USD", 43, "2000")):
+        prov = SyntheticCandleProvider(seed, Decimal(px))
+        candles = prov.fetch_candles(inst, "4h", s, s + timedelta(days=days))
+        src = SourceRef(provider_id="synthetic", venue_id="sim", retrieved_at_utc=None)
+        ids.append(
+            DatasetStore().create(candles, inst, "4h", src, f"synthetic:seed={seed}").dataset_id
+        )
+    return ids
+
+
+def small_run(**kw: Any):  # type: ignore[no-untyped-def]
+    """Run a short fixture backtest (120 days, decisions from day 31)."""
+    from trader.backtest.runner import run_backtest
+    from trader.common.clock import parse_utc
+
+    ids = kw.pop("datasets", None) or make_datasets()
+    args = dict(
+        profile=PROFILE,
+        datasets=ids,
+        strategy="sma_trend",
+        timeframe="4h",
+        experiment=EXP_FIXTURE,
+        cost_scenario=None,
+        start_utc=parse_utc("2024-02-01T00:00:00Z"),
+        end_utc=None,
+    )
+    args.update(kw)
+    return run_backtest(**args)

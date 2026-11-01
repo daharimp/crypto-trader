@@ -6,9 +6,13 @@
 - Add new tasks to `TASK.md` with the date; mark them done when finished; record discoveries
   under "Discovered During Work".
 
-### Non-negotiable safety rules (docs/spec/code-session-handoff.md §0.1)
-- Simulated funds only: no real-money, live orders, leverage, margin, shorting, derivatives
-  trading, withdrawals, transfers, private endpoints, or API keys, in any form.
+### Non-negotiable safety rules (docs/spec/code-session-handoff.md §0.1, amended by ADR-023)
+- Paper/simulated by default. Real-money **spot** orders exist only in the gated `live`
+  environment through `trader/execution/adapters/kraken_live.py` (ADR-023 lists the gates).
+  Never weaken or bypass a live gate, the capital cap, or the adapter parameter allowlist.
+- Never add leverage, margin, shorting, derivatives trading, withdrawals, or transfers, in
+  any form. API keys are read only from environment variables on the server, never stored in
+  the repository, configs, logs, or chat.
 - Deterministic risk code has final authority; strategies never size orders.
 - Never replace `TBD` values or invent risk defaults. Missing values must fail closed (exit 3).
 - If blocked, log it in `BLOCKERS.md`, stay fail-closed, never weaken a test or check.

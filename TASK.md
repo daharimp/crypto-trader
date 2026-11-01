@@ -29,12 +29,26 @@
 - [x] Record decisions in `docs/spec/product-requirements.md` §10.2 and ADR-022
 - [x] Freeze the all-TBD M1 configs as test fixtures (`tests/fixtures/configs/`, `TRADER_CONFIGS_DIR`)
 - [x] Tests for the approved state (`test_owner_decisions.py`, `test_shipped_configs.py`); demo updated
-- [ ] UD-20: owner to name venue (location-dependent); then set the `base` cost scenario to that venue's fee tier
-- [ ] BL-048: owner flatten command through the execution gate (UD-19 option D), before BL-027
+- [x] UD-20: Kraken (2026-11-01)
+- [x] BL-048: owner flatten command through the execution gate (UD-19 option D)
+
+## 2026-11-01: Live trading on Kraken (owner goal: live by Monday 2026-11-02)
+
+- [x] UD-14 resolved (no intraday in V1); UD-20 Kraken; UD-09 cloud server; ADR-023 boundary
+- [x] BL-028 profile activation (`trader profile activate`, activation records)
+- [x] Live authorization file with UD-22 cap and paper prerequisite (fail closed)
+- [x] BL-027 forward session runner (paper and live), persisted state, restart recovery
+- [x] Kraken public data (4h signals, 1d eligibility) and Kraken live adapter (ccxt)
+- [x] BL-048 owner flatten; breaker reset requests; webhook alerts; preflight
+- [x] Dockerfile, docker-compose.yml, `.env.example`, `docs/operations/RUNBOOK.md`
+- [ ] Owner: set UD-22 and the acknowledgement; create API key; run preflight on the server
+- [ ] Owner: allow `api.kraken.com` here so real-data checks and backtests can run
 
 ## Discovered During Work
 
-- [ ] Re-evaluate journal `synchronous=FULL` for the paper environment before BL-027 (ADR-019).
+- [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).
+- [ ] Real-data evaluation: Kraken OHLC gives only 720 candles; long 4h backtests need Kraken's downloadable history (CSV import).
+- [ ] Verify Kraken's current fee tier for the account and update `costs/base.yaml` if different.
 - [ ] DQ-12 cross-timeframe consistency is optional in M1 and not implemented (needs 1h + 4h datasets).
 - [x] Owner decisions UD-01..UD-21 resolved 2026-11-01 except UD-14 (deferred) and UD-20 (venue).
 - [ ] Next milestone M2: BL-021..BL-030 (`docs/spec/execution-plan.md` §5).

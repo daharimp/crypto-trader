@@ -84,8 +84,11 @@ def main() -> None:
     args = ap.parse_args()
     # Reason: the spec documents hold the original all-TBD values; overwriting configs/ would
     # silently discard the owner's approved decisions (product-requirements.md section 10.2).
-    existing = [t for t in ("configs/risk/balanced.yaml", "configs/profiles/balanced-paper.yaml")
-                if (args.root / t).exists()]
+    existing = [
+        t
+        for t in ("configs/risk/balanced.yaml", "configs/profiles/balanced-paper.yaml")
+        if (args.root / t).exists()
+    ]
     if existing and not args.force:
         raise SystemExit(f"refusing to overwrite owner-approved configs {existing}; use --force")
     for p in extract(args.spec, args.root):

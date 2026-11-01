@@ -645,19 +645,35 @@ decision below. Values are recorded in `configs/risk/*.yaml` (version 2),
 | UD-06 | Option A: no Major or Speculative assets in V1; revisit (option C with owner review) in V1.5 | yes (`tier_assignment: none_permitted`) |
 | UD-07 | Option A for V1: equal-weight vote with opposition veto (R-01) | no field until P7 |
 | UD-08 | Recommendation A + C with the five listed gates; profile breaker as absolute ceiling | no field until P10 |
-| UD-09 | Option A: single always-on instance; provider chosen at P10 | no field until P10 |
+| UD-09 | Option A: single always-on cloud server running Docker Compose (owner confirmed hosting on a cloud server) | `Dockerfile`, `docker-compose.yml` |
 | UD-10 | Console and log alerts in V1; push or chat plus email summary when hosted | no field until P10 |
 | UD-11 | Option B: tiered retention; never delete referenced datasets; no automatic deletion in V1 | no field |
 | UD-12 | Exposure option A 50 / 80 / 90%; positions option A 3 / 5 / 8 | yes |
 | UD-13 | Option A: Conservative 25 / 10 / 2.5 / 5%, Aggressive 45 / 20 / 7.5 / 15% (Core / Major / Speculative / Speculative total). Balanced H-01..H-04 stay hypotheses (D-28) | yes |
-| UD-14 | **Deferred.** Sleeve stays disabled until EXP-2026-004 selects a cap; sleeve limits will use option B (half of profile limits) | stays `TBD` |
+| UD-14 | **Resolved later the same day:** no intraday trading in V1 (sleeve disabled; cap stays `TBD`, so PV-05 and RR-12 refuse it). Revisit after the main bot has a real track record | stays `TBD` by design |
 | UD-15 | Schedule option A (stepwise 1.0 / 0.5 / 0.25); upward bound option A (no upward adaptation; max multiplier 1) | yes |
 | UD-16 | Option A: ATR multiple, n = 14, k = 2.0 (k 1.5 / 3.0 to be tested in EXP-2026-003) | yes |
 | UD-17 | Cooldown option A (2 & 48 h / 3 & 24 h / 4 & 12 h); 3 execution errors; 120 s grace; 3 stale cycles; 5 s clock skew; external tolerance = venue lot size | yes |
 | UD-18 | Option A thresholds with spread handling (i) `not_applicable` on candle-only data; owner confirms (i) is acceptable for D-26 in V1 | yes |
 | UD-19 | Option D: hold positions and stops on engagement; explicit owner flatten command through the execution gate | yes (`hold_with_owner_flatten_command`; command is backlog BL-048) |
-| UD-20 | Option A chosen (USD-quoted spot venue, same as the eventual paper adapter). **Still open:** venue and fee tier, which depend on the owner's jurisdiction | no; `base` cost scenario stays R-10 |
+| UD-20 | Option A: **Kraken**, USD-quoted spot (owner in the US). `base` cost scenario (0.40% per side, 10 bps) matches Kraken Pro's entry taker tier as last known; verify against Kraken's schedule | `assets.yaml` v2 (`kraken:*` symbols), `costs/base.yaml` |
 | UD-21 | Option A + C: relative risk-adjusted targets plus consistency targets; no absolute return targets | no field until M2 exit |
+
+**2026-11-01 (later). Owner: Dahari Morgan-Parker.** The owner decided to trade real money
+on Kraken, aiming for Monday 2026-11-02, with a short paper period first. This amends D-02,
+D-03, and SAFE-01 through ADR-023 (gated `live` environment; leverage, margin, shorting,
+withdrawals, and transfers remain impossible). A new unresolved decision UD-22 holds the live
+capital cap and the paper prerequisite.
+
+### UD-22: Live capital cap and paper prerequisite
+
+- **Why it matters.** Bounds the real money at risk while the strategy has no real-data
+  evidence, and sets how much forward paper trading must precede live trading.
+- **Options:** cap A: $100 / B: $250 / C: $500 / D: full account. Paper prerequisite
+  A: 6 cycles (1 day) / B: 42 cycles (1 week) / C: 168 cycles (4 weeks).
+- **Recommendation (UD-22):** cap A or B for the first weeks; paper B or longer. The owner's
+  Monday target allows at most about option A (6 cycles) for the paper prerequisite.
+- **Resolve before:** any live session (`configs/live/authorization.yaml`; `TBD` = exit 3).
 
 ### 10.1 Resolution procedure
 

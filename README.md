@@ -2,11 +2,12 @@
 
 AI-assisted crypto **paper-trading** research system: milestone **M1**, the first vertical slice.
 
-> **Safety boundary.** Simulated funds only. This code has no real-money execution, live order
-> placement, leverage, margin, short selling, derivatives trading, withdrawals, transfers,
-> private exchange endpoints, or API keys. Deterministic risk controls have final authority.
-> Results are simulations on historical data. They are not forecasts, and profitability is
-> not guaranteed or implied.
+> **Safety boundary (ADR-023).** Paper/simulated by default. Real-money **spot** trading on
+> Kraken exists only in the gated `live` environment: owner-signed authorization with a
+> capital cap, a paper track record, an activation record, and a validate-only preflight.
+> There is no leverage, margin, short selling, derivatives trading, withdrawal, or transfer
+> code. Deterministic risk controls have final authority. Results are not forecasts, and
+> profitability is not guaranteed or implied. You can lose real money.
 
 ## What M1 does
 
@@ -30,16 +31,32 @@ approved them (record: `docs/spec/product-requirements.md` §10.2, ADR-022), exc
   backtests. `EXP-2026-001` now targets approved fields, so it is rejected (exit 2).
 - `paper` is refused until profile activation (BL-028) exists.
 
+## Live trading on Kraken
+
+Start here: **[`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md)**: server setup,
+paper trading on live prices, the API key (no withdrawal permission), preflight,
+authorization (UD-22), going live, daily operation, and emergencies.
+
+```bash
+trader profile activate PROFILE --environment paper|live --reason "..."   # BL-028
+trader session run --profile PROFILE --environment paper|live              # BL-027
+trader session status | flatten --reason ... | reset-breaker --reason ...
+trader live preflight --profile PROFILE        # validate-only; places no orders
+```
+
+Deployment: `Dockerfile` and `docker-compose.yml` (services `paper`, `live` (opt-in profile),
+and `cli`). Keys and alert settings go in `.env` on the server (`.env.example`).
+
 ## Setup
 
 Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). No secrets and no network access
 are needed.
 
 ```bash
-uv sync                     # optional public-data download: uv sync --extra ccxt
+uv sync                     # includes ccxt (Kraken data and the live adapter)
 uv run ruff check .
 uv run mypy src
-uv run pytest               # 197 tests; add --cov=trader --cov-branch for coverage
+uv run pytest               # 241 tests; add --cov=trader --cov-branch for coverage
 uv run trader version
 ```
 
@@ -69,7 +86,7 @@ uv run trader data list
 uv run trader data validate <DATASET_ID>
 uv run trader data import --csv FILE --instrument BTC-USD --timeframe 4h --source-label NAME
 uv run trader data fetch --exchange kraken --symbol BTC/USD --instrument BTC-USD \
-  --timeframe 4h --start ... --end ...        # optional, public OHLCV only (ccxt extra)
+  --timeframe 4h --start ... --end ...        # public OHLCV only
 
 # Vertical slice (evaluation starts after 365 days of history for eligibility)
 uv run trader backtest run --profile configs/profiles/balanced-paper.yaml \
@@ -103,12 +120,13 @@ Configuration is read from `configs/` (override with `TRADER_CONFIGS_DIR`). Runt
 | `src/trader/universe/` | Asset registry and point-in-time eligibility |
 | `src/trader/features/`, `regimes/`, `strategies/`, `ensemble/` | features-m1, null regime, `sma_trend` 1.0.0, pass-through ensemble |
 | `src/trader/risk/` | RR-01..RR-20, sizing, loss state, breaker, lockout, cooldowns, kill switch |
-| `src/trader/execution/` | Gate EG-01..EG-05, simulated-only adapter allowlist, simulator |
+| `src/trader/execution/` | Gate EG-01..EG-05, adapter allowlist, simulator, Kraken live adapter |
+| `src/trader/session/` | Forward paper/live sessions, Kraken data, state, flatten, alerts, preflight |
 | `src/trader/portfolio/`, `journal/`, `evaluation/`, `pipeline/`, `backtest/`, `cli/` | Ledger, journal, benchmarks/metrics/report, decision cycle, runner, CLI |
 | `configs/`, `schemas/`, `experiments/` | Shipped configuration (`TBD` values untouched) |
 | `docs/spec/` | The full specification package (start with `code-session-handoff.md`) |
 | `docs/decisions/` | ADR-001..ADR-018 (from the spec), ADR-019+ (implementation decisions) |
-| `BLOCKERS.md` | Blocker log (open: UD-20 venue, UD-14 intraday) |
+| `BLOCKERS.md` | Blocker log (open: UD-22 live cap and paper prerequisite) |
 | `PLANNING.md`, `TASK.md` | Architecture summary and task tracking |
 
 Regenerate schemas and profile configs from the spec with

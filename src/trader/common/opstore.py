@@ -64,7 +64,8 @@ class OperationalStore:
         Returns:
             sqlite3.Connection: New connection.
         """
-        return sqlite3.connect(self.path)
+        # Reason: a running session and CLI commands share this file; wait instead of failing.
+        return sqlite3.connect(self.path, timeout=30)
 
     # --- kill switch -------------------------------------------------------------------
     def killswitch_state(self) -> KillSwitchState | None:

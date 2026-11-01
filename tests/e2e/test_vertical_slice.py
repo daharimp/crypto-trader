@@ -52,7 +52,8 @@ def test_t42_vertical_slice(slice_run: dict[str, Any]) -> None:
 
 def test_cli_profile_commands(tmp_path) -> None:  # type: ignore[no-untyped-def]
     """§10.1 profile commands: exit 3, 2, 0; compile writes JSON."""
-    p, x = "configs/profiles/balanced-paper.yaml", "experiments/EXP-2026-001-vertical-slice.yaml"
+    p = "tests/fixtures/configs/profiles/balanced-paper.yaml"
+    x = "experiments/EXP-2026-001-vertical-slice.yaml"
     out = cli("profile", "validate", p, "--environment", "backtest", expect=3).stdout
     for ud in ("UD-01", "UD-02", "UD-03", "UD-04", "UD-12", "UD-15", "UD-16", "UD-17", "UD-18"):
         assert ud in out

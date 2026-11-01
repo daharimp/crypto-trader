@@ -1,21 +1,22 @@
 # Blockers
 
-**M1 blockers found: None.** Every M1 item was implemented without inventing a risk value,
-bypassing a check, or adding a live capability. Unresolved values stay `TBD`, and runs that
-need them exit 3 with their UD IDs.
+**Open blockers: none in the code.** No risk value was invented and no check was bypassed.
 
-## Known, expected blockers (not M1 failures; owner decisions)
+## Owner decisions
 
-These are listed in `docs/spec/code-session-handoff.md` §12 and `execution-plan.md` §7. The
-code fails closed until the owner resolves them in `configs/risk/*.yaml` /
-`configs/universe/eligibility.yaml` (with a version increment):
+On **2026-11-01** the owner resolved UD-01 to UD-13 and UD-15 to UD-21 (record:
+`docs/spec/product-requirements.md` §10.2; ADR-022). The shipped Balanced profile now
+backtests without an experiment set, and `paper` has no unresolved values.
 
-| Activity | Needs | Current behavior |
-|---|---|---|
-| Backtest without an experiment set | UD-01, UD-02, UD-03, UD-04, UD-12, UD-15, UD-16, UD-17, UD-18 | Exit 3, `RUN_BLOCKED` journaled, no orders |
-| Paper activation / forward paper (V1, BL-027/028) | Above plus UD-05, UD-17 (grace, skew, escalation), UD-19, UD-20 | `paper` refuses experiment values; no activation command exists yet |
-| Conservative / Aggressive outside experiments | UD-13 and that profile's values | Blocked with UD-13 |
-| Intraday sleeve | UD-14 | `INTRADAY_NOT_APPROVED` / `INTRADAY_SLEEVE_DISABLED` |
-| Major / Speculative assets | UD-06, UD-18 | Not in the registry or profile scope |
+Still open:
 
-Options and recommendations for each: `docs/spec/product-requirements.md` §10.
+| ID | What is missing | Needed before | Current behavior |
+|---|---|---|---|
+| UD-20 | Market-data venue and the fee tier a $2,500 account pays there (depends on the owner's location) | Real-data evaluation (EXP-2026-002+), forward paper sessions | Synthetic or owner-supplied CSV data; `base` cost scenario stays the R-10 recommendation (0.40% fee, 10 bps) |
+| UD-14 | Intraday allocation cap (chosen by EXP-2026-004) | Enabling any intraday strategy | Sleeve disabled; `INTRADAY_NOT_APPROVED` / `INTRADAY_SLEEVE_DISABLED` |
+
+## Not blockers, but not built yet
+
+- Profile activation (BL-028) and forward paper sessions (BL-027): `paper` is still refused
+  with `PROFILE_NOT_RUNNABLE [PV-08]`.
+- Owner flatten command required by UD-19 option D (BL-048).

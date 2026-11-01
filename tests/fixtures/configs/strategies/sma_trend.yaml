@@ -1,0 +1,13 @@
+schema_version: "1.0.0"
+kind: StrategyRegistryEntry
+strategy_id: sma_trend
+version: 1.0.0
+family: trend_momentum
+kind_of_strategy: rule_based
+sleeve: core
+timeframes: ["1h", "4h"]
+parameters: {fast: 20, slow: 50}        # RECOMMENDATION R-09
+feature_set_version: features-m1-1.0.0
+regime_eligibility: all                 # M1: null classifier
+lifecycle_state: research
+code_ref: trader.strategies.sma_trend:SmaTrend

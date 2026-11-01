@@ -1,0 +1,7 @@
+schema_version: "1.0.0"
+kind: EnvironmentConfig
+environment: backtest
+execution_enabled: true
+adapter: simulated
+clock: simulated
+kill_switch_scope: run

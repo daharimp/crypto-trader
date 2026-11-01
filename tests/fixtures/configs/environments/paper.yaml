@@ -1,0 +1,8 @@
+# Forward paper sessions are V1 (BL-027), not M1. The paper environment refuses experiment values.
+schema_version: "1.0.0"
+kind: EnvironmentConfig
+environment: paper
+execution_enabled: true
+adapter: simulated
+clock: wall
+kill_switch_scope: persisted

@@ -11,7 +11,12 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILE = ROOT / "configs" / "profiles" / "balanced-paper.yaml"
+# Reason: mechanism tests run against the frozen all-TBD M1 baseline (tests/fixtures/configs),
+# never against the owner-approved shipped configs, so approvals cannot change what they prove.
+FIXTURE_CONFIGS = ROOT / "tests" / "fixtures" / "configs"
+SHIPPED_CONFIGS = ROOT / "configs"
+PROFILE = FIXTURE_CONFIGS / "profiles" / "balanced-paper.yaml"
+SHIPPED_PROFILE = SHIPPED_CONFIGS / "profiles" / "balanced-paper.yaml"
 EXP_2026_001 = ROOT / "experiments" / "EXP-2026-001-vertical-slice.yaml"
 EXP_FIXTURE = ROOT / "tests" / "fixtures" / "experiments" / "EXP-0000-001-e2e.yaml"
 
@@ -22,6 +27,7 @@ def _isolated_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     data = tmp_path / "data"
     monkeypatch.setenv("TRADER_DATA_DIR", str(data))
     monkeypatch.setenv("TRADER_CODE_REVISION", "test-revision")
+    monkeypatch.setenv("TRADER_CONFIGS_DIR", str(FIXTURE_CONFIGS))
     monkeypatch.chdir(ROOT)
     return data
 
@@ -48,7 +54,7 @@ def profile_data() -> dict[str, Any]:
 def configs_copy(tmp_path: Path) -> Path:
     """A writable copy of ``configs/`` for tests that need modified risk files."""
     dst = tmp_path / "configs"
-    shutil.copytree(ROOT / "configs", dst)
+    shutil.copytree(FIXTURE_CONFIGS, dst)
     return dst
 
 

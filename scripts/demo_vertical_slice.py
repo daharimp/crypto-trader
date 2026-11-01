@@ -3,8 +3,10 @@
 Usage:
     uv run python scripts/demo_vertical_slice.py
 
-Runs: fail-closed validation, paper refusal, runnable validation, synthetic BTC/ETH data,
-the vertical-slice backtest with EXP-2026-001, report display, and journal verification.
+Runs (owner decisions of 2026-11-01 applied): runnable validation, paper refusal (no
+activation record yet), refusal of experiment values that would override approved values,
+synthetic BTC/ETH data, the vertical-slice backtest on the approved configs, report display,
+and journal verification.
 """
 
 from __future__ import annotations
@@ -41,79 +43,42 @@ def trader(*args: str, expect: int = 0) -> str:
     return res.stdout
 
 
+def synth(instrument: str, seed: str, start_price: str) -> str:
+    """
+    Create a 2023-2025 synthetic 4h dataset.
+
+    Args:
+        instrument (str): Instrument ID.
+        seed (str): RNG seed.
+        start_price (str): First open price.
+
+    Returns:
+        str: Dataset ID.
+    """
+    out = trader("data", "synth", "--instrument", instrument, "--timeframe", "4h",
+                 "--start", "2023-01-01T00:00:00Z", "--end", "2026-01-01T00:00:00Z",
+                 "--seed", seed, "--start-price", start_price)  # fmt: skip
+    return out.strip().splitlines()[-1]
+
+
 def main() -> None:
     """Run the demo steps in order."""
     trader("version")
-    trader("profile", "validate", PROFILE, "--environment", "backtest", expect=3)
-    trader(
-        "profile",
-        "validate",
-        PROFILE,
-        "--environment",
-        "paper",
-        "--experiment",
-        EXPERIMENT,
-        expect=2,
-    )
-    trader("profile", "validate", PROFILE, "--environment", "backtest", "--experiment", EXPERIMENT)
-    btc = (
-        trader(
-            "data",
-            "synth",
-            "--instrument",
-            "BTC-USD",
-            "--timeframe",
-            "4h",
-            "--start",
-            "2023-01-01T00:00:00Z",
-            "--end",
-            "2026-01-01T00:00:00Z",
-            "--seed",
-            "42",
-            "--start-price",
-            "30000",
-        )
-        .strip()
-        .splitlines()[-1]
-    )
-    eth = (
-        trader(
-            "data",
-            "synth",
-            "--instrument",
-            "ETH-USD",
-            "--timeframe",
-            "4h",
-            "--start",
-            "2023-01-01T00:00:00Z",
-            "--end",
-            "2026-01-01T00:00:00Z",
-            "--seed",
-            "43",
-            "--start-price",
-            "2000",
-        )
-        .strip()
-        .splitlines()[-1]
-    )
+    # Owner decisions of 2026-11-01 are applied: the shipped profile is runnable as is.
+    trader("profile", "validate", PROFILE, "--environment", "backtest")
+    # Paper needs an active profile with an activation record (BL-028, not built yet).
+    trader("profile", "validate", PROFILE, "--environment", "paper", expect=2)
+    # EXP-2026-001 targets values the owner has now approved, so RP-12 rejects it.
+    trader("profile", "validate", PROFILE, "--environment", "backtest",
+           "--experiment", EXPERIMENT, expect=2)  # fmt: skip
+    btc = synth("BTC-USD", "42", "30000")
+    eth = synth("ETH-USD", "43", "2000")
     trader("data", "validate", btc)
     trader("data", "list")
-    out = trader(
-        "backtest",
-        "run",
-        "--profile",
-        PROFILE,
-        "--experiment",
-        EXPERIMENT,
-        "--datasets",
-        f"{btc},{eth}",
-        "--strategy",
-        "sma_trend",
-        "--timeframe",
-        "4h",
-        "--start",
-        "2024-01-01T00:00:00Z",
-    )
+    # Evaluation starts after the 365 days of history required by UD-18 (approved).
+    out = trader("backtest", "run", "--profile", PROFILE, "--datasets", f"{btc},{eth}",
+                 "--strategy", "sma_trend", "--timeframe", "4h",
+                 "--start", "2024-01-01T00:00:00Z")  # fmt: skip
     m = re.search(r"run_id: (\S+)", out)
     assert m, "no run_id printed"
     run_id = m.group(1)

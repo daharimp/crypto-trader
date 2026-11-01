@@ -23,9 +23,18 @@
 - [x] BL-019 Persisted kill switch and CLI (T-30, T-45)
 - [x] BL-020 Safety/neutrality tests, README, demo script, DoD check (T-46, T-47)
 
+## 2026-11-01: Apply owner decisions UD-01..UD-21 (all recommendations accepted)
+
+- [x] Approve values in `configs/risk/{conservative,balanced,aggressive}.yaml` (v2), `configs/universe/eligibility.yaml` (v2), `configs/profiles/balanced-paper.yaml` (v2)
+- [x] Record decisions in `docs/spec/product-requirements.md` §10.2 and ADR-022
+- [x] Freeze the all-TBD M1 configs as test fixtures (`tests/fixtures/configs/`, `TRADER_CONFIGS_DIR`)
+- [x] Tests for the approved state (`test_owner_decisions.py`, `test_shipped_configs.py`); demo updated
+- [ ] UD-20: owner to name venue (location-dependent); then set the `base` cost scenario to that venue's fee tier
+- [ ] BL-048: owner flatten command through the execution gate (UD-19 option D), before BL-027
+
 ## Discovered During Work
 
 - [ ] Re-evaluate journal `synchronous=FULL` for the paper environment before BL-027 (ADR-019).
 - [ ] DQ-12 cross-timeframe consistency is optional in M1 and not implemented (needs 1h + 4h datasets).
-- [ ] Owner decisions UD-01..UD-21 (`BLOCKERS.md`, `docs/spec/product-requirements.md` §10).
+- [x] Owner decisions UD-01..UD-21 resolved 2026-11-01 except UD-14 (deferred) and UD-20 (venue).
 - [ ] Next milestone M2: BL-021..BL-030 (`docs/spec/execution-plan.md` §5).

@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 kind: TradingProfile
 profile_id: balanced-paper
-version: 1
+version: 2
 status: validated                 # declared; re-verified at every load (PV-08)
 owner: Dahari Morgan-Parker
 description: Initial Balanced paper-trading profile for the V1 vertical slice.
@@ -19,7 +19,7 @@ capital:
   funds: simulated                # D-02
 risk_selection:
   risk_profile_id: balanced       # D-09
-  risk_profile_version: 1
+  risk_profile_version: 2
   adaptation: within_selected_profile_bounds   # D-10
   profile_switching: owner_only                # D-06
 universe:

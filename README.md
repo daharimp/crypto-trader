@@ -17,13 +17,18 @@ Validated Balanced paper profile -> BTC and ETH candles -> data-quality checks
 -> simulated fills -> append-only hash-chained journal -> report vs benchmarks
 ```
 
-Most Balanced risk values are **unresolved owner decisions** (`TBD`, UD-01 to UD-21). The
-code never fills them in:
+Risk values come only from **owner decisions** (UD-01 to UD-21). On 2026-11-01 the owner
+approved them (record: `docs/spec/product-requirements.md` §10.2, ADR-022), except UD-14
+(intraday sleeve, disabled) and UD-20 (venue). The code never fills in a missing value:
 
-- With only the shipped profile, a backtest **stops with exit code 3** and lists the UD IDs.
-- With `--experiment experiments/EXP-2026-001-vertical-slice.yaml`, labelled, **non-approved**
-  research values are supplied for backtests only. Every report lists them in a
-  "Values used that are NOT owner-approved" banner. The `paper` environment refuses them.
+- The shipped Balanced profile backtests with **approved** values. Its concentration caps stay
+  labelled **hypotheses** (H-01 to H-04), and every report lists them in a
+  "Values used that are NOT owner-approved" banner.
+- Any value still `TBD` makes a run **stop with exit code 3** and lists the UD IDs. Tests prove
+  this against a frozen all-`TBD` copy of the configs in `tests/fixtures/configs/`.
+- Experiment parameter sets may only target unresolved or hypothesis fields, and only in
+  backtests. `EXP-2026-001` now targets approved fields, so it is rejected (exit 2).
+- `paper` is refused until profile activation (BL-028) exists.
 
 ## Setup
 
@@ -34,23 +39,26 @@ are needed.
 uv sync                     # optional public-data download: uv sync --extra ccxt
 uv run ruff check .
 uv run mypy src
-uv run pytest               # 185 tests; add --cov=trader --cov-branch for coverage
+uv run pytest               # 197 tests; add --cov=trader --cov-branch for coverage
 uv run trader version
 ```
 
 ## Commands (handoff §10)
 
 ```bash
-# Fail closed: exit 3 and lists UD-01, UD-02, UD-03, UD-04, UD-12, UD-15, UD-16, UD-17, UD-18
+# Owner-approved configuration: exit 0
 uv run trader profile validate configs/profiles/balanced-paper.yaml --environment backtest
 
-# The paper environment refuses experiment values: exit 2
-uv run trader profile validate configs/profiles/balanced-paper.yaml --environment paper \
-  --experiment experiments/EXP-2026-001-vertical-slice.yaml
+# Paper is refused until profile activation exists (BL-028): exit 2
+uv run trader profile validate configs/profiles/balanced-paper.yaml --environment paper
 
-# Runnable research configuration: exit 0
+# Experiments cannot override approved values (RP-12): exit 2
 uv run trader profile validate configs/profiles/balanced-paper.yaml --environment backtest \
   --experiment experiments/EXP-2026-001-vertical-slice.yaml
+
+# Fail closed on unresolved values (frozen M1 baseline): exit 3 and lists the UD IDs
+TRADER_CONFIGS_DIR=tests/fixtures/configs uv run trader profile validate \
+  tests/fixtures/configs/profiles/balanced-paper.yaml --environment backtest
 
 # Data (prints dataset IDs; datasets are immutable and content-addressed)
 uv run trader data synth --instrument BTC-USD --timeframe 4h --start 2023-01-01T00:00:00Z \
@@ -65,7 +73,6 @@ uv run trader data fetch --exchange kraken --symbol BTC/USD --instrument BTC-USD
 
 # Vertical slice (evaluation starts after 365 days of history for eligibility)
 uv run trader backtest run --profile configs/profiles/balanced-paper.yaml \
-  --experiment experiments/EXP-2026-001-vertical-slice.yaml \
   --datasets <BTC_DATASET_ID>,<ETH_DATASET_ID> --strategy sma_trend --timeframe 4h \
   --start 2024-01-01T00:00:00Z
 uv run trader report show <RUN_ID> [--format md|json]
@@ -82,7 +89,7 @@ One-command offline demo (about 30 s): `uv run python scripts/demo_vertical_slic
 **Exit codes:** 0 success · 1 internal error · 2 invalid input (schema, policy, data quality,
 safety) · 3 blocked by unresolved decisions · 4 integrity verification failed.
 
-Runtime data lives in the git-ignored `data/` directory (override with `TRADER_DATA_DIR`):
+Configuration is read from `configs/` (override with `TRADER_CONFIGS_DIR`). Runtime data lives in the git-ignored `data/` directory (override with `TRADER_DATA_DIR`):
 `datasets/`, `journal/journal.sqlite`, `state/operational.sqlite`, `reports/<run_id>/`,
 `experiments/`, `logs/<run_id>.jsonl`.
 
@@ -101,7 +108,7 @@ Runtime data lives in the git-ignored `data/` directory (override with `TRADER_D
 | `configs/`, `schemas/`, `experiments/` | Shipped configuration (`TBD` values untouched) |
 | `docs/spec/` | The full specification package (start with `code-session-handoff.md`) |
 | `docs/decisions/` | ADR-001..ADR-018 (from the spec), ADR-019+ (implementation decisions) |
-| `BLOCKERS.md` | Blocker log (M1: none; expected owner decisions listed) |
+| `BLOCKERS.md` | Blocker log (open: UD-20 venue, UD-14 intraday) |
 | `PLANNING.md`, `TASK.md` | Architecture summary and task tracking |
 
 Regenerate schemas and profile configs from the spec with

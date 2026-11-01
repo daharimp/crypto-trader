@@ -80,7 +80,7 @@ def _run_backtest(
     cost_scenario: str | None,
     start_utc: datetime | None,
     end_utc: datetime | None,
-    configs_root: Path = Path("configs"),
+    configs_root: Path | None = None,
     command: str = "",
     journal_factory: Any = JournalStore,
 ) -> RunResult:
@@ -96,7 +96,8 @@ def _run_backtest(
         cost_scenario (str | None): Cost scenario override.
         start_utc (datetime | None): First decision time (warm-up uses earlier candles).
         end_utc (datetime | None): Last decision time.
-        configs_root (Path): Config root.
+        configs_root (Path | None): Config root.
+            Defaults to ``TRADER_CONFIGS_DIR`` or ``configs``.
         command (str): Command line for the reproduction record.
         journal_factory (Any): Journal constructor (tests inject failing journals).
 
@@ -242,7 +243,7 @@ def run_backtest(
     cost_scenario: str | None,
     start_utc: datetime | None,
     end_utc: datetime | None,
-    configs_root: Path = Path("configs"),
+    configs_root: Path | None = None,
     command: str = "",
     journal_factory: Any = JournalStore,
 ) -> RunResult:
@@ -258,7 +259,8 @@ def run_backtest(
         cost_scenario (str | None): Cost scenario override.
         start_utc (datetime | None): First decision time (warm-up uses earlier candles).
         end_utc (datetime | None): Last decision time.
-        configs_root (Path): Config root.
+        configs_root (Path | None): Config root.
+            Defaults to ``TRADER_CONFIGS_DIR`` or ``configs``.
         command (str): Command line for the reproduction record.
         journal_factory (Any): Journal constructor (tests inject failing journals).
 

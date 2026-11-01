@@ -12,6 +12,7 @@ from pydantic import BaseModel, ValidationError
 from trader.common.canonical import to_canonical_obj
 from trader.common.hashing import hash_obj
 from trader.common.opstore import OperationalStore
+from trader.common.paths import configs_root as default_configs_root
 from trader.domain.common import VersionRef
 from trader.domain.compiled import CompiledProfile, EffectiveValue
 from trader.domain.enums import Environment, Provenance, ValidationErrorCode
@@ -136,7 +137,7 @@ def compile_bundle(
     profile_path: Path,
     environment: Environment,
     experiment_path: Path | None = None,
-    configs_root: Path = Path("configs"),
+    configs_root: Path | None = None,
     cost_scenario: str | None = None,
     store: OperationalStore | None = None,
 ) -> CompileBundle:
@@ -147,13 +148,15 @@ def compile_bundle(
         profile_path (Path): TradingProfile YAML.
         environment (Environment): ``backtest`` or ``paper``.
         experiment_path (Path | None): Optional ExperimentDefinition (backtest only).
-        configs_root (Path): Directory with ``risk/``, ``universe/``, ``costs/``.
+        configs_root (Path | None): Directory with ``risk/``, ``universe/``, ``costs/``.
+            Defaults to ``TRADER_CONFIGS_DIR`` or ``configs``.
         cost_scenario (str | None): Cost scenario ID; defaults to the experiment's, else base.
         store (OperationalStore | None): Store for PV-10; defaults to ``data/state``.
 
     Returns:
         CompileBundle: Compiled profile and parsed inputs.
     """
+    configs_root = configs_root or default_configs_root()
     errors: list[str] = []
     effective: dict[str, EffectiveValue] = {}
     refs: dict[str, str] = {}
@@ -353,7 +356,7 @@ def compile_profile(
     profile_path: Path,
     environment: Environment,
     experiment_path: Path | None = None,
-    configs_root: Path = Path("configs"),
+    configs_root: Path | None = None,
 ) -> CompiledProfile:
     """
     Compile a profile and return only the CompiledProfile (spec signature, §7.4).
@@ -362,7 +365,8 @@ def compile_profile(
         profile_path (Path): TradingProfile YAML.
         environment (Environment): Target environment.
         experiment_path (Path | None): Optional experiment.
-        configs_root (Path): Configuration root.
+        configs_root (Path | None): Configuration root.
+            Defaults to ``TRADER_CONFIGS_DIR`` or ``configs``.
 
     Returns:
         CompiledProfile: Compiled profile.

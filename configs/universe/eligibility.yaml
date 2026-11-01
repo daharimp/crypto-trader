@@ -1,30 +1,30 @@
-# Eligibility rules (handoff §6.4). All thresholds UNRESOLVED (UD-18 / UD-06). Do not fill in.
+# Eligibility rules. UD-18 option A and UD-06 option A approved by the owner on 2026-11-01.
 schema_version: "1.0.0"
 kind: EligibilityRules
-version: 1
+version: 2
 criteria:
   liquidity:
     metric: median_daily_quote_volume_usd_30d
     min_by_tier:
-      core: {value: TBD, status: unresolved, ref: UD-18}
-      major: {value: TBD, status: unresolved, ref: UD-18}
-      speculative: {value: TBD, status: unresolved, ref: UD-18}
+      core: {value: 50000000, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+      major: {value: 10000000, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+      speculative: {value: 1000000, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
   data_history:
     metric: days_of_continuous_history
     min_by_tier:
-      core: {value: TBD, status: unresolved, ref: UD-18}
-      major: {value: TBD, status: unresolved, ref: UD-18}
-      speculative: {value: TBD, status: unresolved, ref: UD-18}
+      core: {value: 365, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+      major: {value: 365, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+      speculative: {value: 180, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
   spread:
     metric: median_relative_spread_bps
     max_by_tier:
-      core: {value: TBD, status: unresolved, ref: UD-18}
-      major: {value: TBD, status: unresolved, ref: UD-18}
-      speculative: {value: TBD, status: unresolved, ref: UD-18}
-    when_no_spread_data: {value: TBD, status: unresolved, ref: UD-18}
+      core: {value: 10, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+      major: {value: 25, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+      speculative: {value: 50, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+    when_no_spread_data: {value: not_applicable, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
   support: {rule: instrument_has_market_mapping_for_active_venue}
   explicit_exclusion: {rule: not_in_profile_disallowed_assets_and_not_registry_blocked}
-tier_assignment:
+tier_assignment:  # UD-06 option A: no Major or Speculative assets in V1; revisit in V1.5
   core: owner_approved_only
-  major: {value: TBD, status: unresolved, ref: UD-06}
-  speculative: {value: TBD, status: unresolved, ref: UD-06}
+  major: {value: none_permitted, status: approved, ref: UD-06, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+  speculative: {value: none_permitted, status: approved, ref: UD-06, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}

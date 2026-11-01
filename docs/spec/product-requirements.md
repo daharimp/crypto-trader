@@ -628,6 +628,37 @@ Each item gives: why it matters, a small set of options, a clearly labelled reco
 - **Recommendation (UD-21):** A plus C. Avoid absolute return targets, which encourage overfitting and conflict with D-07.
 - **Resolve before:** V1 MVP exit (M2) and UD-08.
 
+### 10.2 Resolution log
+
+**2026-11-01. Owner: Dahari Morgan-Parker.** The owner accepted the recommendation for every
+decision below. Values are recorded in `configs/risk/*.yaml` (version 2),
+`configs/universe/eligibility.yaml` (version 2), and `configs/profiles/balanced-paper.yaml`
+(version 2) with `status: approved`, `approved_by`, and `approved_on`.
+
+| ID | Decision (Conservative / Balanced / Aggressive where applicable) | Recorded in config |
+|---|---|---|
+| UD-01 | Option B: drawdown breaker 10 / 15 / 25% | yes |
+| UD-02 | Option A: daily loss limit 2 / 3 / 5% | yes |
+| UD-03 | Option A: risk per trade 0.5 / 1.0 / 1.5% | yes |
+| UD-04 | Option A: reserve 30–60 / 20–40 / 10–25%; `[floor, defensive ceiling]` interpretation (A-10) confirmed | yes |
+| UD-05 | Option A: internal deterministic simulator fed by public data, no keys | no field (architecture; ADR-022) |
+| UD-06 | Option A: no Major or Speculative assets in V1; revisit (option C with owner review) in V1.5 | yes (`tier_assignment: none_permitted`) |
+| UD-07 | Option A for V1: equal-weight vote with opposition veto (R-01) | no field until P7 |
+| UD-08 | Recommendation A + C with the five listed gates; profile breaker as absolute ceiling | no field until P10 |
+| UD-09 | Option A: single always-on instance; provider chosen at P10 | no field until P10 |
+| UD-10 | Console and log alerts in V1; push or chat plus email summary when hosted | no field until P10 |
+| UD-11 | Option B: tiered retention; never delete referenced datasets; no automatic deletion in V1 | no field |
+| UD-12 | Exposure option A 50 / 80 / 90%; positions option A 3 / 5 / 8 | yes |
+| UD-13 | Option A: Conservative 25 / 10 / 2.5 / 5%, Aggressive 45 / 20 / 7.5 / 15% (Core / Major / Speculative / Speculative total). Balanced H-01..H-04 stay hypotheses (D-28) | yes |
+| UD-14 | **Deferred.** Sleeve stays disabled until EXP-2026-004 selects a cap; sleeve limits will use option B (half of profile limits) | stays `TBD` |
+| UD-15 | Schedule option A (stepwise 1.0 / 0.5 / 0.25); upward bound option A (no upward adaptation; max multiplier 1) | yes |
+| UD-16 | Option A: ATR multiple, n = 14, k = 2.0 (k 1.5 / 3.0 to be tested in EXP-2026-003) | yes |
+| UD-17 | Cooldown option A (2 & 48 h / 3 & 24 h / 4 & 12 h); 3 execution errors; 120 s grace; 3 stale cycles; 5 s clock skew; external tolerance = venue lot size | yes |
+| UD-18 | Option A thresholds with spread handling (i) `not_applicable` on candle-only data; owner confirms (i) is acceptable for D-26 in V1 | yes |
+| UD-19 | Option D: hold positions and stops on engagement; explicit owner flatten command through the execution gate | yes (`hold_with_owner_flatten_command`; command is backlog BL-048) |
+| UD-20 | Option A chosen (USD-quoted spot venue, same as the eventual paper adapter). **Still open:** venue and fee tier, which depend on the owner's jurisdiction | no; `base` cost scenario stays R-10 |
+| UD-21 | Option A + C: relative risk-adjusted targets plus consistency targets; no absolute return targets | no field until M2 exit |
+
 ### 10.1 Resolution procedure
 
 1. The owner chooses an option (or another value) and records it in this section with the date.

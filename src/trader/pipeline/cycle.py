@@ -33,6 +33,18 @@ from trader.strategies.base import SignalIds
 from .state import RunState
 
 log = get_logger("cycle")
+_LOGGED = {
+    EventType.RISK_EVALUATED,
+    EventType.ORDER_SUBMITTED,
+    EventType.ORDER_REJECTED,
+    EventType.ORDER_FILLED,
+    EventType.STOP_TRIGGERED,
+    EventType.KILL_SWITCH_ENGAGED,
+    EventType.RECONCILIATION_FAILED,
+    EventType.CIRCUIT_BREAKER_OPENED,
+    EventType.DAILY_LOCKOUT_STARTED,
+    EventType.COOLDOWN_STARTED,
+}
 
 
 class RunFailedError(RuntimeError):
@@ -65,6 +77,10 @@ def _j(
     """
     try:
         state.journal.append(et, t, payload, cycle, corr, ptype)
+        if et in _LOGGED:
+            log.info(
+                et.value, extra={"event_type": et.value, "cycle_id": cycle, "correlation_id": corr}
+            )
     except JournalWriteError as exc:
         state.controls.kill_switch.engage("journal write failure", "journal_write_failure")
         raise RunFailedError(f"journal write failed: {exc}") from exc

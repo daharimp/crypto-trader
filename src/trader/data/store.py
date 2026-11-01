@@ -16,7 +16,7 @@ from trader.common.paths import data_root
 from trader.domain.candles import Candle
 from trader.domain.market import DatasetManifest, SourceRef
 
-from .frames import PRICE_COLS, canonical_text, candles_to_frame, norm_decimal
+from .frames import PRICE_COLS, candles_to_frame, canonical_text, norm_decimal
 from .quality import QualityReport, run_quality_checks
 
 

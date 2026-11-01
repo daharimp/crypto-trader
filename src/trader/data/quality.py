@@ -116,8 +116,9 @@ def run_quality_checks(
     dup_mask = df.duplicated("open_time_utc", keep=False)
     if dup_mask.any():
         distinct = df[dup_mask].drop_duplicates(subset=COLUMNS)
-        conflict_times = sorted(set(columns(distinct[distinct.duplicated("open_time_utc")],
-                                            "open_time_utc")))
+        conflict_times = sorted(
+            set(columns(distinct[distinct.duplicated("open_time_utc")], "open_time_utc"))
+        )
         if conflict_times:
             rep.issues.append(
                 _issue("DQ-05", "error", "conflicting duplicates", at=format_utc(conflict_times[0]))
@@ -132,8 +133,9 @@ def run_quality_checks(
         if min(o, h, lo, c) <= 0 or lo > min(o, c) or h < max(o, c)
     ]
     if bad_ohlc:
-        rep.issues.append(_issue("DQ-07", "error", "OHLC inconsistent", first=bad_ohlc[0],
-                                 count=len(bad_ohlc)))
+        rep.issues.append(
+            _issue("DQ-07", "error", "OHLC inconsistent", first=bad_ohlc[0], count=len(bad_ohlc))
+        )
     # DQ-08 volume
     vols = columns(df, "volume")
     if any(v < 0 for v in vols):
@@ -156,8 +158,9 @@ def run_quality_checks(
         if b - a > delta:
             rep.gaps.append(f"{format_utc(a + delta)}/{format_utc(b)}")
     if rep.gaps:
-        rep.issues.append(_issue("DQ-06", "warning", "gaps (not filled)", count=len(rep.gaps),
-                                 first=rep.gaps[0]))
+        rep.issues.append(
+            _issue("DQ-06", "warning", "gaps (not filled)", count=len(rep.gaps), first=rep.gaps[0])
+        )
     # DQ-09 outlier returns (warning)
     n_out = _outliers(df, timeframe)
     if n_out:

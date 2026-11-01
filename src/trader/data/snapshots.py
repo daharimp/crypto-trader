@@ -14,7 +14,6 @@ from trader.domain.market import DatasetManifest, MarketSnapshot, SourceRef
 
 from .frames import frame_to_candles
 
-
 _NO_SOURCE = SourceRef(provider_id="none", venue_id="none", retrieved_at_utc=None)
 
 

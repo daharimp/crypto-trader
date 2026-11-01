@@ -1,0 +1,503 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "urn:ai-crypto-trader:schema:trading-profile:1.0.0"
+title: TradingProfile
+description: >-
+  Human-readable, versioned description of what the owner wants the paper trader to do:
+  objective, simulated capital, risk-profile selection, universe, holding periods and
+  timeframes, autonomy mode, explanation preference, active data sources, and lifecycle
+  status. Framework-neutral contract (D-44, D-45). Safety constants make real money,
+  leverage, margin, short selling, withdrawals, and transfers unrepresentable (D-02, D-03).
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - kind
+  - profile_id
+  - version
+  - status
+  - owner
+  - objective
+  - capital
+  - risk_selection
+  - universe
+  - horizon
+  - execution
+  - explanations
+  - data_sources
+properties:
+  schema_version:
+    const: "1.0.0"
+    description: Version of this schema. Readers reject unknown major versions.
+  kind:
+    const: TradingProfile
+  profile_id:
+    type: string
+    pattern: "^[a-z0-9][a-z0-9-]{2,63}$"
+  version:
+    type: integer
+    minimum: 1
+    description: >-
+      Content version. Increment on every change. A validated or active profile is never
+      edited in place (no silent mutation, P-06). Runs record profile_id, version, and the
+      content hash.
+  status:
+    enum: [draft, validated, active, suspended]
+    description: >-
+      Declared lifecycle status (kickoff deliverable 3). The declared status can only
+      restrict use: it is re-verified at every load (policy rule PV-08). draft and
+      suspended cannot run; validated may run backtests; active is required for paper
+      sessions and needs an activation record (BL-028).
+  owner:
+    type: string
+    minLength: 1
+  description:
+    type: string
+  status_history:
+    type: array
+    description: Optional human-maintained history of status changes.
+    items:
+      $ref: "#/$defs/StatusChange"
+  objective:
+    type: object
+    additionalProperties: false
+    required: [objective_id, statement, guaranteed_profitability_assumed, decision_ref]
+    properties:
+      objective_id:
+        const: balance_returns_consistency_drawdown
+      statement:
+        const: "Balance strong returns with consistent performance and controlled drawdown."
+        description: APPROVED D-05, quoted verbatim.
+      guaranteed_profitability_assumed:
+        const: false
+        description: APPROVED D-07. The system must not claim or assume guaranteed profitability.
+      decision_ref:
+        const: "D-05"
+  capital:
+    type: object
+    additionalProperties: false
+    required: [paper_capital_usd, accounting_currency, funds]
+    properties:
+      paper_capital_usd:
+        type: number
+        exclusiveMinimum: 0
+        description: Simulated starting capital in USD. The initial profile uses 2500 (APPROVED D-04).
+      accounting_currency:
+        const: USD
+        description: Portfolio accounting currency (assumption A-02). Venue quote currency is UD-20.
+      funds:
+        const: simulated
+        description: APPROVED D-02 and SAFE-01. There is no other value.
+  risk_selection:
+    type: object
+    additionalProperties: false
+    required: [risk_profile_id, risk_profile_version, adaptation, profile_switching]
+    properties:
+      risk_profile_id:
+        enum: [conservative, balanced, aggressive]
+        description: APPROVED D-08, D-09. The owner selects the overall profile, initially balanced.
+      risk_profile_version:
+        type: integer
+        minimum: 1
+        description: Must match the version in configs/risk/<risk_profile_id>.yaml (PV-04).
+      adaptation:
+        const: within_selected_profile_bounds
+        description: APPROVED D-10. The system may become more defensive or aggressive only inside the selected profile's boundaries.
+      profile_switching:
+        const: owner_only
+        description: The system never switches risk profiles on its own (D-06, D-09, SAFE-10).
+      aggressive_acknowledgement:
+        $ref: "#/$defs/AggressiveAcknowledgement"
+    allOf:
+      - if:
+          properties:
+            risk_profile_id:
+              const: aggressive
+        then:
+          required: [aggressive_acknowledgement]
+          description: APPROVED D-06. Aggressive operation exists only as an explicitly selected profile.
+  universe:
+    type: object
+    additionalProperties: false
+    required:
+      - construction
+      - quote_currency
+      - allowed_tiers
+      - core_assets
+      - manual_allowlist
+      - disallowed_assets
+      - instruments_in_scope
+      - eligibility_required_for_all
+    properties:
+      construction:
+        enum: [rules_based, rules_based_with_dynamic_discovery]
+        description: >-
+          APPROVED D-22, D-23. V1 uses rules_based. rules_based_with_dynamic_discovery is
+          reserved for V2, where AI may rank eligible assets but never add ineligible ones (D-31).
+      quote_currency:
+        const: USD
+        description: Canonical quote for instrument IDs. Venue symbol mapping and stablecoin handling are UD-20.
+      allowed_tiers:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items:
+          enum: [core, major, speculative]
+        description: >-
+          Tiers this profile may trade (D-26). Blocked can never be allowed. Major and
+          Speculative are empty until UD-06 and UD-18 are resolved, so in V1 only Core assets trade.
+      core_assets:
+        type: array
+        uniqueItems: true
+        items:
+          $ref: "#/$defs/AssetId"
+        description: APPROVED D-26. Core is BTC, ETH, or other explicitly approved core assets.
+      manual_allowlist:
+        type: array
+        items:
+          $ref: "#/$defs/AllowlistEntry"
+        description: >-
+          APPROVED D-24. Owner-nominated assets. Every entry must still pass eligibility
+          checks (D-25); an asset that fails is treated as Blocked with a recorded reason.
+      disallowed_assets:
+        type: array
+        uniqueItems: true
+        items:
+          $ref: "#/$defs/AssetId"
+        description: Explicit exclusions. Always Blocked (D-26).
+      instruments_in_scope:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items:
+          $ref: "#/$defs/InstrumentId"
+        description: Spot instruments the profile may evaluate. The V1 slice uses BTC-USD and ETH-USD (HYPOTHESIS H-05).
+      eligibility_required_for_all:
+        const: true
+        description: APPROVED D-25.
+  horizon:
+    type: object
+    additionalProperties: false
+    required: [holding_period, primary_decision_timeframes, typical_holding, minute_data, excluded_styles]
+    properties:
+      holding_period:
+        const: adaptive
+        description: APPROVED D-15.
+      primary_decision_timeframes:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items:
+          enum: ["1h", "4h"]
+        description: APPROVED D-16. Primary V1 decision timeframes are 1-hour and 4-hour.
+      typical_holding:
+        type: object
+        additionalProperties: false
+        required: [description, enforced_limit]
+        properties:
+          description:
+            const: "From roughly one hour through several days"
+            description: APPROVED D-17.
+          enforced_limit:
+            const: false
+            description: D-17 describes typical positions; it is not a hard holding limit.
+      minute_data:
+        type: object
+        additionalProperties: false
+        required: [permitted_roles, entry_exit_refinement_enabled, intraday_strategies_enabled]
+        properties:
+          permitted_roles:
+            type: array
+            uniqueItems: true
+            items:
+              enum: [entry_exit_refinement, approved_intraday_strategies]
+            description: APPROVED D-18. The only two permitted roles of minute-level data.
+          entry_exit_refinement_enabled:
+            type: boolean
+            description: Refinement starts in V1.5 (RECOMMENDATION R-23). Refinement never changes direction or increases size.
+          intraday_strategies_enabled:
+            type: boolean
+            description: >-
+              Must stay false until the intraday allocation cap is approved (UD-14, chosen by
+              testing 5%, 10%, 15%, and 20% per D-20) and the strategy itself is separately
+              approved (D-18, D-19). Policy rule PV-05.
+      excluded_styles:
+        type: array
+        uniqueItems: true
+        items:
+          enum: [high_frequency, latency_arbitrage]
+        allOf:
+          - contains:
+              const: high_frequency
+          - contains:
+              const: latency_arbitrage
+        description: APPROVED D-21. Both styles must be listed as excluded.
+  execution:
+    type: object
+    additionalProperties: false
+    required:
+      - permitted_environments
+      - autonomy_mode
+      - per_trade_approval_required
+      - instrument_types
+      - real_money_enabled
+      - leverage_allowed
+      - margin_allowed
+      - short_selling_allowed
+      - withdrawals_allowed
+      - transfers_allowed
+    properties:
+      permitted_environments:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items:
+          enum: [backtest, paper]
+        description: >-
+          backtest = historical replay with simulated fills (research environment).
+          paper = forward-time simulated execution; also covers dry-run and sandbox adapters
+          (assumption A-04). No other environment exists (D-02).
+      autonomy_mode:
+        enum: [paper_autonomous, observe_only]
+        description: >-
+          paper_autonomous: approved orders execute automatically after deterministic risk
+          validation, with no approval click (APPROVED D-33, D-34). observe_only: signals,
+          ensemble and risk decisions are journaled but no orders are created (RECOMMENDATION
+          R-14; used for shadow runs of challengers).
+      per_trade_approval_required:
+        const: false
+        description: APPROVED D-34.
+      instrument_types:
+        type: array
+        minItems: 1
+        maxItems: 1
+        items:
+          const: spot
+        description: Spot only (v0.1 section 2.1; A-03).
+      real_money_enabled:
+        const: false
+        description: SAFE-01 (D-02, D-03).
+      leverage_allowed:
+        const: false
+        description: SAFE-02 (D-03).
+      margin_allowed:
+        const: false
+        description: SAFE-02.
+      short_selling_allowed:
+        const: false
+        description: SAFE-02. Sells can only reduce existing long holdings.
+      withdrawals_allowed:
+        const: false
+        description: SAFE-03 (D-03).
+      transfers_allowed:
+        const: false
+        description: SAFE-03.
+  explanations:
+    type: object
+    additionalProperties: false
+    required: [preference, narrative_source, ai_generated_narratives_enabled]
+    properties:
+      preference:
+        enum: [every_decision, orders_and_rejections, orders_only]
+        description: >-
+          Which decisions get a human-readable explanation. The structured decision chain is
+          always journaled regardless (D-29 step 9). Default every_decision is RECOMMENDATION R-13.
+      narrative_source:
+        const: recorded_facts_only
+        description: Explanations are generated from journal facts and are never a source of truth (v0.1 section 6.10).
+      ai_generated_narratives_enabled:
+        type: boolean
+        description: V2 only. AI-written explanations must cite journal event IDs (D-31).
+  data_sources:
+    type: object
+    additionalProperties: false
+    required: [active]
+    properties:
+      active:
+        type: array
+        minItems: 1
+        items:
+          $ref: "#/$defs/DataSourceRef"
+        description: >-
+          APPROVED D-37, D-38. Active sources and their tiers. In V1 every source with
+          required_for_trading true must be tier V1 (policy rule PV-07).
+$defs:
+  AssetId:
+    type: string
+    pattern: "^[A-Z0-9]{2,15}$"
+  InstrumentId:
+    type: string
+    pattern: "^[A-Z0-9]{2,15}-[A-Z0-9]{2,10}$"
+    description: Canonical spot instrument, BASE-QUOTE (data-architecture.md section 4).
+  UtcTimestamp:
+    type: string
+    pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+  StatusChange:
+    type: object
+    additionalProperties: false
+    required: [status, changed_at_utc, changed_by, reason]
+    properties:
+      status:
+        enum: [draft, validated, active, suspended]
+      changed_at_utc:
+        $ref: "#/$defs/UtcTimestamp"
+      changed_by:
+        type: string
+        minLength: 1
+      reason:
+        type: string
+        minLength: 1
+  AggressiveAcknowledgement:
+    type: object
+    additionalProperties: false
+    required: [acknowledged, acknowledged_by, acknowledged_at_utc, statement]
+    properties:
+      acknowledged:
+        const: true
+      acknowledged_by:
+        type: string
+        minLength: 1
+      acknowledged_at_utc:
+        $ref: "#/$defs/UtcTimestamp"
+      statement:
+        type: string
+        minLength: 20
+        description: Owner's own words confirming the explicit selection of the Aggressive profile (D-06).
+  AllowlistEntry:
+    type: object
+    additionalProperties: false
+    required: [asset_id, nominated_by, nominated_at_utc]
+    properties:
+      asset_id:
+        $ref: "#/$defs/AssetId"
+      nominated_by:
+        type: string
+        minLength: 1
+      nominated_at_utc:
+        $ref: "#/$defs/UtcTimestamp"
+      note:
+        type: string
+  DataSourceRef:
+    type: object
+    additionalProperties: false
+    required: [source_id, tier, required_for_trading]
+    properties:
+      source_id:
+        enum:
+          - market_candles
+          - order_book
+          - cross_asset
+          - derivatives_data
+          - news
+          - on_chain
+          - macro
+          - social_sentiment
+          - alternative_signals
+      tier:
+        enum: ["V1", "V1.5", "V2", "experimental"]
+      required_for_trading:
+        type: boolean
+    allOf:
+      - if:
+          properties:
+            source_id:
+              const: market_candles
+        then:
+          properties:
+            tier:
+              const: "V1"
+      - if:
+          properties:
+            source_id:
+              enum: [order_book, cross_asset, derivatives_data]
+        then:
+          properties:
+            tier:
+              const: "V1.5"
+          description: derivatives_data is a read-only input; derivatives are never traded (SAFE-02).
+      - if:
+          properties:
+            source_id:
+              enum: [news, on_chain, macro]
+        then:
+          properties:
+            tier:
+              const: "V2"
+      - if:
+          properties:
+            source_id:
+              enum: [social_sentiment, alternative_signals]
+        then:
+          properties:
+            tier:
+              const: experimental
+            required_for_trading:
+              const: false
+          description: >-
+            Experimental sources are research-only until a strategy that uses them is
+            promoted through the champion/challenger process (D-43; RECOMMENDATION).
+x-policy-rules:
+  description: >-
+    Cross-field rules enforced by the profile compiler (FR-PROF-08). Each failure stops
+    compilation with the error code shown. Exit code 2 unless stated.
+  rules:
+    - id: PV-01
+      rule: disallowed_assets must not overlap core_assets or manual_allowlist asset IDs.
+      error_code: PROFILE_CONTRADICTION
+    - id: PV-02
+      rule: >-
+        Every instrument in instruments_in_scope must have a base asset in core_assets or
+        manual_allowlist and a quote equal to universe.quote_currency.
+      error_code: PROFILE_CONTRADICTION
+    - id: PV-03
+      rule: risk_profile_id aggressive requires aggressive_acknowledgement (also enforced by the schema).
+      error_code: AGGRESSIVE_NOT_ACKNOWLEDGED
+    - id: PV-04
+      rule: configs/risk/<risk_profile_id>.yaml must exist and its version must equal risk_profile_version.
+      error_code: RISK_PROFILE_NOT_FOUND
+    - id: PV-05
+      rule: >-
+        intraday_strategies_enabled true requires approved_intraday_strategies in
+        permitted_roles and an approved intraday allocation cap in the selected RiskProfile (UD-14).
+      error_code: INTRADAY_NOT_APPROVED
+    - id: PV-06
+      rule: >-
+        entry_exit_refinement_enabled true requires entry_exit_refinement in permitted_roles
+        and a registered 1m candle source.
+      error_code: PROFILE_CONTRADICTION
+    - id: PV-07
+      rule: >-
+        While the system is at V1, every data source with required_for_trading true must be
+        tier V1 (D-38). Later-tier sources may be listed only with required_for_trading false.
+      error_code: DATA_SOURCE_NOT_PERMITTED
+    - id: PV-08
+      rule: >-
+        Declared status is re-verified at every load. draft and suspended cannot run.
+        backtest requires validated or active. paper requires active, paper in
+        permitted_environments, and an activation record whose profile hash matches.
+      error_code: PROFILE_NOT_RUNNABLE
+    - id: PV-09
+      rule: If core_assets is not empty, allowed_tiers must include core.
+      error_code: PROFILE_CONTRADICTION
+    - id: PV-10
+      rule: >-
+        If a profile_id and version were previously compiled with a different content hash,
+        compilation fails; the owner must increment version.
+      error_code: PROFILE_VERSION_NOT_INCREMENTED
+x-lifecycle:
+  description: Allowed declared-status transitions. Every transition is an owner action.
+  transitions:
+    - from: draft
+      to: validated
+      condition: trader profile validate passes for at least one permitted environment.
+    - from: validated
+      to: active
+      condition: trader profile activate (BL-028) succeeds; no paper blockers remain.
+    - from: active
+      to: suspended
+      condition: Owner command, or automatic suspension when the profile changes or becomes invalid mid-session (FM-15).
+    - from: suspended
+      to: validated
+      condition: Owner review; version incremented if content changed.
+    - from: any
+      to: draft
+      condition: Owner edits the profile and increments version.

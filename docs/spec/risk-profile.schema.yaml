@@ -1,0 +1,1208 @@
+# risk-profile.schema.yaml
+# AI-Assisted Crypto Paper-Trading System - specification package v0.2 (2026-10-08)
+# Owner: Dahari Morgan-Parker
+#
+# This file holds four YAML documents:
+#   Document 1  JSON Schema (draft 2020-12), written in YAML, for the RiskProfile contract.
+#   Document 2  Conservative profile  (copy to configs/risk/conservative.yaml)
+#   Document 3  Balanced profile      (copy to configs/risk/balanced.yaml)
+#   Document 4  Aggressive profile    (copy to configs/risk/aggressive.yaml)
+# Read with yaml.safe_load_all().
+#
+# VALUE RULE (kickoff deliverable 4; ADR-016; RECOMMENDATION R-02):
+#   Every financial-risk parameter is an object {value, status, ref}.
+#     status: approved    value set by the owner; requires approved_by and approved_on
+#     status: hypothesis  recorded starting hypothesis (H-01..H-04 only, Balanced)
+#     status: unresolved  value is the string TBD; ref names the UD item
+#   No unresolved value has been filled in. Options and recommendations for every UD item are in
+#   product-requirements.md section 10; they are NOT applied here.
+#   A run that needs a TBD value stops with RISK_CONFIG_UNRESOLVED (exit code 3).
+#   Research backtests may supply values only through an experiment parameter set
+#   (experiment-plan.md section 11), which is labelled "experiment" everywhere.
+---
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "urn:ai-crypto-trader:schema:risk-profile:1.0.0"
+title: RiskProfile
+description: >-
+  Deterministic risk boundaries for one selectable profile (Conservative, Balanced,
+  Aggressive). Hybrid risk-profile model (D-08): the owner selects a profile (D-09); the
+  system adapts only inside its boundaries (D-10); thresholds are profile-dependent (D-11);
+  loss handling is hybrid (D-12); deterministic code has final authority (D-13); AI and ML
+  may recommend but may not bypass hard limits (D-14, D-32).
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - kind
+  - risk_profile_id
+  - version
+  - display_name
+  - selection
+  - global_hard_constraints
+  - loss_response
+  - limits
+  - sizing
+  - concentration
+  - allocation
+  - cooldown
+  - data_and_execution_faults
+  - kill_switch
+  - halt_and_liquidation
+properties:
+  schema_version:
+    const: "1.0.0"
+  kind:
+    const: RiskProfile
+  risk_profile_id:
+    enum: [conservative, balanced, aggressive]
+  version:
+    type: integer
+    minimum: 1
+    description: Content version; increment on every change (RP-10).
+  display_name:
+    type: string
+    minLength: 1
+  description:
+    type: string
+  selection:
+    type: object
+    additionalProperties: false
+    required: [initial_default, explicit_selection_required]
+    properties:
+      initial_default:
+        type: boolean
+        description: True only for balanced (D-09).
+      explicit_selection_required:
+        type: boolean
+        description: True for aggressive (D-06); the TradingProfile must then carry an acknowledgement.
+  global_hard_constraints:
+    type: object
+    additionalProperties: false
+    description: Identical in every profile. Constants, not tunable values.
+    required:
+      - funds
+      - instrument_types
+      - leverage_allowed
+      - margin_allowed
+      - short_selling_allowed
+      - withdrawals_allowed
+      - deterministic_final_authority
+      - ai_may_override_limits
+      - profile_switching
+    properties:
+      funds:
+        const: simulated
+        description: D-02, SAFE-01.
+      instrument_types:
+        type: array
+        minItems: 1
+        maxItems: 1
+        items:
+          const: spot
+      leverage_allowed:
+        const: false
+        description: D-03. Leverage permissions are a D-32 item; constant false in the MVP.
+      margin_allowed:
+        const: false
+      short_selling_allowed:
+        const: false
+      withdrawals_allowed:
+        const: false
+        description: D-03, SAFE-03.
+      deterministic_final_authority:
+        const: true
+        description: D-13.
+      ai_may_override_limits:
+        const: false
+        description: D-14, D-32.
+      profile_switching:
+        const: owner_only
+  loss_response:
+    type: object
+    additionalProperties: false
+    description: APPROVED D-12 hybrid loss handling, steps 1 to 4.
+    required:
+      - reassess_signals_and_conditions_each_cycle
+      - size_reduction_schedule
+      - hard_thresholds_override_all
+      - circuit_breaker_stops_new_trades
+    properties:
+      reassess_signals_and_conditions_each_cycle:
+        const: true
+        description: D-12 step 1.
+      size_reduction_schedule:
+        $ref: "#/$defs/LossScalingSchedule"
+        description: D-12 step 2 (reduce position sizes as losses accumulate). Schedule is UD-15.
+      hard_thresholds_override_all:
+        const: true
+        description: D-12 step 3.
+      circuit_breaker_stops_new_trades:
+        const: true
+        description: D-12 step 4. Exits remain allowed.
+  limits:
+    type: object
+    additionalProperties: false
+    required:
+      - portfolio_drawdown_circuit_breaker_pct
+      - daily_loss_limit_pct
+      - daily_loss_window
+      - circuit_breaker_reset
+    properties:
+      portfolio_drawdown_circuit_breaker_pct:
+        $ref: "#/$defs/Pct"
+        description: >-
+          Peak-to-trough decline of total equity (from the breaker high-water mark) at which
+          the system stops opening new trades (D-12 step 4, RR-09). Profile-dependent (D-11). UD-01.
+      daily_loss_limit_pct:
+        $ref: "#/$defs/Pct"
+        description: Loss versus equity at 00:00 UTC that blocks new entries until the next UTC day (RR-10). UD-02.
+      daily_loss_window:
+        const: utc_calendar_day
+      circuit_breaker_reset:
+        const: owner_command_with_reason
+        description: Latched breaker; reset rebases the high-water mark (RECOMMENDATION R-18).
+  sizing:
+    type: object
+    additionalProperties: false
+    required: [risk_per_trade_pct, hard_stop_policy, adaptation, quantity_rounding]
+    properties:
+      risk_per_trade_pct:
+        $ref: "#/$defs/Pct"
+        description: Equity at risk between entry and the hard stop (RR-14). UD-03.
+      hard_stop_policy:
+        $ref: "#/$defs/StopPolicy"
+        description: Deterministic hard stop-loss policy (a D-32 item). UD-16.
+      adaptation:
+        type: object
+        additionalProperties: false
+        description: D-10. Adaptation stays inside this profile's boundaries.
+        required: [downward, upward_enabled, upward_multiplier_max]
+        properties:
+          downward:
+            const: loss_response_schedule
+            description: Defensive adaptation uses loss_response.size_reduction_schedule.
+          upward_enabled:
+            type: boolean
+            description: >-
+              Upward adaptation (more aggressive inside the profile) is permitted by D-10 but
+              disabled in V1 (RECOMMENDATION R-22) until its bound is approved (UD-15).
+          upward_multiplier_max:
+            $ref: "#/$defs/Multiplier"
+            description: Upper bound on the adaptive multiplier; never lifts any hard cap. UD-15.
+        allOf:
+          - if:
+              properties:
+                upward_enabled:
+                  const: true
+            then:
+              properties:
+                upward_multiplier_max:
+                  properties:
+                    status:
+                      const: approved
+      quantity_rounding:
+        const: round_down_to_instrument_step
+  concentration:
+    type: object
+    additionalProperties: false
+    description: >-
+      Profile- and tier-dependent concentration limits (D-27), applied to aggregate exposure
+      per asset across all sleeves. Balanced values are hypotheses H-01 to H-04, governed by
+      D-28. Conservative and Aggressive values are UD-13.
+    required:
+      - applies_to
+      - core_per_asset_cap_pct
+      - major_per_asset_cap_pct
+      - speculative_per_asset_cap_pct
+      - speculative_total_cap_pct
+    properties:
+      applies_to:
+        const: aggregate_exposure_across_sleeves
+      core_per_asset_cap_pct:
+        $ref: "#/$defs/Pct"
+      major_per_asset_cap_pct:
+        $ref: "#/$defs/Pct"
+      speculative_per_asset_cap_pct:
+        $ref: "#/$defs/Pct"
+      speculative_total_cap_pct:
+        $ref: "#/$defs/Pct"
+        description: Speculative allocation cap (kickoff deliverable 4).
+  allocation:
+    type: object
+    additionalProperties: false
+    required:
+      - total_exposure_cap_pct
+      - minimum_reserve_pct_range
+      - max_open_positions
+      - intraday_allocation_cap_pct
+      - intraday_sleeve_limits
+    properties:
+      total_exposure_cap_pct:
+        $ref: "#/$defs/Pct"
+        description: Maximum gross exposure as a share of equity (RR-17). UD-12.
+      minimum_reserve_pct_range:
+        $ref: "#/$defs/PctRange"
+        description: >-
+          Cash reserve as [floor, defensive ceiling] (assumption A-10, to be confirmed in
+          UD-04). Cash never falls below the floor; defensive adaptation may raise the
+          required reserve up to the ceiling (RR-18). UD-04.
+      max_open_positions:
+        $ref: "#/$defs/Count"
+        description: Includes pending entries (RR-19). UD-12.
+      intraday_allocation_cap_pct:
+        $ref: "#/$defs/Pct"
+        description: >-
+          Isolated, capped allocation for separately approved intraday strategies (D-19).
+          Chosen by testing 5%, 10%, 15%, and 20% without assuming the largest is best (D-20).
+          The intraday sleeve stays disabled while this is TBD. UD-14.
+      intraday_sleeve_limits:
+        type: object
+        additionalProperties: false
+        required: [isolation, daily_loss_limit_pct, drawdown_circuit_breaker_pct]
+        properties:
+          isolation:
+            const: separate_ledger_no_borrowing_from_core
+          daily_loss_limit_pct:
+            $ref: "#/$defs/Pct"
+            description: Share of sleeve equity. UD-14.
+          drawdown_circuit_breaker_pct:
+            $ref: "#/$defs/Pct"
+            description: Share of sleeve equity. UD-14.
+  cooldown:
+    type: object
+    additionalProperties: false
+    required: [after_consecutive_losing_trades]
+    properties:
+      after_consecutive_losing_trades:
+        type: object
+        additionalProperties: false
+        required: [scope, count, duration_hours]
+        properties:
+          scope:
+            const: strategy_instrument
+          count:
+            $ref: "#/$defs/Count"
+            description: Consecutive losing closed trades (after fees) that start a cooldown (RR-11). UD-17.
+          duration_hours:
+            $ref: "#/$defs/Hours"
+            description: UD-17.
+  data_and_execution_faults:
+    type: object
+    additionalProperties: false
+    description: Stale-data and exchange-error handling (kickoff deliverable 4). Fail closed (P-09).
+    required: [stale_data, exchange_errors, clock_skew_tolerance_seconds, reconciliation]
+    properties:
+      stale_data:
+        type: object
+        additionalProperties: false
+        required: [definition, action, paper_grace_seconds, escalate_to_kill_switch_after_stale_cycles]
+        properties:
+          definition:
+            const: missing_latest_expected_closed_candle
+            description: Parameter-free in backtests; data-architecture.md section 5.
+          action:
+            const: block_new_orders_for_instrument
+          paper_grace_seconds:
+            $ref: "#/$defs/Seconds"
+            description: Forward paper sessions only. UD-17.
+          escalate_to_kill_switch_after_stale_cycles:
+            $ref: "#/$defs/Count"
+            description: Forward paper sessions only. UD-17.
+      exchange_errors:
+        type: object
+        additionalProperties: false
+        required: [retry_policy, max_consecutive_errors_before_kill_switch]
+        properties:
+          retry_policy:
+            const: idempotent_operations_only
+          max_consecutive_errors_before_kill_switch:
+            $ref: "#/$defs/Count"
+            description: UD-17.
+      clock_skew_tolerance_seconds:
+        $ref: "#/$defs/Seconds"
+        description: Forward paper sessions only. UD-17.
+      reconciliation:
+        type: object
+        additionalProperties: false
+        required: [internal_simulator, external_adapter_quantity_tolerance]
+        properties:
+          internal_simulator:
+            const: exact_match
+          external_adapter_quantity_tolerance:
+            $ref: "#/$defs/Param"
+            description: Only needed once an external paper adapter exists (UD-05). UD-17.
+  kill_switch:
+    type: object
+    additionalProperties: false
+    description: >-
+      Manual kill switch (D-35). Kill-switch behavior is a D-32 item: AI may recommend but
+      not determine it. The runtime state lives in the operational store, not in this file,
+      because profile files are immutable versioned configuration.
+    required:
+      - state_model
+      - manual_engage
+      - manual_disengage
+      - automated_disengage_allowed
+      - ai_may_change_state
+      - effect_on_new_orders
+      - auto_engage_triggers
+    properties:
+      state_model:
+        type: object
+        additionalProperties: false
+        required: [values, source, persisted_across_restarts, initial_state_on_first_start]
+        properties:
+          values:
+            const: [disengaged, engaged]
+          source:
+            const: operational_store
+            description: data/state/operational.sqlite, append-only history (KillSwitchState).
+          persisted_across_restarts:
+            const: true
+            description: RECOMMENDATION R-15.
+          initial_state_on_first_start:
+            const: disengaged
+            description: RECOMMENDATION R-15. Applies only when no persisted state exists.
+      manual_engage:
+        const: always_available
+        description: Engaging always succeeds, even with invalid configuration.
+      manual_disengage:
+        const: owner_command_with_reason
+      automated_disengage_allowed:
+        const: false
+      ai_may_change_state:
+        const: false
+      effect_on_new_orders:
+        const: block_all
+        description: v0.1 section 9.2. Open positions are governed by halt_and_liquidation.
+      auto_engage_triggers:
+        type: array
+        uniqueItems: true
+        items:
+          enum:
+            - reconciliation_mismatch
+            - repeated_execution_errors
+            - clock_skew_exceeded
+            - journal_write_failure
+            - risk_config_invalid_mid_session
+            - persistent_stale_data
+        minItems: 6
+        description: architecture.md section 9.2. All six are required.
+  halt_and_liquidation:
+    type: object
+    additionalProperties: false
+    required: [interim_behavior_until_resolved, liquidation_policy_after_halt]
+    properties:
+      interim_behavior_until_resolved:
+        const: hold_unchanged_including_attached_stops
+        description: >-
+          Until UD-19 is resolved, a halt never liquidates automatically: open positions and
+          their attached protective stops stay as they are (v0.1 section 9.2: no improvised
+          liquidation). This is the do-nothing behavior, not an assigned risk value.
+      liquidation_policy_after_halt:
+        $ref: "#/$defs/Choice"
+        description: >-
+          UD-19 options: hold_unchanged, flatten_all_at_market, staged_derisking,
+          hold_with_owner_flatten_command. Required before paper activation.
+$defs:
+  DecisionRef:
+    type: string
+    pattern: "^(D|H|UD)-[0-9]{2}$"
+  ProvenanceStatus:
+    enum: [approved, hypothesis, unresolved]
+  Pct:
+    type: object
+    additionalProperties: false
+    required: [value, status, ref]
+    properties:
+      value:
+        oneOf:
+          - type: number
+            exclusiveMinimum: 0
+            maximum: 100
+          - const: TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      candidates_under_test:
+        type: array
+        items:
+          type: number
+          exclusiveMinimum: 0
+          maximum: 100
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - $ref: "#/$defs/ProvenanceRules"
+  PctRange:
+    type: object
+    additionalProperties: false
+    required: [low, high, status, ref]
+    properties:
+      low:
+        oneOf:
+          - type: number
+            minimum: 0
+            maximum: 100
+          - const: TBD
+      high:
+        oneOf:
+          - type: number
+            minimum: 0
+            maximum: 100
+          - const: TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - if:
+          properties:
+            status:
+              const: unresolved
+        then:
+          properties:
+            low:
+              const: TBD
+            high:
+              const: TBD
+            ref:
+              pattern: "^UD-[0-9]{2}$"
+      - if:
+          properties:
+            low:
+              const: TBD
+        then:
+          properties:
+            status:
+              const: unresolved
+      - if:
+          properties:
+            high:
+              const: TBD
+        then:
+          properties:
+            status:
+              const: unresolved
+      - if:
+          properties:
+            status:
+              const: approved
+        then:
+          required: [approved_by, approved_on]
+  Count:
+    type: object
+    additionalProperties: false
+    required: [value, status, ref]
+    properties:
+      value:
+        oneOf:
+          - type: integer
+            minimum: 1
+          - const: TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - $ref: "#/$defs/ProvenanceRules"
+  Hours:
+    type: object
+    additionalProperties: false
+    required: [value, status, ref]
+    properties:
+      value:
+        oneOf:
+          - type: number
+            exclusiveMinimum: 0
+          - const: TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - $ref: "#/$defs/ProvenanceRules"
+  Seconds:
+    type: object
+    additionalProperties: false
+    required: [value, status, ref]
+    properties:
+      value:
+        oneOf:
+          - type: number
+            exclusiveMinimum: 0
+          - const: TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - $ref: "#/$defs/ProvenanceRules"
+  Multiplier:
+    type: object
+    additionalProperties: false
+    required: [value, status, ref]
+    properties:
+      value:
+        oneOf:
+          - type: number
+            minimum: 1
+          - const: TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - $ref: "#/$defs/ProvenanceRules"
+  Param:
+    type: object
+    additionalProperties: false
+    required: [value, status, ref]
+    properties:
+      value:
+        oneOf:
+          - type: number
+            minimum: 0
+          - type: string
+            pattern: "^(?!TBD$)[a-z_]+$"
+          - const: TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - $ref: "#/$defs/ProvenanceRules"
+  Choice:
+    type: object
+    additionalProperties: false
+    required: [value, status, ref]
+    properties:
+      value:
+        enum:
+          - hold_unchanged
+          - flatten_all_at_market
+          - staged_derisking
+          - hold_with_owner_flatten_command
+          - TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - $ref: "#/$defs/ProvenanceRules"
+  ProvenanceRules:
+    description: unresolved <=> TBD; approved needs approver and date; hypothesis refs are H-nn; unresolved refs are UD-nn.
+    allOf:
+      - if:
+          properties:
+            status:
+              const: unresolved
+        then:
+          properties:
+            value:
+              const: TBD
+            ref:
+              pattern: "^UD-[0-9]{2}$"
+      - if:
+          properties:
+            value:
+              const: TBD
+        then:
+          properties:
+            status:
+              const: unresolved
+      - if:
+          properties:
+            status:
+              const: approved
+        then:
+          required: [approved_by, approved_on]
+      - if:
+          properties:
+            status:
+              const: hypothesis
+        then:
+          properties:
+            ref:
+              pattern: "^H-[0-9]{2}$"
+  StopPolicy:
+    type: object
+    additionalProperties: false
+    required: [method, status, ref]
+    properties:
+      method:
+        enum: [atr_multiple, fixed_pct, TBD]
+      timeframe:
+        const: decision_timeframe
+      atr_period_bars:
+        oneOf:
+          - type: integer
+            minimum: 2
+          - const: TBD
+      atr_multiple:
+        oneOf:
+          - type: number
+            exclusiveMinimum: 0
+          - const: TBD
+      fixed_pct:
+        oneOf:
+          - type: number
+            exclusiveMinimum: 0
+            maximum: 100
+          - const: TBD
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - if:
+          properties:
+            status:
+              const: unresolved
+        then:
+          properties:
+            method:
+              const: TBD
+            ref:
+              pattern: "^UD-[0-9]{2}$"
+      - if:
+          properties:
+            method:
+              const: TBD
+        then:
+          properties:
+            status:
+              const: unresolved
+      - if:
+          properties:
+            method:
+              const: atr_multiple
+        then:
+          required: [atr_period_bars, atr_multiple]
+          properties:
+            atr_period_bars:
+              type: integer
+            atr_multiple:
+              type: number
+      - if:
+          properties:
+            method:
+              const: fixed_pct
+        then:
+          required: [fixed_pct]
+          properties:
+            fixed_pct:
+              type: number
+      - if:
+          properties:
+            status:
+              const: approved
+        then:
+          required: [approved_by, approved_on]
+  LossScalingSchedule:
+    type: object
+    additionalProperties: false
+    required: [method, steps, status, ref]
+    properties:
+      method:
+        enum: [stepwise_fraction_of_breaker, linear_to_breaker, TBD]
+      steps:
+        oneOf:
+          - type: array
+            minItems: 1
+            items:
+              type: object
+              additionalProperties: false
+              required: [drawdown_fraction_of_breaker_below, multiplier]
+              properties:
+                drawdown_fraction_of_breaker_below:
+                  type: number
+                  exclusiveMinimum: 0
+                  maximum: 1
+                multiplier:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+          - const: TBD
+          - const: not_applicable
+      status:
+        $ref: "#/$defs/ProvenanceStatus"
+      ref:
+        $ref: "#/$defs/DecisionRef"
+      approved_by:
+        type: string
+        minLength: 1
+      approved_on:
+        type: string
+        pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+      note:
+        type: string
+    allOf:
+      - if:
+          properties:
+            status:
+              const: unresolved
+        then:
+          properties:
+            method:
+              const: TBD
+            steps:
+              const: TBD
+            ref:
+              pattern: "^UD-[0-9]{2}$"
+      - if:
+          properties:
+            method:
+              const: TBD
+        then:
+          properties:
+            status:
+              const: unresolved
+      - if:
+          properties:
+            status:
+              const: approved
+        then:
+          required: [approved_by, approved_on]
+x-required-fields:
+  description: >-
+    Fields that must be resolved (approved or hypothesis; experiment values allowed in
+    backtests only) before a run in the given environment. Anything else may stay TBD.
+    Missing values stop the run with RISK_CONFIG_UNRESOLVED and the UD ID (RP-11).
+  backtest:
+    - limits.portfolio_drawdown_circuit_breaker_pct
+    - limits.daily_loss_limit_pct
+    - loss_response.size_reduction_schedule
+    - sizing.risk_per_trade_pct
+    - sizing.hard_stop_policy
+    - concentration.core_per_asset_cap_pct
+    - concentration.major_per_asset_cap_pct (only if a Major asset is in the run)
+    - concentration.speculative_per_asset_cap_pct (only if a Speculative asset is in the run)
+    - concentration.speculative_total_cap_pct (only if a Speculative asset is in the run)
+    - allocation.total_exposure_cap_pct
+    - allocation.minimum_reserve_pct_range
+    - allocation.max_open_positions
+    - cooldown.after_consecutive_losing_trades.count
+    - cooldown.after_consecutive_losing_trades.duration_hours
+    - data_and_execution_faults.exchange_errors.max_consecutive_errors_before_kill_switch
+    - eligibility thresholds for the tiers in the run (configs/universe/eligibility.yaml, UD-18)
+  paper_additional:
+    - data_and_execution_faults.stale_data.paper_grace_seconds
+    - data_and_execution_faults.stale_data.escalate_to_kill_switch_after_stale_cycles
+    - data_and_execution_faults.clock_skew_tolerance_seconds
+    - halt_and_liquidation.liquidation_policy_after_halt
+    - data_and_execution_faults.reconciliation.external_adapter_quantity_tolerance (only with an external adapter)
+  when_intraday_enabled:
+    - allocation.intraday_allocation_cap_pct
+    - allocation.intraday_sleeve_limits.daily_loss_limit_pct
+    - allocation.intraday_sleeve_limits.drawdown_circuit_breaker_pct
+  when_upward_adaptation_enabled:
+    - sizing.adaptation.upward_multiplier_max
+  paper_provenance_rule: In the paper environment every required value must be approved or hypothesis; experiment values are refused (RR-02).
+x-policy-rules:
+  description: Cross-field rules enforced by the profile compiler once the values involved are resolved.
+  rules:
+    - id: RP-01
+      rule: total_exposure_cap_pct + minimum_reserve_pct_range.low <= 100.
+      error_code: RISK_PROFILE_CONTRADICTION
+    - id: RP-02
+      rule: Every per-asset tier cap <= total_exposure_cap_pct.
+      error_code: RISK_PROFILE_CONTRADICTION
+    - id: RP-03
+      rule: speculative_per_asset_cap_pct <= speculative_total_cap_pct <= total_exposure_cap_pct.
+      error_code: RISK_PROFILE_CONTRADICTION
+    - id: RP-04
+      rule: daily_loss_limit_pct < portfolio_drawdown_circuit_breaker_pct.
+      error_code: RISK_PROFILE_CONTRADICTION
+    - id: RP-05
+      rule: risk_per_trade_pct < daily_loss_limit_pct.
+      error_code: RISK_PROFILE_CONTRADICTION
+    - id: RP-06
+      rule: minimum_reserve_pct_range.low <= minimum_reserve_pct_range.high.
+      error_code: RISK_PROFILE_CONTRADICTION
+    - id: RP-07
+      rule: >-
+        intraday_allocation_cap_pct <= total_exposure_cap_pct; once approved its value must be
+        one of candidates_under_test (D-20); sleeve limits must not exceed the profile limits.
+      error_code: RISK_PROFILE_CONTRADICTION
+    - id: RP-08
+      rule: >-
+        When all three profiles have resolved values, conservative <= balanced <= aggressive for
+        drawdown breaker, daily loss limit, risk per trade, tier caps, and total exposure, and the
+        reverse order for the reserve floor (RECOMMENDATION; keeps profile identity coherent).
+      error_code: RISK_PROFILE_CONTRADICTION
+    - id: RP-09
+      rule: Hypothesis values may be used in backtest and paper runs; every report lists them in its provenance banner (FR-EVAL-05).
+      error_code: null
+    - id: RP-10
+      rule: >-
+        Values change only through an owner edit with a version increment. AI-proposed values go
+        into a separate proposal file and are never applied automatically (D-32).
+      error_code: RISK_PROFILE_VERSION_NOT_INCREMENTED
+    - id: RP-11
+      rule: Any required field still TBD for the requested environment stops the run; no default is substituted.
+      error_code: RISK_CONFIG_UNRESOLVED
+      exit_code: 3
+    - id: RP-12
+      rule: >-
+        Experiment parameter sets are accepted only in the backtest environment, may target only
+        unresolved or hypothesis fields, may not touch global_hard_constraints, kill_switch,
+        loss_response constants, halt_and_liquidation, or approved fields, and must satisfy this
+        schema and RP-01 to RP-07.
+      error_code: EXPERIMENT_PARAMETERS_REJECTED
+---
+# Document 2: Conservative (copy to configs/risk/conservative.yaml). No values decided yet.
+schema_version: "1.0.0"
+kind: RiskProfile
+risk_profile_id: conservative
+version: 1
+display_name: Conservative
+description: Lower-risk profile. All numeric values are unresolved; options are in product-requirements.md section 10.
+selection:
+  initial_default: false
+  explicit_selection_required: false
+global_hard_constraints:
+  funds: simulated
+  instrument_types: [spot]
+  leverage_allowed: false
+  margin_allowed: false
+  short_selling_allowed: false
+  withdrawals_allowed: false
+  deterministic_final_authority: true
+  ai_may_override_limits: false
+  profile_switching: owner_only
+loss_response:
+  reassess_signals_and_conditions_each_cycle: true
+  size_reduction_schedule: {method: TBD, steps: TBD, status: unresolved, ref: UD-15}
+  hard_thresholds_override_all: true
+  circuit_breaker_stops_new_trades: true
+limits:
+  portfolio_drawdown_circuit_breaker_pct: {value: TBD, status: unresolved, ref: UD-01}
+  daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-02}
+  daily_loss_window: utc_calendar_day
+  circuit_breaker_reset: owner_command_with_reason
+sizing:
+  risk_per_trade_pct: {value: TBD, status: unresolved, ref: UD-03}
+  hard_stop_policy: {method: TBD, status: unresolved, ref: UD-16}
+  adaptation:
+    downward: loss_response_schedule
+    upward_enabled: false
+    upward_multiplier_max: {value: TBD, status: unresolved, ref: UD-15}
+  quantity_rounding: round_down_to_instrument_step
+concentration:
+  applies_to: aggregate_exposure_across_sleeves
+  core_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  major_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  speculative_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  speculative_total_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+allocation:
+  total_exposure_cap_pct: {value: TBD, status: unresolved, ref: UD-12}
+  minimum_reserve_pct_range: {low: TBD, high: TBD, status: unresolved, ref: UD-04}
+  max_open_positions: {value: TBD, status: unresolved, ref: UD-12}
+  intraday_allocation_cap_pct: {value: TBD, status: unresolved, ref: UD-14, candidates_under_test: [5, 10, 15, 20]}
+  intraday_sleeve_limits:
+    isolation: separate_ledger_no_borrowing_from_core
+    daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-14}
+    drawdown_circuit_breaker_pct: {value: TBD, status: unresolved, ref: UD-14}
+cooldown:
+  after_consecutive_losing_trades:
+    scope: strategy_instrument
+    count: {value: TBD, status: unresolved, ref: UD-17}
+    duration_hours: {value: TBD, status: unresolved, ref: UD-17}
+data_and_execution_faults:
+  stale_data:
+    definition: missing_latest_expected_closed_candle
+    action: block_new_orders_for_instrument
+    paper_grace_seconds: {value: TBD, status: unresolved, ref: UD-17}
+    escalate_to_kill_switch_after_stale_cycles: {value: TBD, status: unresolved, ref: UD-17}
+  exchange_errors:
+    retry_policy: idempotent_operations_only
+    max_consecutive_errors_before_kill_switch: {value: TBD, status: unresolved, ref: UD-17}
+  clock_skew_tolerance_seconds: {value: TBD, status: unresolved, ref: UD-17}
+  reconciliation:
+    internal_simulator: exact_match
+    external_adapter_quantity_tolerance: {value: TBD, status: unresolved, ref: UD-17}
+kill_switch:
+  state_model:
+    values: [disengaged, engaged]
+    source: operational_store
+    persisted_across_restarts: true
+    initial_state_on_first_start: disengaged
+  manual_engage: always_available
+  manual_disengage: owner_command_with_reason
+  automated_disengage_allowed: false
+  ai_may_change_state: false
+  effect_on_new_orders: block_all
+  auto_engage_triggers:
+    - reconciliation_mismatch
+    - repeated_execution_errors
+    - clock_skew_exceeded
+    - journal_write_failure
+    - risk_config_invalid_mid_session
+    - persistent_stale_data
+halt_and_liquidation:
+  interim_behavior_until_resolved: hold_unchanged_including_attached_stops
+  liquidation_policy_after_halt: {value: TBD, status: unresolved, ref: UD-19}
+---
+# Document 3: Balanced (copy to configs/risk/balanced.yaml). Initial profile (D-09).
+# Only the four concentration values are set, as HYPOTHESES H-01..H-04 (D-28).
+schema_version: "1.0.0"
+kind: RiskProfile
+risk_profile_id: balanced
+version: 1
+display_name: Balanced
+description: >-
+  Initial profile (D-09) for the objective in D-05. Concentration values are testable starting
+  hypotheses (H-01 to H-04), not permanent production limits (D-28). All other numeric values
+  are unresolved.
+selection:
+  initial_default: true
+  explicit_selection_required: false
+global_hard_constraints:
+  funds: simulated
+  instrument_types: [spot]
+  leverage_allowed: false
+  margin_allowed: false
+  short_selling_allowed: false
+  withdrawals_allowed: false
+  deterministic_final_authority: true
+  ai_may_override_limits: false
+  profile_switching: owner_only
+loss_response:
+  reassess_signals_and_conditions_each_cycle: true
+  size_reduction_schedule: {method: TBD, steps: TBD, status: unresolved, ref: UD-15}
+  hard_thresholds_override_all: true
+  circuit_breaker_stops_new_trades: true
+limits:
+  portfolio_drawdown_circuit_breaker_pct: {value: TBD, status: unresolved, ref: UD-01}
+  daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-02}
+  daily_loss_window: utc_calendar_day
+  circuit_breaker_reset: owner_command_with_reason
+sizing:
+  risk_per_trade_pct: {value: TBD, status: unresolved, ref: UD-03}
+  hard_stop_policy: {method: TBD, status: unresolved, ref: UD-16}
+  adaptation:
+    downward: loss_response_schedule
+    upward_enabled: false
+    upward_multiplier_max: {value: TBD, status: unresolved, ref: UD-15}
+  quantity_rounding: round_down_to_instrument_step
+concentration:
+  applies_to: aggregate_exposure_across_sleeves
+  core_per_asset_cap_pct: {value: 35, status: hypothesis, ref: H-01}
+  major_per_asset_cap_pct: {value: 15, status: hypothesis, ref: H-02}
+  speculative_per_asset_cap_pct: {value: 5, status: hypothesis, ref: H-03}
+  speculative_total_cap_pct: {value: 10, status: hypothesis, ref: H-04}
+allocation:
+  total_exposure_cap_pct: {value: TBD, status: unresolved, ref: UD-12}
+  minimum_reserve_pct_range: {low: TBD, high: TBD, status: unresolved, ref: UD-04}
+  max_open_positions: {value: TBD, status: unresolved, ref: UD-12}
+  intraday_allocation_cap_pct: {value: TBD, status: unresolved, ref: UD-14, candidates_under_test: [5, 10, 15, 20]}
+  intraday_sleeve_limits:
+    isolation: separate_ledger_no_borrowing_from_core
+    daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-14}
+    drawdown_circuit_breaker_pct: {value: TBD, status: unresolved, ref: UD-14}
+cooldown:
+  after_consecutive_losing_trades:
+    scope: strategy_instrument
+    count: {value: TBD, status: unresolved, ref: UD-17}
+    duration_hours: {value: TBD, status: unresolved, ref: UD-17}
+data_and_execution_faults:
+  stale_data:
+    definition: missing_latest_expected_closed_candle
+    action: block_new_orders_for_instrument
+    paper_grace_seconds: {value: TBD, status: unresolved, ref: UD-17}
+    escalate_to_kill_switch_after_stale_cycles: {value: TBD, status: unresolved, ref: UD-17}
+  exchange_errors:
+    retry_policy: idempotent_operations_only
+    max_consecutive_errors_before_kill_switch: {value: TBD, status: unresolved, ref: UD-17}
+  clock_skew_tolerance_seconds: {value: TBD, status: unresolved, ref: UD-17}
+  reconciliation:
+    internal_simulator: exact_match
+    external_adapter_quantity_tolerance: {value: TBD, status: unresolved, ref: UD-17}
+kill_switch:
+  state_model:
+    values: [disengaged, engaged]
+    source: operational_store
+    persisted_across_restarts: true
+    initial_state_on_first_start: disengaged
+  manual_engage: always_available
+  manual_disengage: owner_command_with_reason
+  automated_disengage_allowed: false
+  ai_may_change_state: false
+  effect_on_new_orders: block_all
+  auto_engage_triggers:
+    - reconciliation_mismatch
+    - repeated_execution_errors
+    - clock_skew_exceeded
+    - journal_write_failure
+    - risk_config_invalid_mid_session
+    - persistent_stale_data
+halt_and_liquidation:
+  interim_behavior_until_resolved: hold_unchanged_including_attached_stops
+  liquidation_policy_after_halt: {value: TBD, status: unresolved, ref: UD-19}
+---
+# Document 4: Aggressive (copy to configs/risk/aggressive.yaml). Explicit selection only (D-06).
+schema_version: "1.0.0"
+kind: RiskProfile
+risk_profile_id: aggressive
+version: 1
+display_name: Aggressive
+description: >-
+  Exists only as an explicitly selected risk profile (D-06); selecting it requires an
+  acknowledgement in the TradingProfile. All numeric values are unresolved.
+selection:
+  initial_default: false
+  explicit_selection_required: true
+global_hard_constraints:
+  funds: simulated
+  instrument_types: [spot]
+  leverage_allowed: false
+  margin_allowed: false
+  short_selling_allowed: false
+  withdrawals_allowed: false
+  deterministic_final_authority: true
+  ai_may_override_limits: false
+  profile_switching: owner_only
+loss_response:
+  reassess_signals_and_conditions_each_cycle: true
+  size_reduction_schedule: {method: TBD, steps: TBD, status: unresolved, ref: UD-15}
+  hard_thresholds_override_all: true
+  circuit_breaker_stops_new_trades: true
+limits:
+  portfolio_drawdown_circuit_breaker_pct: {value: TBD, status: unresolved, ref: UD-01}
+  daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-02}
+  daily_loss_window: utc_calendar_day
+  circuit_breaker_reset: owner_command_with_reason
+sizing:
+  risk_per_trade_pct: {value: TBD, status: unresolved, ref: UD-03}
+  hard_stop_policy: {method: TBD, status: unresolved, ref: UD-16}
+  adaptation:
+    downward: loss_response_schedule
+    upward_enabled: false
+    upward_multiplier_max: {value: TBD, status: unresolved, ref: UD-15}
+  quantity_rounding: round_down_to_instrument_step
+concentration:
+  applies_to: aggregate_exposure_across_sleeves
+  core_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  major_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  speculative_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  speculative_total_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+allocation:
+  total_exposure_cap_pct: {value: TBD, status: unresolved, ref: UD-12}
+  minimum_reserve_pct_range: {low: TBD, high: TBD, status: unresolved, ref: UD-04}
+  max_open_positions: {value: TBD, status: unresolved, ref: UD-12}
+  intraday_allocation_cap_pct: {value: TBD, status: unresolved, ref: UD-14, candidates_under_test: [5, 10, 15, 20]}
+  intraday_sleeve_limits:
+    isolation: separate_ledger_no_borrowing_from_core
+    daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-14}
+    drawdown_circuit_breaker_pct: {value: TBD, status: unresolved, ref: UD-14}
+cooldown:
+  after_consecutive_losing_trades:
+    scope: strategy_instrument
+    count: {value: TBD, status: unresolved, ref: UD-17}
+    duration_hours: {value: TBD, status: unresolved, ref: UD-17}
+data_and_execution_faults:
+  stale_data:
+    definition: missing_latest_expected_closed_candle
+    action: block_new_orders_for_instrument
+    paper_grace_seconds: {value: TBD, status: unresolved, ref: UD-17}
+    escalate_to_kill_switch_after_stale_cycles: {value: TBD, status: unresolved, ref: UD-17}
+  exchange_errors:
+    retry_policy: idempotent_operations_only
+    max_consecutive_errors_before_kill_switch: {value: TBD, status: unresolved, ref: UD-17}
+  clock_skew_tolerance_seconds: {value: TBD, status: unresolved, ref: UD-17}
+  reconciliation:
+    internal_simulator: exact_match
+    external_adapter_quantity_tolerance: {value: TBD, status: unresolved, ref: UD-17}
+kill_switch:
+  state_model:
+    values: [disengaged, engaged]
+    source: operational_store
+    persisted_across_restarts: true
+    initial_state_on_first_start: disengaged
+  manual_engage: always_available
+  manual_disengage: owner_command_with_reason
+  automated_disengage_allowed: false
+  ai_may_change_state: false
+  effect_on_new_orders: block_all
+  auto_engage_triggers:
+    - reconciliation_mismatch
+    - repeated_execution_errors
+    - clock_skew_exceeded
+    - journal_write_failure
+    - risk_config_invalid_mid_session
+    - persistent_stale_data
+halt_and_liquidation:
+  interim_behavior_until_resolved: hold_unchanged_including_attached_stops
+  liquidation_policy_after_halt: {value: TBD, status: unresolved, ref: UD-19}

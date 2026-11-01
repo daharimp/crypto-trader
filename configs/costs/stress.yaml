@@ -1,0 +1,10 @@
+# Cost scenario stress (RECOMMENDATION R-10; not owner-approved).
+schema_version: "1.0.0"
+kind: CostScenario
+scenario_id: stress
+fee_rate_pct: "0.60"          # per side, on fill notional
+slippage_bps: "25"          # per side; includes half-spread in V1
+execution_delay: next_bar_open
+min_notional_usd: "10"
+status: recommendation
+ref: R-10

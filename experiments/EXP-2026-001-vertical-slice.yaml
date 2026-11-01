@@ -1,0 +1,40 @@
+schema_version: "1.0.0"
+kind: ExperimentDefinition
+experiment_id: EXP-2026-001
+title: Vertical-slice demonstration run
+purpose: pipeline_verification
+hypothesis: >-
+  The validated Balanced paper profile, BTC and ETH candles, buy-and-hold benchmarks, and the
+  sma_trend baseline run end to end through deterministic risk checks and simulated execution,
+  producing a fully traceable journal and a reproducible report.
+environment: backtest
+trading_profile: configs/profiles/balanced-paper.yaml
+strategy: {strategy_id: sma_trend, version: 1.0.0}
+timeframe: 4h
+cost_scenario: base
+parameters:
+  risk:
+    limits.portfolio_drawdown_circuit_breaker_pct: {value: 15, source: "UD-01 option B (recommendation)"}
+    limits.daily_loss_limit_pct: {value: 3, source: "UD-02 option A (recommendation)"}
+    sizing.risk_per_trade_pct: {value: 1.0, source: "UD-03 option A (recommendation)"}
+    sizing.hard_stop_policy:
+      value: {method: atr_multiple, timeframe: decision_timeframe, atr_period_bars: 14, atr_multiple: 2.0}
+      source: "UD-16 recommendation"
+    loss_response.size_reduction_schedule:
+      value:
+        method: stepwise_fraction_of_breaker
+        steps:
+          - {drawdown_fraction_of_breaker_below: 0.3333, multiplier: 1.0}
+          - {drawdown_fraction_of_breaker_below: 0.6667, multiplier: 0.5}
+          - {drawdown_fraction_of_breaker_below: 1.0, multiplier: 0.25}
+      source: "UD-15 option A (recommendation)"
+    allocation.total_exposure_cap_pct: {value: 80, source: "UD-12 option A (recommendation)"}
+    allocation.minimum_reserve_pct_range: {value: {low: 20, high: 40}, source: "UD-04 option A (recommendation)"}
+    allocation.max_open_positions: {value: 5, source: "UD-12 option A (recommendation)"}
+    cooldown.after_consecutive_losing_trades.count: {value: 3, source: "UD-17 recommendation"}
+    cooldown.after_consecutive_losing_trades.duration_hours: {value: 24, source: "UD-17 recommendation"}
+    data_and_execution_faults.exchange_errors.max_consecutive_errors_before_kill_switch: {value: 3, source: "UD-17 recommendation"}
+  eligibility:
+    liquidity.min_by_tier.core: {value: 50000000, source: "UD-18 option A (recommendation)"}
+    data_history.min_by_tier.core: {value: 365, source: "UD-18 option A (recommendation)"}
+    spread.when_no_spread_data: {value: not_applicable, source: "R-21 / UD-18 (recommendation)"}

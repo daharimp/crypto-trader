@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from trader.common.ids import IdGenerator
 from trader.data.snapshots import SnapshotBuilder
 from trader.domain.compiled import CompiledProfile
-from trader.domain.enums import Environment, OrderPurpose, Side
+from trader.domain.enums import Environment, EventType, OrderPurpose, Side
 from trader.domain.orders import OrderIntent
 from trader.domain.positions import PositionSnapshot
 from trader.domain.profiles import TradingProfile
 from trader.domain.risk import RiskDecision
-from trader.execution.adapters.simulated import SimulatedExecutionAdapter
 from trader.execution.costs import CostParams
 from trader.execution.service import ExecutionService
 from trader.journal.store import JournalStore
@@ -43,7 +44,8 @@ class RunState:
     builder: SnapshotBuilder
     eligibility: EligibilityEvaluator
     strategy: Strategy
-    adapter: SimulatedExecutionAdapter
+    # Reason: the simulator in backtests and paper; the Kraken adapter in live (same protocol).
+    adapter: Any
     execution: ExecutionService
     ledger: Ledger
     loss: LossTracker
@@ -60,6 +62,11 @@ class RunState:
     rejections: Counter[str] = field(default_factory=Counter)
     equity_curve: list[tuple[datetime, Decimal]] = field(default_factory=list)
     exposure_curve: list[Decimal] = field(default_factory=list)
+    # Forward-session hooks (BL-027). Backtests leave them unset.
+    on_kill_switch: Callable[[str, str], None] | None = None
+    on_event: Callable[[EventType, Any], None] | None = None
+    reconcile_fn: Callable[[Ledger, dict[str, Decimal]], list[str]] | None = None
+    owner_flatten_decision_ids: set[str] = field(default_factory=set)
 
     def committed_cash(self) -> Decimal:
         """

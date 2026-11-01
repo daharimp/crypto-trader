@@ -163,10 +163,11 @@ def test_every_approved_value_has_approver_and_date() -> None:
 
 
 def test_paper_has_no_blockers_but_needs_activation() -> None:
-    """Paper: all required values resolved; still refused until activation (BL-028)."""
+    """Paper: all required values resolved; refused until an activation record exists."""
     c = _compile(SHIPPED_PROFILE, Environment.PAPER)
     assert not c.blockers and exit_code(c) == 2
-    assert c.errors == ["PROFILE_NOT_RUNNABLE [PV-08]: paper requires status active"]
+    assert len(c.errors) == 1
+    assert c.errors[0].startswith("PROFILE_NOT_RUNNABLE [PV-08]: paper requires an activation")
 
 
 def test_experiment_cannot_override_approved_values() -> None:

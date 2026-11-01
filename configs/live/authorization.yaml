@@ -1,0 +1,21 @@
+# Live-trading authorization (ADR-023). Every `live` run re-checks this file.
+# The values below are UNRESOLVED owner decisions (UD-22): live trading refuses to start
+# (exit 3) until the owner sets them with status: approved, approved_by, approved_on, and a
+# version increment, and adds the acknowledgement block.
+schema_version: "1.0.0"
+kind: LiveAuthorization
+version: 1
+exchange: kraken
+# The bot assumes it is the only thing trading BTC and ETH in this account; reconciliation
+# compares its ledger with the exchange balances and halts on any mismatch.
+account_type: spot_dedicated
+# Maximum USD the bot may manage, even if the account holds more.
+max_capital_usd: {value: TBD, status: unresolved, ref: UD-22}
+# Completed forward paper cycles (4h each) this profile version needs before live is allowed.
+min_paper_cycles_before_live: {value: TBD, status: unresolved, ref: UD-22}
+# Names of the environment variables holding the Kraken API key (never put keys in this file).
+api_key_env: {key: KRAKEN_API_KEY, secret: KRAKEN_API_SECRET}
+# acknowledgement:
+#   acknowledged_by: <owner name>
+#   acknowledged_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
+#   statement: "<your own words: you accept that real money can be lost, that results are not guaranteed, ...>"

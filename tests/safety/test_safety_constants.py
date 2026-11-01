@@ -20,7 +20,8 @@ CASES: list[tuple[str, list[str], Any]] = [
     ("transfers", ["execution", "transfers_allowed"], True),
     ("real_money", ["execution", "real_money_enabled"], True),
     ("perpetual", ["execution", "instrument_types"], ["perpetual"]),
-    ("live_env", ["execution", "permitted_environments"], ["backtest", "live"]),
+    ("live_without_real_money_flag", ["execution", "permitted_environments"], ["backtest", "live"]),
+    ("unknown_env", ["execution", "permitted_environments"], ["backtest", "mainnet"]),
     ("guaranteed", ["objective", "guaranteed_profitability_assumed"], True),
 ]
 
@@ -50,3 +51,40 @@ def test_risk_profile_safety_constants_rejected(configs_copy: Path) -> None:
     c = compile_profile(PROFILE, Environment.BACKTEST, configs_root=configs_copy)
     assert exit_code(c) == 2
     assert any("SAFETY_CONSTANT_VIOLATION" in e for e in c.errors)
+
+
+def test_real_money_requires_live_and_vice_versa() -> None:
+    """ADR-023: real_money_enabled is valid only together with the live environment."""
+    from pydantic import ValidationError
+
+    from trader.domain.profiles import Execution
+
+    base = {
+        "autonomy_mode": "paper_autonomous",
+        "per_trade_approval_required": False,
+        "instrument_types": ["spot"],
+        "leverage_allowed": False,
+        "margin_allowed": False,
+        "short_selling_allowed": False,
+        "withdrawals_allowed": False,
+        "transfers_allowed": False,
+    }
+    Execution(**base, permitted_environments=["backtest", "paper", "live"], real_money_enabled=True)
+    Execution(**base, permitted_environments=["backtest", "paper"], real_money_enabled=False)
+    for envs, flag in ((["backtest", "live"], False), (["backtest", "paper"], True)):
+        with pytest.raises(ValidationError):
+            Execution(**base, permitted_environments=envs, real_money_enabled=flag)
+
+
+def test_live_orders_must_carry_real_funds() -> None:
+    """An order intent's funds must be 'real' exactly in the live environment."""
+    from pydantic import ValidationError
+
+    from tests.factories import market_intent
+    from tests.helpers import T0
+
+    i = market_intent("BTC-USD", T0)
+    with pytest.raises(ValidationError):
+        i.model_validate(i.model_dump() | {"environment": "live"})
+    with pytest.raises(ValidationError):
+        i.model_validate(i.model_dump() | {"funds": "real"})

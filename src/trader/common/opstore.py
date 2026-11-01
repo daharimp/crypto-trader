@@ -27,6 +27,18 @@ CREATE TRIGGER IF NOT EXISTS ks_no_delete BEFORE DELETE ON killswitch_history
 CREATE TABLE IF NOT EXISTS profile_compilations (
   profile_id TEXT NOT NULL, version INTEGER NOT NULL, content_hash TEXT NOT NULL,
   first_seen_utc TEXT NOT NULL, PRIMARY KEY (profile_id, version));
+CREATE TABLE IF NOT EXISTS activations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, profile_id TEXT NOT NULL, version INTEGER NOT NULL,
+  content_hash TEXT NOT NULL, environment TEXT NOT NULL, activated_at_utc TEXT NOT NULL,
+  activated_by TEXT NOT NULL, reason TEXT NOT NULL);
+CREATE TRIGGER IF NOT EXISTS act_no_update BEFORE UPDATE ON activations
+  BEGIN SELECT RAISE(ABORT, 'activations are append-only'); END;
+CREATE TABLE IF NOT EXISTS owner_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, requested_at_utc TEXT NOT NULL,
+  reason TEXT NOT NULL, handled_at_utc TEXT, outcome TEXT);
+CREATE TABLE IF NOT EXISTS paper_cycles (
+  profile_id TEXT NOT NULL, version INTEGER NOT NULL, decision_time_utc TEXT NOT NULL,
+  PRIMARY KEY (profile_id, version, decision_time_utc));
 """
 
 
@@ -150,3 +162,141 @@ class OperationalStore:
                 )
                 return None
             return None if row[0] == content_hash else str(row[0])
+
+    # --- activation records (BL-028) ---------------------------------------------------
+    def record_activation(
+        self,
+        profile_id: str,
+        version: int,
+        content_hash: str,
+        environment: str,
+        now: datetime,
+        reason: str,
+    ) -> None:
+        """
+        Append an owner activation record.
+
+        Args:
+            profile_id (str): Profile ID.
+            version (int): Profile version.
+            content_hash (str): Profile content hash at activation.
+            environment (str): ``paper`` or ``live``.
+            now (datetime): Activation time.
+            reason (str): Owner's reason.
+        """
+        with closing(self._connect()) as con, con:
+            con.execute(
+                "INSERT INTO activations (profile_id, version, content_hash, environment, "
+                "activated_at_utc, activated_by, reason) VALUES (?, ?, ?, ?, ?, 'owner', ?)",
+                (profile_id, version, content_hash, environment, format_utc(now), reason),
+            )
+
+    def has_activation(
+        self, profile_id: str, version: int, content_hash: str, environment: str
+    ) -> bool:
+        """
+        Whether this exact profile content was activated for an environment.
+
+        Args:
+            profile_id (str): Profile ID.
+            version (int): Version.
+            content_hash (str): Content hash (any edit invalidates the activation).
+            environment (str): Environment.
+
+        Returns:
+            bool: True if an activation record matches.
+        """
+        with closing(self._connect()) as con:
+            row = con.execute(
+                "SELECT 1 FROM activations WHERE profile_id=? AND version=? AND content_hash=? "
+                "AND environment=? LIMIT 1",
+                (profile_id, version, content_hash, environment),
+            ).fetchone()
+        return row is not None
+
+    # --- owner requests to a running session (flatten BL-048, breaker reset) ------------
+    def request(self, kind: str, reason: str, now: datetime) -> int:
+        """
+        Queue an owner request (``flatten`` or ``reset_breaker``) for the running session.
+
+        Args:
+            kind (str): Request kind.
+            reason (str): Owner's reason.
+            now (datetime): Request time.
+
+        Returns:
+            int: Request ID.
+        """
+        with closing(self._connect()) as con, con:
+            cur = con.execute(
+                "INSERT INTO owner_requests (kind, requested_at_utc, reason) VALUES (?, ?, ?)",
+                (kind, format_utc(now), reason),
+            )
+            return int(cur.lastrowid or 0)
+
+    def pending_request(self, kind: str) -> tuple[int, str] | None:
+        """
+        Return the oldest unhandled request of a kind.
+
+        Args:
+            kind (str): Request kind.
+
+        Returns:
+            tuple[int, str] | None: ``(id, reason)`` or None.
+        """
+        with closing(self._connect()) as con:
+            row = con.execute(
+                "SELECT id, reason FROM owner_requests WHERE kind=? AND handled_at_utc IS NULL "
+                "ORDER BY id LIMIT 1",
+                (kind,),
+            ).fetchone()
+        return (int(row[0]), str(row[1])) if row else None
+
+    def mark_request_handled(self, request_id: int, now: datetime, outcome: str) -> None:
+        """
+        Mark a request handled.
+
+        Args:
+            request_id (int): Request ID.
+            now (datetime): Time.
+            outcome (str): What happened.
+        """
+        with closing(self._connect()) as con, con:
+            con.execute(
+                "UPDATE owner_requests SET handled_at_utc=?, outcome=? WHERE id=?",
+                (format_utc(now), outcome, request_id),
+            )
+
+    # --- paper track record --------------------------------------------------------------
+    def record_paper_cycle(self, profile_id: str, version: int, decision_time: datetime) -> None:
+        """
+        Record one completed forward paper cycle (idempotent per decision time).
+
+        Args:
+            profile_id (str): Profile ID.
+            version (int): Profile version.
+            decision_time (datetime): Cycle decision time.
+        """
+        with closing(self._connect()) as con, con:
+            con.execute(
+                "INSERT OR IGNORE INTO paper_cycles VALUES (?, ?, ?)",
+                (profile_id, version, format_utc(decision_time)),
+            )
+
+    def paper_cycle_count(self, profile_id: str, version: int) -> int:
+        """
+        Number of completed forward paper cycles for a profile version.
+
+        Args:
+            profile_id (str): Profile ID.
+            version (int): Version.
+
+        Returns:
+            int: Count.
+        """
+        with closing(self._connect()) as con:
+            row = con.execute(
+                "SELECT COUNT(*) FROM paper_cycles WHERE profile_id=? AND version=?",
+                (profile_id, version),
+            ).fetchone()
+        return int(row[0])

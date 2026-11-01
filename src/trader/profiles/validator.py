@@ -98,11 +98,19 @@ def _check_status(
         out.append(_err(E.PROFILE_NOT_RUNNABLE, "PV-08", f"{environment} not permitted"))
     if profile.status in ("draft", "suspended"):
         out.append(_err(E.PROFILE_NOT_RUNNABLE, "PV-08", f"status {profile.status} cannot run"))
-    elif environment == Environment.PAPER:
+    elif environment in (Environment.PAPER, Environment.LIVE):
+        env = environment.value
         if profile.status != "active":
-            out.append(_err(E.PROFILE_NOT_RUNNABLE, "PV-08", "paper requires status active"))
+            out.append(_err(E.PROFILE_NOT_RUNNABLE, "PV-08", f"{env} requires status active"))
         elif not has_activation_record:
-            out.append(_err(E.PROFILE_NOT_RUNNABLE, "PV-08", "paper requires an activation record"))
+            out.append(
+                _err(
+                    E.PROFILE_NOT_RUNNABLE,
+                    "PV-08",
+                    f"{env} requires an activation "
+                    f"record (trader profile activate --environment {env})",
+                )
+            )
     return out
 
 

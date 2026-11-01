@@ -322,3 +322,45 @@ class SimulatedExecutionAdapter:
             fill_bar_open_time_utc=bar.open_time_utc if bar else None,
             latency_ms=0,
         )
+
+    # --- persistence across restarts (forward paper sessions) ---------------------------
+    def export_state(self) -> dict[str, object]:
+        """
+        Serializable simulator state.
+
+        Returns:
+            dict[str, object]: State.
+        """
+        return {
+            "cash": str(self.cash),
+            "holdings": {k: str(v) for k, v in self.holdings.items()},
+            "orders": {
+                k: {
+                    "intent": o.intent.model_dump(mode="json"),
+                    "report": o.report.model_dump(mode="json"),
+                }
+                for k, o in self._orders.items()
+            },
+            "ids": dict(self._ids._counters),
+        }
+
+    def load_state(self, data: dict[str, object]) -> None:
+        """
+        Restore state saved by :meth:`export_state`.
+
+        Args:
+            data (dict[str, object]): State.
+        """
+        self.cash = Decimal(str(data["cash"]))
+        holdings = data.get("holdings", {})
+        assert isinstance(holdings, dict)
+        self.holdings = {k: Decimal(str(v)) for k, v in holdings.items()}
+        orders = data.get("orders", {})
+        assert isinstance(orders, dict)
+        for k, v in orders.items():
+            self._orders[k] = _Order(
+                OrderIntent.model_validate(v["intent"]), ExecutionReport.model_validate(v["report"])
+            )
+        ids = data.get("ids", {})
+        assert isinstance(ids, dict)
+        self._ids._counters.update(ids)

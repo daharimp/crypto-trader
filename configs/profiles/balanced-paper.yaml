@@ -4,8 +4,8 @@
 schema_version: "1.0.0"
 kind: TradingProfile
 profile_id: balanced-paper
-version: 2
-status: validated                 # declared; re-verified at every load (PV-08)
+version: 3
+status: active                    # owner, 2026-11-01: paper and live (ADR-023)
 owner: Dahari Morgan-Parker
 description: Initial Balanced paper-trading profile for the V1 vertical slice.
 objective:
@@ -43,11 +43,11 @@ horizon:
     intraday_strategies_enabled: false         # UD-14 unresolved; D-19
   excluded_styles: [high_frequency, latency_arbitrage]   # D-21
 execution:
-  permitted_environments: [backtest, paper]
+  permitted_environments: [backtest, paper, live]
   autonomy_mode: paper_autonomous              # D-33
   per_trade_approval_required: false           # D-34
   instrument_types: [spot]
-  real_money_enabled: false
+  real_money_enabled: true       # ADR-023; live is still gated by configs/live/authorization.yaml
   leverage_allowed: false
   margin_allowed: false
   short_selling_allowed: false

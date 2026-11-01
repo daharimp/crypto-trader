@@ -263,14 +263,30 @@ properties:
       - short_selling_allowed
       - withdrawals_allowed
       - transfers_allowed
+    allOf:
+      - if:
+          properties:
+            permitted_environments:
+              contains:
+                const: live
+        then:
+          properties:
+            real_money_enabled:
+              const: true
+        else:
+          properties:
+            real_money_enabled:
+              const: false
     properties:
       permitted_environments:
         type: array
         minItems: 1
         uniqueItems: true
         items:
-          enum: [backtest, paper]
+          enum: [backtest, paper, live]
         description: >-
+          live = real orders on the owner's exchange account, spot only, behind the gates in
+          ADR-023 (amendment of 2026-11-01).
           backtest = historical replay with simulated fills (research environment).
           paper = forward-time simulated execution; also covers dry-run and sandbox adapters
           (assumption A-04). No other environment exists (D-02).
@@ -292,8 +308,9 @@ properties:
           const: spot
         description: Spot only (v0.1 section 2.1; A-03).
       real_money_enabled:
-        const: false
-        description: SAFE-01 (D-02, D-03).
+        type: boolean
+        description: >-
+          True exactly when live is permitted (ADR-023, amending SAFE-01 on 2026-11-01).
       leverage_allowed:
         const: false
         description: SAFE-02 (D-03).

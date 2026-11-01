@@ -69,8 +69,10 @@ def required_fields(environment: Environment, tiers: set[str]) -> list[str]:
         keys.append("risk.concentration.speculative_total_cap_pct")
     # Reason: M1 has no spread provider, so the "no spread data" policy is always needed.
     keys.append("eligibility.spread.when_no_spread_data")
-    if environment == Environment.PAPER:
+    if environment in (Environment.PAPER, Environment.LIVE):
         keys.extend(f"risk.{p}" for p in _PAPER_RISK)
+    if environment == Environment.LIVE:
+        keys.extend(["live.max_capital_usd", "live.min_paper_cycles_before_live"])
     return keys
 
 

@@ -80,7 +80,14 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--spec", type=Path, default=Path("docs/spec"))
     ap.add_argument("--root", type=Path, default=Path("."))
+    ap.add_argument("--force", action="store_true", help="Overwrite existing files.")
     args = ap.parse_args()
+    # Reason: the spec documents hold the original all-TBD values; overwriting configs/ would
+    # silently discard the owner's approved decisions (product-requirements.md section 10.2).
+    existing = [t for t in ("configs/risk/balanced.yaml", "configs/profiles/balanced-paper.yaml")
+                if (args.root / t).exists()]
+    if existing and not args.force:
+        raise SystemExit(f"refusing to overwrite owner-approved configs {existing}; use --force")
     for p in extract(args.spec, args.root):
         print(p)
 

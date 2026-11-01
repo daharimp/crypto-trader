@@ -45,4 +45,5 @@ class CompiledProfile(DomainModel):
     errors: list[str]
     runnable: bool
     compiler_version: str
+    live_authorization_hash: str | None = None
     config_hash: str

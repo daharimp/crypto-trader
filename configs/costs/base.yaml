@@ -1,4 +1,5 @@
-# Cost scenario base (RECOMMENDATION R-10; not owner-approved).
+# Cost scenario base (R-10). UD-20 (2026-11-01): Kraken spot. 0.40% matches Kraken Pro's
+# entry-level taker fee as last known; verify against Kraken's current fee schedule.
 schema_version: "1.0.0"
 kind: CostScenario
 scenario_id: base

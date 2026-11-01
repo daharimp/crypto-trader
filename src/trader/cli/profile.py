@@ -67,3 +67,41 @@ def compile_cmd(
     else:
         typer.echo(text)
     raise typer.Exit(exit_code(compiled))
+
+
+@app.command("activate")
+def activate(
+    profile: Path = typer.Argument(..., help="TradingProfile YAML (status must be active)."),
+    environment: Environment = typer.Option(..., "--environment", "-e", help="paper or live."),
+    reason: str = typer.Option(..., "--reason", help="Owner's reason (recorded)."),
+) -> None:
+    """Record an owner activation for paper or live (BL-028). Exit 2/3 if not runnable."""
+    from datetime import UTC, datetime
+
+    from trader.common.opstore import OperationalStore
+
+    if environment == Environment.BACKTEST:
+        typer.echo("backtests need no activation", err=True)
+        raise typer.Exit(2)
+    if not reason.strip():
+        typer.echo("a reason is required", err=True)
+        raise typer.Exit(2)
+    store = OperationalStore()
+    bundle = compile_bundle(profile, environment, store=store, assume_activated=True)
+    compiled = bundle.compiled
+    _print_summary(compiled)
+    if not compiled.runnable or bundle.profile is None:
+        typer.echo(f"NOT activated for {environment.value}", err=True)
+        raise typer.Exit(exit_code(compiled))
+    store.record_activation(
+        bundle.profile.profile_id,
+        bundle.profile.version,
+        compiled.trading_profile_hash,
+        environment.value,
+        datetime.now(UTC),
+        reason,
+    )
+    typer.echo(
+        f"activated {bundle.profile.profile_id} v{bundle.profile.version} for "
+        f"{environment.value} (hash {compiled.trading_profile_hash[:19]}...)"
+    )

@@ -41,8 +41,9 @@ class FakeKraken:
         return int((self.now().timestamp() + self.clock_offset_s) * 1000)
 
     def load_markets(self) -> dict[str, Any]:
+        step = {"SUI/USD": 1e-05}  # Kraken's SUI lot step
         return {
-            s: {"limits": {"amount": {"min": 0.0001}}, "precision": {"amount": 1e-08}}
+            s: {"limits": {"amount": {"min": 0.0001}}, "precision": {"amount": step.get(s, 1e-08)}}
             for s in self.candles
         }
 

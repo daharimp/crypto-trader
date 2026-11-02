@@ -665,6 +665,13 @@ D-03, and SAFE-01 through ADR-023 (gated `live` environment; leverage, margin, s
 withdrawals, and transfers remain impossible). A new unresolved decision UD-22 holds the live
 capital cap and the paper prerequisite.
 
+**2026-11-02. Owner: Dahari Morgan-Parker.** UD-06 changed from option A to **option B**
+(owner-curated list): **SOL and XRP as Major** (H-02 15% per asset), **SUI as Speculative**
+(H-03 5% per asset, H-04 10% total), each still subject to UD-18 eligibility on Kraken
+(30-day median volume on 2026-11-02: SOL $25.7M, XRP $25.5M, SUI $11.4M). UD-22 approved:
+$250 live capital cap, 42 forward paper cycles before live. Configs: `assets.yaml` v3,
+`eligibility.yaml` v3, `balanced-paper.yaml` v4 (paper track record counts restart at v4).
+
 ### UD-22: Live capital cap and paper prerequisite
 
 - **Why it matters.** Bounds the real money at risk while the strategy has no real-data

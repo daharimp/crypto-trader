@@ -78,8 +78,21 @@ def fixture_experiment(tmp_path: Path):
     return make
 
 
-def make_datasets(days: int = 120, start: str = "2024-01-01T00:00:00Z") -> list[str]:
-    """Create BTC (seed 42) and ETH (seed 43) synthetic 4h datasets; return their IDs."""
+SHIPPED_UNIVERSE = (
+    ("BTC-USD", 42, "30000"),
+    ("ETH-USD", 43, "2000"),
+    ("SOL-USD", 44, "90"),
+    ("XRP-USD", 45, "1.2"),
+    ("SUI-USD", 46, "0.9"),
+)
+
+
+def make_datasets(
+    days: int = 120,
+    start: str = "2024-01-01T00:00:00Z",
+    universe: tuple[tuple[str, int, str], ...] = SHIPPED_UNIVERSE[:2],
+) -> list[str]:
+    """Create synthetic 4h datasets (default BTC seed 42, ETH seed 43); return their IDs."""
     from datetime import timedelta
     from decimal import Decimal
 
@@ -90,7 +103,7 @@ def make_datasets(days: int = 120, start: str = "2024-01-01T00:00:00Z") -> list[
 
     s = parse_utc(start)
     ids = []
-    for inst, seed, px in (("BTC-USD", 42, "30000"), ("ETH-USD", 43, "2000")):
+    for inst, seed, px in universe:
         prov = SyntheticCandleProvider(seed, Decimal(px))
         candles = prov.fetch_candles(inst, "4h", s, s + timedelta(days=days))
         src = SourceRef(provider_id="synthetic", venue_id="sim", retrieved_at_utc=None)

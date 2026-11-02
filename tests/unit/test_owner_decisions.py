@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -157,7 +158,7 @@ def test_every_approved_value_has_approver_and_date() -> None:
         for line in f.read_text().splitlines():
             if "status: approved" in line:
                 assert "approved_by: Dahari Morgan-Parker" in line
-                assert 'approved_on: "2026-11-01"' in line
+                assert re.search(r'approved_on: "2026-11-0[12]"', line), line
             if "TBD" in line and not line.lstrip().startswith("#"):
                 assert "UD-14" in line, (f.name, line)
 

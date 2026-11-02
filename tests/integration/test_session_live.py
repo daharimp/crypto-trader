@@ -25,7 +25,7 @@ def _live_ready(tmp: Path, monkeypatch: pytest.MonkeyPatch, **auth: object):  # 
     monkeypatch.setenv("TRADER_CONFIGS_DIR", str(root))
     store = OperationalStore()
     activate(root, P, store)
-    store.record_paper_cycle("balanced-paper", 3, START)
+    store.record_paper_cycle("balanced-paper", 4, START)
     activate(root, L, store)
     return root, store
 
@@ -133,7 +133,7 @@ def test_live_gates(
     root = configs(tmp_path, **auth)  # type: ignore[arg-type]
     monkeypatch.setenv("TRADER_CONFIGS_DIR", str(root))
     store = OperationalStore()
-    store.record_paper_cycle("balanced-paper", 3, START)  # isolate the gate under test
+    store.record_paper_cycle("balanced-paper", 4, START)  # isolate the gate under test
     c = compile_bundle(
         root / "profiles" / "balanced-paper.yaml", L, None, root, None, store, assume_activated=True
     ).compiled
@@ -146,7 +146,7 @@ def test_live_needs_paper_track_record(tmp_path: Path, monkeypatch: pytest.Monke
     root = configs(tmp_path, cycles=3)
     monkeypatch.setenv("TRADER_CONFIGS_DIR", str(root))
     store = OperationalStore()
-    store.record_paper_cycle("balanced-paper", 3, START)
+    store.record_paper_cycle("balanced-paper", 4, START)
     c = compile_bundle(
         root / "profiles" / "balanced-paper.yaml", L, None, root, None, store, assume_activated=True
     ).compiled
@@ -169,7 +169,7 @@ def test_live_without_activation_refused(tmp_path: Path, monkeypatch: pytest.Mon
     root = configs(tmp_path)
     monkeypatch.setenv("TRADER_CONFIGS_DIR", str(root))
     store = OperationalStore()
-    store.record_paper_cycle("balanced-paper", 3, START)
+    store.record_paper_cycle("balanced-paper", 4, START)
     runner, _, _ = make_runner(root, L, store)
     with pytest.raises(SessionError, match="activation"):
         runner.start()

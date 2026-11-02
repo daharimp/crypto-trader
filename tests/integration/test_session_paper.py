@@ -39,7 +39,7 @@ def test_paper_session_trades_and_stops(paper) -> None:  # type: ignore[no-untyp
     types = [e["event_type"] for e in ev]
     assert "STOP_TRIGGERED" in types or st.ledger.trades
     assert verify(st.journal.run_id).ok
-    assert store.paper_cycle_count("balanced-paper", 3) == 45
+    assert store.paper_cycle_count("balanced-paper", 4) == 45
     assert not st.controls.kill_switch.engaged
 
 

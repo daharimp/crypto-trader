@@ -23,7 +23,7 @@ from trader.session.factory import kraken_adapter_factory
 from trader.session.market_data import KrakenMarketData
 from trader.session.runner import SessionRunner
 
-SYMBOLS = {"BTC-USD": "BTC/USD", "ETH-USD": "ETH/USD"}
+SYMBOLS = {f"{a}-USD": f"{a}/USD" for a in ("BTC", "ETH", "SOL", "XRP", "SUI")}
 START = datetime(2026, 1, 1, tzinfo=UTC)
 # Flat, dip, rally (SMA cross up -> entry), then a gap down (stop-out) and a long slide.
 BTC_CLOSES = [100] * 300 + [90] * 10 + [130] * 12 + [60] * 30
@@ -38,7 +38,10 @@ def candles() -> tuple[dict[str, list[Candle]], dict[str, list[Candle]]]:
     daily = {
         s: series([100] * 900, start=day0, tf="1d", volume="1000000") for s in SYMBOLS.values()
     }
-    return {"BTC/USD": btc, "ETH/USD": eth}, daily
+    flat = {
+        s: series([100] * len(BTC_CLOSES), start=START) for s in ("SOL/USD", "XRP/USD", "SUI/USD")
+    }
+    return {"BTC/USD": btc, "ETH/USD": eth, **flat}, daily
 
 
 def configs(tmp: Path, cap: str | None = "500", cycles: int | None = 1, ack: bool = True) -> Path:

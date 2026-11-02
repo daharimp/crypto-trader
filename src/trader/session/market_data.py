@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -44,6 +45,13 @@ def make_kraken_client(api_key: str | None = None, api_secret: str | None = None
     except ModuleNotFoundError as exc:
         raise MarketDataError("ccxt is not installed: run `uv sync --extra ccxt`") from exc
     client = ccxt.kraken({"enableRateLimit": True})
+    # Reason: ccxt ignores standard proxy variables; honour them for servers behind a proxy.
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    if proxy:
+        client.https_proxy = proxy
+    ca = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("SSL_CERT_FILE")
+    if ca:
+        client.session.verify = ca
     if api_key and api_secret:
         # Reason: credentials are set as attributes, never written to config or logs.
         client.apiKey, client.secret = api_key, api_secret

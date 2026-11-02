@@ -47,10 +47,12 @@ def configs(tmp: Path, cap: str | None = "500", cycles: int | None = 1, ack: boo
     shutil.copytree(SHIPPED_CONFIGS, root)
     auth = yaml.safe_load((root / "live" / "authorization.yaml").read_text())
     who = {"status": "approved", "approved_by": "Test Owner", "approved_on": "2026-11-01"}
-    if cap is not None:
-        auth["max_capital_usd"] = {"value": float(cap), "ref": "UD-22", **who}
-    if cycles is not None:
-        auth["min_paper_cycles_before_live"] = {"value": cycles, "ref": "UD-22", **who}
+    tbd = {"value": "TBD", "status": "unresolved", "ref": "UD-22"}
+    # Reason: None means "unresolved" explicitly, independent of the shipped approved values.
+    auth["max_capital_usd"] = {"value": float(cap), "ref": "UD-22", **who} if cap else tbd
+    auth["min_paper_cycles_before_live"] = (
+        {"value": cycles, "ref": "UD-22", **who} if cycles is not None else tbd
+    )
     if ack:
         auth["acknowledgement"] = {
             "acknowledged_by": "Test Owner",

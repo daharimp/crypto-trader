@@ -73,3 +73,19 @@ def test_owner_requests_queue() -> None:
     s.mark_request_handled(rid, NOW, "done")
     assert s.pending_request("flatten") is None
     _ = Decimal
+
+
+def test_kraken_client_honours_proxy_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Behind a proxy, the ccxt client uses HTTPS_PROXY and the CA bundle; keys stay unset."""
+    from trader.session.market_data import make_kraken_client
+
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.invalid:3128")
+    monkeypatch.setenv("REQUESTS_CA_BUNDLE", "/tmp/ca.pem")
+    c = make_kraken_client()
+    assert c.https_proxy == "http://proxy.invalid:3128" and c.session.verify == "/tmp/ca.pem"
+    assert not c.apiKey
+    monkeypatch.delenv("HTTPS_PROXY")
+    monkeypatch.delenv("https_proxy", raising=False)
+    monkeypatch.delenv("REQUESTS_CA_BUNDLE")
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+    assert not make_kraken_client().https_proxy

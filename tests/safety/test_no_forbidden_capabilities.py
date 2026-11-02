@@ -1,4 +1,5 @@
-"""T-46 (amended by ADR-023): spot only; no withdrawal, transfer, margin, or leverage paths.
+"""T-46 (amended by ADR-023, ADR-024): no withdrawal or transfer paths anywhere; leverage and
+margin exist only in the paper-only ``trader.perps`` package.
 
 Real orders exist only in the Kraken live adapter; credentials are read only in the Kraken
 client factory. Everything else in ``src/`` must not place orders or touch keys.
@@ -24,6 +25,9 @@ KEY_PATH = {
     SRC / "trader" / "session" / "factory.py",
     SRC / "trader" / "cli" / "live.py",
 }
+# ADR-024: leverage/margin vocabulary is allowed only inside the paper-only perps package.
+PERPS_PKG = SRC / "trader" / "perps"
+PERPS_ONLY = ("leverage", "margin")
 # Reason: the only permitted occurrences are the always-false *_allowed safety constants.
 ALLOWED_NAMES = {"withdrawals_allowed", "transfers_allowed", "leverage_allowed", "margin_allowed"}
 
@@ -51,7 +55,9 @@ def test_t46_ast_scan() -> None:
         for node in ast.walk(ast.parse(f.read_text())):
             for name in _names(node):
                 low = name.lower()
-                if name not in ALLOWED_NAMES and any(w in low for w in NEVER):
+                in_perps = PERPS_PKG in f.parents
+                banned = [w for w in NEVER if not (in_perps and w in PERPS_ONLY)]
+                if name not in ALLOWED_NAMES and any(w in low for w in banned):
                     problems.append(f"{f.name}: {name}")
                 if any(w in low for w in ORDER_CALLS) and f != LIVE_ADAPTER:
                     problems.append(f"{f.name}: order/balance call {name} outside live adapter")
@@ -106,3 +112,40 @@ def test_t46_safety_constants() -> None:
             if name.endswith("_allowed"):
                 assert str(field.annotation) == "typing.Literal[False]", (name, field)
     assert Execution.model_fields["real_money_enabled"].annotation is bool
+
+
+def test_adr024_perps_package_is_paper_only() -> None:
+    """ADR-024: perps never signs, sends transactions, touches keys, or uses ccxt."""
+    from trader.perps.params import PerpsConfigFile
+
+    assert PerpsConfigFile.model_fields["mode"].annotation.__args__ == ("paper",)  # type: ignore[union-attr]
+    forbidden = (
+        "ccxt",
+        "solana",
+        "solders",
+        "anchorpy",
+        "keypair",
+        "private_key",
+        "secret",
+        "signature",
+        "sign_tx",
+        "sign_message",
+        "send_transaction",
+        "sendtransaction",
+        "urlopen_post",
+        "requests",
+    )
+    files = list(PERPS_PKG.rglob("*.py"))
+    assert len(files) >= 6
+    for f in files:
+        for node in ast.walk(ast.parse(f.read_text())):
+            names: list[str] = _names(node)
+            if isinstance(node, ast.Import | ast.ImportFrom):
+                mod = getattr(node, "module", None) or ""
+                names = [mod, *(a.name for a in node.names)]
+            for name in names:
+                low = (name or "").lower()
+                assert not any(w in low for w in forbidden), f"{f.name}: {name}"
+            # Reason: the only network call is an HTTP GET with no body (Request without data).
+            if isinstance(node, ast.Call) and getattr(node.func, "attr", "") == "Request":
+                assert not any(k.arg in ("data", "method") for k in node.keywords), f.name

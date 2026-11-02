@@ -1,0 +1,31 @@
+# Jupiter Perps, PAPER ONLY (ADR-024). No wallet, no keys, no transactions.
+# Every value below is an UNRESOLVED owner decision (UD-23): perps commands exit 3 until the
+# owner sets each one with status: approved, approved_by, approved_on, and a version bump.
+# Venue values (costs, venue_limits) must be checked against Jupiter's current docs:
+# https://dev.jup.ag and https://station.jup.ag/guides/perpetual-exchange
+schema_version: "1.0.0"
+kind: PerpsConfig
+version: 1
+venue: jupiter_perps
+mode: paper
+starting_collateral_usd: {value: TBD, status: unresolved, ref: UD-23}
+markets:
+  # Token mints used only to read public USD prices (verify against Jupiter's token list).
+  - {market: SOL, price_mint: So11111111111111111111111111111111111111112}
+  - {market: ETH, price_mint: 7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs}
+  - {market: BTC, price_mint: 3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh}
+costs:
+  open_fee_bps: {value: TBD, status: unresolved, ref: UD-23, note: "venue fee to open, bps of size"}
+  close_fee_bps: {value: TBD, status: unresolved, ref: UD-23, note: "venue fee to close, bps of size"}
+  borrow_rate_pct_per_hour: {value: TBD, status: unresolved, ref: UD-23, note: "Jupiter's rate varies with pool use; pick a conservative assumption"}
+venue_limits:
+  maintenance_bps: {value: TBD, status: unresolved, ref: UD-23, note: "remaining collateral at which Jupiter liquidates, bps of size"}
+  venue_max_leverage: {value: TBD, status: unresolved, ref: UD-23}
+risk:
+  max_leverage: {value: TBD, status: unresolved, ref: UD-23}
+  target_leverage: {value: TBD, status: unresolved, ref: UD-23, note: "leverage used to size every new position"}
+  max_collateral_per_position_pct: {value: TBD, status: unresolved, ref: UD-23, note: "% of equity posted per position"}
+  max_total_size_pct_of_equity: {value: TBD, status: unresolved, ref: UD-23, note: "sum of open position sizes as % of equity"}
+  min_liquidation_distance_pct: {value: TBD, status: unresolved, ref: UD-23, note: "refuse opens whose liquidation price is closer than this"}
+  max_open_positions: {value: TBD, status: unresolved, ref: UD-23}
+  daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-23}

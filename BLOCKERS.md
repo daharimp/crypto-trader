@@ -24,3 +24,11 @@ ADR-022, ADR-023). UD-14 is resolved as "no intraday trading in V1" and stays `T
   `trader live preflight` on the owner's server, which validates the stop-loss order shape.
 - Docker image build (Docker Hub rate-limited here): the frozen production install was
   verified; build on the server with `docker compose build`.
+
+## Perps (ADR-024), added 2026-11-02
+
+| Activity | Needs | Current behavior |
+|---|---|---|
+| Any `trader perps` backtest or paper run | UD-23 (starting collateral, venue costs and limits, owner risk limits) in `configs/perps/jupiter.yaml` | Exit 3, `PERPS_CONFIG_UNRESOLVED` lists every key |
+| Live Jupiter prices | Network access to `jup.ag` from the environment | `PRICE_UNAVAILABLE`, exit 3 |
+| Real-money perps | A new ADR and gates; not built | Impossible: `mode` is `Literal["paper"]` |

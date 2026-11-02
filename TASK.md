@@ -44,6 +44,15 @@
 - [ ] Owner: set UD-22 and the acknowledgement; create API key; run preflight on the server
 - [ ] Owner: allow `api.kraken.com` here so real-data checks and backtests can run
 
+## 2026-11-02: Jupiter Perps, paper only (ADR-024)
+
+- [x] `trader.perps`: math, fail-closed config (UD-23), risk checks and sizing, paper simulator, replay, read-only Jupiter prices
+- [x] CLI `trader perps validate|prices|backtest`; T-46 amended; paper-only safety test
+- [ ] Owner: approve UD-23 values in `configs/perps/jupiter.yaml` (check venue values against Jupiter docs)
+- [ ] Allow `jup.ag` in the cloud environment's network settings, then verify `trader perps prices`
+- [ ] Download SOL/ETH/BTC candles and run the perps backtest on real data
+- [ ] Forward paper perps session (reuse the BL-027 scheduler) once the backtest is reviewed
+
 ## Discovered During Work
 
 - [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).

@@ -1,3 +1,7 @@
+# HISTORICAL. Ran against risk profile v1 (all values TBD) during M1. On 2026-11-01 the
+# owner approved UD-01..UD-04, UD-12, UD-15..UD-19, so against the shipped v2 configs every
+# parameter below targets an approved field and is rejected (RP-12). The same file still drives
+# the fail-closed tests against the frozen v1 baseline in tests/fixtures/configs/.
 schema_version: "1.0.0"
 kind: ExperimentDefinition
 experiment_id: EXP-2026-001

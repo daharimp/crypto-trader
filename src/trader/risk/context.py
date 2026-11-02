@@ -46,6 +46,9 @@ class RiskContext:
     ids: IdGenerator
     used_idempotency_keys: set[str] = field(default_factory=set)
     pending: list[OrderIntent] = field(default_factory=list)
+    # Reason: UD-19 option D. Only an explicit owner flatten command sets this; it lets an
+    # exit pass the kill switch (RR-03) and stale data (RR-06). It never applies to entries.
+    owner_flatten: bool = False
 
     def held_quantity(self, instrument_id: str) -> Decimal:
         """

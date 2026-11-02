@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from trader.domain.enums import OrderPurpose, ReasonCode, RiskStatus, Side
+from trader.domain.enums import Environment, OrderPurpose, ReasonCode, RiskStatus, Side
 from trader.domain.orders import OrderIntent
 from trader.domain.risk import RiskDecision
 
@@ -24,6 +24,7 @@ class GateContext:
     adapter_id: str
     used_idempotency_keys: set[str] = field(default_factory=set)
     filled_entry_ids: set[str] = field(default_factory=set)
+    owner_flatten_decision_ids: set[str] = field(default_factory=set)
 
 
 class ExecutionGate:
@@ -70,6 +71,9 @@ class ExecutionGate:
         exempt = (
             intent.purpose == OrderPurpose.PROTECTIVE_STOP
             and intent.parent_order_intent_id in ctx.filled_entry_ids
+        ) or (
+            intent.purpose == OrderPurpose.EXIT
+            and intent.risk_decision_id in ctx.owner_flatten_decision_ids
         )
         if not exempt:
             if ctx.kill_switch_engaged:
@@ -79,8 +83,15 @@ class ExecutionGate:
         # EG-03 idempotency
         if intent.idempotency_key in ctx.used_idempotency_keys:
             out.append(R.DUPLICATE_ORDER)
-        # EG-04 simulated funds and allowlisted adapter
-        if intent.funds != "simulated" or ctx.adapter_id not in ALLOWED_ADAPTERS:
+        # EG-04 allowlisted adapter, paired with the right funds (ADR-023):
+        # simulated funds only through the simulator; real funds only through the live
+        # Kraken adapter in the live environment.
+        expected = "kraken_live" if intent.funds == "real" else "simulated"
+        if (
+            ctx.adapter_id not in ALLOWED_ADAPTERS
+            or ctx.adapter_id != expected
+            or (intent.funds == "real" and intent.environment != Environment.LIVE)
+        ):
             out.append(R.ADAPTER_NOT_ALLOWED)
         # EG-05 not expired
         if ctx.now > intent.valid_until_utc:

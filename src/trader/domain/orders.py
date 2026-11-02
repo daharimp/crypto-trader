@@ -36,7 +36,7 @@ class OrderIntent(DomainModel):
     notional_estimate_usd: Decimal
     valid_until_utc: UtcDatetime
     environment: Environment
-    funds: Literal["simulated"]
+    funds: Literal["simulated", "real"]
     config_hash: str
     market_data_timestamp_utc: UtcDatetime
     decision_time_utc: UtcDatetime
@@ -70,4 +70,6 @@ class OrderIntent(DomainModel):
             raise ValueError("intents must reference signals and strategy versions (D-36)")
         if self.quantity <= 0:
             raise ValueError("quantity must be > 0")
+        if (self.funds == "real") != (self.environment == Environment.LIVE):
+            raise ValueError("funds must be 'real' exactly in the live environment")
         return self

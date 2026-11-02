@@ -12,15 +12,18 @@ from pydantic import BaseModel, ValidationError
 from trader.common.canonical import to_canonical_obj
 from trader.common.hashing import hash_obj
 from trader.common.opstore import OperationalStore
+from trader.common.paths import configs_root as default_configs_root
 from trader.domain.common import VersionRef
 from trader.domain.compiled import CompiledProfile, EffectiveValue
 from trader.domain.enums import Environment, Provenance, ValidationErrorCode
 from trader.domain.experiments import ExperimentDefinition
+from trader.domain.live import LiveAuthorization
 from trader.domain.profiles import TradingProfile
 from trader.domain.risk_profile import RiskProfile
 from trader.domain.universe import AssetRegistry, EligibilityRules
 
 from .blockers import find_blockers, iter_param_nodes, required_fields
+from .live_auth import apply_live_authorization
 from .loader import ConfigLoadError, load_yaml
 from .overlay import apply_overlay
 from .validator import check_intraday, check_risk_rules, check_trading_profile
@@ -42,6 +45,7 @@ class CompileBundle:
     registry: AssetRegistry | None = None
     eligibility: EligibilityRules | None = None
     experiment: ExperimentDefinition | None = None
+    live: LiveAuthorization | None = None
 
 
 def _schema_errors(name: str, exc: ValidationError) -> list[str]:
@@ -136,24 +140,31 @@ def compile_bundle(
     profile_path: Path,
     environment: Environment,
     experiment_path: Path | None = None,
-    configs_root: Path = Path("configs"),
+    configs_root: Path | None = None,
     cost_scenario: str | None = None,
     store: OperationalStore | None = None,
+    assume_activated: bool = False,
 ) -> CompileBundle:
     """
     Compile a TradingProfile for an environment (algorithm §7.4 steps 1-9).
 
     Args:
         profile_path (Path): TradingProfile YAML.
-        environment (Environment): ``backtest`` or ``paper``.
+        environment (Environment): ``backtest``, ``paper``, or ``live``.
         experiment_path (Path | None): Optional ExperimentDefinition (backtest only).
-        configs_root (Path): Directory with ``risk/``, ``universe/``, ``costs/``.
+        configs_root (Path | None): Directory with ``risk/``, ``universe/``, ``costs/``.
+            Defaults to ``TRADER_CONFIGS_DIR`` or ``configs``.
         cost_scenario (str | None): Cost scenario ID; defaults to the experiment's, else base.
-        store (OperationalStore | None): Store for PV-10; defaults to ``data/state``.
+        store (OperationalStore | None): Store for PV-10, activation records, and the paper
+            track record; defaults to ``data/state``.
+        assume_activated (bool): Skip only the activation-record lookup (used by
+            ``trader profile activate`` to check everything else first).
 
     Returns:
         CompileBundle: Compiled profile and parsed inputs.
     """
+    configs_root = configs_root or default_configs_root()
+    st = store or OperationalStore()
     errors: list[str] = []
     effective: dict[str, EffectiveValue] = {}
     refs: dict[str, str] = {}
@@ -164,8 +175,11 @@ def compile_bundle(
     if raw_tp is not None:
         hashes["tp"] = hash_obj(raw_tp)
     if profile is not None:
-        errors.extend(check_trading_profile(profile, environment))
-        prior = (store or OperationalStore()).check_and_record_profile(
+        activated = assume_activated or st.has_activation(
+            profile.profile_id, profile.version, str(hashes["tp"]), environment.value
+        )
+        errors.extend(check_trading_profile(profile, environment, activated))
+        prior = st.check_and_record_profile(
             profile.profile_id, profile.version, str(hashes["tp"]), datetime.now(UTC)
         )
         if prior is not None:
@@ -211,13 +225,18 @@ def compile_bundle(
     raw_cost = _load(configs_root / "costs" / f"{scenario_id}.yaml", errors)
     costs = {k: str(v) for k, v in (raw_cost or {}).items() if k not in ("schema_version", "kind")}
 
+    live: LiveAuthorization | None = None
+    if environment == Environment.LIVE:
+        live, hashes["live"] = apply_live_authorization(
+            configs_root, profile, st, effective, refs, errors
+        )
     tiers = _tiers_in_scope(profile, registry)
     blockers = find_blockers(required_fields(environment, tiers), effective, refs)
-    if environment == Environment.PAPER:
-        # Reason: paper accepts only approved or hypothesis provenance (RR-02, §7.4.1).
+    if environment in (Environment.PAPER, Environment.LIVE):
+        # Reason: forward runs accept only approved or hypothesis provenance (RR-02, §7.4.1).
         for k, ev in effective.items():
             if ev.provenance in (Provenance.EXPERIMENT, Provenance.FIXTURE):
-                errors.append(f"{E.EXPERIMENT_PARAMETERS_REJECTED.value}: {k} in paper")
+                errors.append(f"{E.EXPERIMENT_PARAMETERS_REJECTED.value}: {k} in {environment}")
     if risk is not None:
         cands = list(risk.allocation.intraday_allocation_cap_pct.candidates_under_test or [])
         errors.extend(check_risk_rules(effective, cands))
@@ -225,7 +244,7 @@ def compile_bundle(
     compiled = _finish(
         environment, profile, risk, experiment, hashes, costs, effective, blockers, errors
     )
-    return CompileBundle(compiled, profile, risk, registry, elig, experiment)
+    return CompileBundle(compiled, profile, risk, registry, elig, experiment, live)
 
 
 def _apply_experiment(
@@ -253,8 +272,8 @@ def _apply_experiment(
         ExperimentDefinition | None: Parsed experiment.
     """
     rej = E.EXPERIMENT_PARAMETERS_REJECTED.value
-    if environment == Environment.PAPER:
-        errors.append(f"{rej} [R-02]: experiment parameters are refused in paper")
+    if environment != Environment.BACKTEST:
+        errors.append(f"{rej} [R-02]: experiment parameters are refused in {environment.value}")
         return None
     raw = _load(path, errors)
     exp: ExperimentDefinition | None = _parse(ExperimentDefinition, raw, "experiment", errors)
@@ -345,6 +364,8 @@ def _finish(
         "runnable": not errors and not blockers,
         "compiler_version": COMPILER_VERSION,
     }
+    if hashes.get("live"):
+        fields["live_authorization_hash"] = hashes["live"]
     fields["config_hash"] = hash_obj(to_canonical_obj(fields))
     return CompiledProfile.model_validate(fields)
 
@@ -353,7 +374,7 @@ def compile_profile(
     profile_path: Path,
     environment: Environment,
     experiment_path: Path | None = None,
-    configs_root: Path = Path("configs"),
+    configs_root: Path | None = None,
 ) -> CompiledProfile:
     """
     Compile a profile and return only the CompiledProfile (spec signature, §7.4).
@@ -362,7 +383,8 @@ def compile_profile(
         profile_path (Path): TradingProfile YAML.
         environment (Environment): Target environment.
         experiment_path (Path | None): Optional experiment.
-        configs_root (Path): Configuration root.
+        configs_root (Path | None): Configuration root.
+            Defaults to ``TRADER_CONFIGS_DIR`` or ``configs``.
 
     Returns:
         CompiledProfile: Compiled profile.

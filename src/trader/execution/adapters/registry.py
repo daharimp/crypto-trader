@@ -8,7 +8,9 @@ from trader.execution.costs import CostParams
 
 from .simulated import SimulatedExecutionAdapter
 
-ALLOWED_ADAPTERS = frozenset({"simulated"})
+# Reason (ADR-023): "kraken_live" is the only real-money adapter; the gate pairs it with
+# funds "real" in the live environment and pairs "simulated" with simulated funds.
+ALLOWED_ADAPTERS = frozenset({"simulated", "kraken_live"})
 
 
 class AdapterNotAllowedError(PermissionError):
@@ -34,4 +36,8 @@ def build_adapter(
     """
     if adapter_id not in ALLOWED_ADAPTERS:
         raise AdapterNotAllowedError(f"ADAPTER_NOT_ALLOWED: {adapter_id}")
+    if adapter_id != "simulated":
+        # Reason: the real-money adapter is built only by the gated live-session factory
+        # (trader.session.factory), never by this generic builder.
+        raise AdapterNotAllowedError(f"ADAPTER_NOT_ALLOWED: {adapter_id} only via live session")
     return SimulatedExecutionAdapter(capital, costs)

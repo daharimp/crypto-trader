@@ -29,3 +29,13 @@ def data_path(*parts: str) -> Path:
     p = data_root().joinpath(*parts)
     p.parent.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def configs_root() -> Path:
+    """
+    Return the configuration directory (``TRADER_CONFIGS_DIR`` or ``./configs``).
+
+    Returns:
+        Path: Configuration root.
+    """
+    return Path(os.environ.get("TRADER_CONFIGS_DIR", "configs"))

@@ -1,0 +1,34 @@
+# Usage (see docs/operations/RUNBOOK.md):
+#   docker compose build
+#   docker compose up -d paper                       # forward paper session
+#   docker compose --profile live up -d live         # real money (only after the runbook gates)
+#   docker compose run --rm cli session status       # any trader command
+x-trader: &trader
+  build: .
+  env_file: .env
+  volumes:
+    - ./data:/app/data
+    - ./configs:/app/configs:ro
+  restart: unless-stopped
+  stop_grace_period: 60s
+  logging:
+    driver: json-file
+    options: {max-size: "20m", max-file: "5"}
+
+services:
+  paper:
+    <<: *trader
+    command: ["session", "run", "--profile", "configs/profiles/balanced-paper.yaml",
+              "--environment", "paper"]
+
+  live:
+    <<: *trader
+    profiles: ["live"]  # never starts unless explicitly requested with --profile live
+    command: ["session", "run", "--profile", "configs/profiles/balanced-paper.yaml",
+              "--environment", "live"]
+
+  cli:
+    <<: *trader
+    profiles: ["cli"]
+    restart: "no"
+    entrypoint: ["/app/.venv/bin/trader"]

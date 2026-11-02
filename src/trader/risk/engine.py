@@ -9,6 +9,7 @@ from trader.domain.common import VersionRef
 from trader.domain.ensemble import EnsembleDecision
 from trader.domain.enums import (
     EnsembleAction,
+    Environment,
     OrderPurpose,
     OrderType,
     ReasonCode,
@@ -162,7 +163,7 @@ class RiskEngine:
             notional_estimate_usd=rd.approved_notional_usd,
             valid_until_utc=t + timeframe_delta(ctx.timeframe),
             environment=ctx.environment,
-            funds="simulated",
+            funds="real" if ctx.environment == Environment.LIVE else "simulated",
             config_hash=ctx.compiled.config_hash,
             market_data_timestamp_utc=latest.close_time_utc,
             decision_time_utc=t,

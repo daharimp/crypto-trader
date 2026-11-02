@@ -1,0 +1,7 @@
+# The owner reviews everything; these paths hold owner decisions and real-money code.
+*                                            @daharimp
+/configs/                                    @daharimp
+/src/trader/execution/                       @daharimp
+/src/trader/risk/                            @daharimp
+/src/trader/session/                         @daharimp
+/docs/spec/                                  @daharimp

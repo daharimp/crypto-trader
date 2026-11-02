@@ -1,21 +1,28 @@
 # Blockers
 
-**M1 blockers found: None.** Every M1 item was implemented without inventing a risk value,
-bypassing a check, or adding a live capability. Unresolved values stay `TBD`, and runs that
-need them exit 3 with their UD IDs.
+**Open blockers in the code: none.** No risk value was invented and no check was bypassed.
 
-## Known, expected blockers (not M1 failures; owner decisions)
+## Owner decisions still open
 
-These are listed in `docs/spec/code-session-handoff.md` §12 and `execution-plan.md` §7. The
-code fails closed until the owner resolves them in `configs/risk/*.yaml` /
-`configs/universe/eligibility.yaml` (with a version increment):
+| ID | What is missing | Needed before | Current behavior |
+|---|---|---|---|
+| UD-22 | Values approved 2026-11-02 ($250 cap, 42 paper cycles). Still missing: the owner's written **acknowledgement** in `configs/live/authorization.yaml` | Any live session | `live` refused: exit 2 (`LIVE_NOT_ACKNOWLEDGED`) |
 
-| Activity | Needs | Current behavior |
-|---|---|---|
-| Backtest without an experiment set | UD-01, UD-02, UD-03, UD-04, UD-12, UD-15, UD-16, UD-17, UD-18 | Exit 3, `RUN_BLOCKED` journaled, no orders |
-| Paper activation / forward paper (V1, BL-027/028) | Above plus UD-05, UD-17 (grace, skew, escalation), UD-19, UD-20 | `paper` refuses experiment values; no activation command exists yet |
-| Conservative / Aggressive outside experiments | UD-13 and that profile's values | Blocked with UD-13 |
-| Intraday sleeve | UD-14 | `INTRADAY_NOT_APPROVED` / `INTRADAY_SLEEVE_DISABLED` |
-| Major / Speculative assets | UD-06, UD-18 | Not in the registry or profile scope |
+Resolved on 2026-11-01: UD-01 to UD-21 (record: `docs/spec/product-requirements.md` §10.2;
+ADR-022, ADR-023). UD-14 is resolved as "no intraday trading in V1" and stays `TBD` by design.
 
-Options and recommendations for each: `docs/spec/product-requirements.md` §10.
+## Owner actions for going live (`docs/operations/RUNBOOK.md`)
+
+1. Provision the server, start the paper session, create the API key (no withdrawals), run
+   preflight, set UD-22, activate live.
+
+## Not verifiable from this environment
+
+- Real Kraken **public** data was verified on 2026-11-02 (markets, minimums, candles, clock,
+  eligibility, one real paper cycle). Private endpoints (orders, balances) need the owner's
+  key: covered by a fake exchange in tests and by `trader live preflight` on the server,
+  which validates the stop-loss order shape.
+- ETH/USD median daily volume on Kraken was $55.7M, just above the $50M Core threshold; in a
+  quiet month ETH becomes ineligible and the bot trades BTC only (fail closed, as approved).
+- Docker image build (Docker Hub rate-limited here): the frozen production install was
+  verified; build on the server with `docker compose build`.

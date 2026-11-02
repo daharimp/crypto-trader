@@ -12,7 +12,7 @@ from typer.testing import CliRunner
 
 from trader.cli.main import app
 
-PROFILE = "configs/profiles/balanced-paper.yaml"
+PROFILE = "tests/fixtures/configs/profiles/balanced-paper.yaml"
 FIXTURE = "tests/fixtures/experiments/EXP-0000-001-e2e.yaml"
 
 

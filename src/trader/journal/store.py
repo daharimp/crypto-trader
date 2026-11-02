@@ -96,7 +96,7 @@ class JournalStore:
         # Reason (ADR-019): one persistent connection in WAL mode. Every event is still its
         # own committed transaction (journal-before-act holds), but without an fsync per
         # event, which made long backtests ~20x slower.
-        self._con = sqlite3.connect(self.path)
+        self._con = sqlite3.connect(self.path, timeout=30)
         self._con.execute("PRAGMA journal_mode=WAL")
         self._con.execute("PRAGMA synchronous=NORMAL")
         with self._con:

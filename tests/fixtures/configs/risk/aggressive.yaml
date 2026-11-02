@@ -1,0 +1,94 @@
+# Document 4: Aggressive (copy to configs/risk/aggressive.yaml). Explicit selection only (D-06).
+schema_version: "1.0.0"
+kind: RiskProfile
+risk_profile_id: aggressive
+version: 1
+display_name: Aggressive
+description: >-
+  Exists only as an explicitly selected risk profile (D-06); selecting it requires an
+  acknowledgement in the TradingProfile. All numeric values are unresolved.
+selection:
+  initial_default: false
+  explicit_selection_required: true
+global_hard_constraints:
+  funds: simulated
+  instrument_types: [spot]
+  leverage_allowed: false
+  margin_allowed: false
+  short_selling_allowed: false
+  withdrawals_allowed: false
+  deterministic_final_authority: true
+  ai_may_override_limits: false
+  profile_switching: owner_only
+loss_response:
+  reassess_signals_and_conditions_each_cycle: true
+  size_reduction_schedule: {method: TBD, steps: TBD, status: unresolved, ref: UD-15}
+  hard_thresholds_override_all: true
+  circuit_breaker_stops_new_trades: true
+limits:
+  portfolio_drawdown_circuit_breaker_pct: {value: TBD, status: unresolved, ref: UD-01}
+  daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-02}
+  daily_loss_window: utc_calendar_day
+  circuit_breaker_reset: owner_command_with_reason
+sizing:
+  risk_per_trade_pct: {value: TBD, status: unresolved, ref: UD-03}
+  hard_stop_policy: {method: TBD, status: unresolved, ref: UD-16}
+  adaptation:
+    downward: loss_response_schedule
+    upward_enabled: false
+    upward_multiplier_max: {value: TBD, status: unresolved, ref: UD-15}
+  quantity_rounding: round_down_to_instrument_step
+concentration:
+  applies_to: aggregate_exposure_across_sleeves
+  core_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  major_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  speculative_per_asset_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+  speculative_total_cap_pct: {value: TBD, status: unresolved, ref: UD-13}
+allocation:
+  total_exposure_cap_pct: {value: TBD, status: unresolved, ref: UD-12}
+  minimum_reserve_pct_range: {low: TBD, high: TBD, status: unresolved, ref: UD-04}
+  max_open_positions: {value: TBD, status: unresolved, ref: UD-12}
+  intraday_allocation_cap_pct: {value: TBD, status: unresolved, ref: UD-14, candidates_under_test: [5, 10, 15, 20]}
+  intraday_sleeve_limits:
+    isolation: separate_ledger_no_borrowing_from_core
+    daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-14}
+    drawdown_circuit_breaker_pct: {value: TBD, status: unresolved, ref: UD-14}
+cooldown:
+  after_consecutive_losing_trades:
+    scope: strategy_instrument
+    count: {value: TBD, status: unresolved, ref: UD-17}
+    duration_hours: {value: TBD, status: unresolved, ref: UD-17}
+data_and_execution_faults:
+  stale_data:
+    definition: missing_latest_expected_closed_candle
+    action: block_new_orders_for_instrument
+    paper_grace_seconds: {value: TBD, status: unresolved, ref: UD-17}
+    escalate_to_kill_switch_after_stale_cycles: {value: TBD, status: unresolved, ref: UD-17}
+  exchange_errors:
+    retry_policy: idempotent_operations_only
+    max_consecutive_errors_before_kill_switch: {value: TBD, status: unresolved, ref: UD-17}
+  clock_skew_tolerance_seconds: {value: TBD, status: unresolved, ref: UD-17}
+  reconciliation:
+    internal_simulator: exact_match
+    external_adapter_quantity_tolerance: {value: TBD, status: unresolved, ref: UD-17}
+kill_switch:
+  state_model:
+    values: [disengaged, engaged]
+    source: operational_store
+    persisted_across_restarts: true
+    initial_state_on_first_start: disengaged
+  manual_engage: always_available
+  manual_disengage: owner_command_with_reason
+  automated_disengage_allowed: false
+  ai_may_change_state: false
+  effect_on_new_orders: block_all
+  auto_engage_triggers:
+    - reconciliation_mismatch
+    - repeated_execution_errors
+    - clock_skew_exceeded
+    - journal_write_failure
+    - risk_config_invalid_mid_session
+    - persistent_stale_data
+halt_and_liquidation:
+  interim_behavior_until_resolved: hold_unchanged_including_attached_stops
+  liquidation_policy_after_halt: {value: TBD, status: unresolved, ref: UD-19}

@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 from trader import SAFETY_STATEMENT, __version__
 
-from . import backtest, data, journal, killswitch, profile, report
+from . import backtest, data, journal, killswitch, live, profile, report, session
 
 load_dotenv()  # No secrets are required for M1; this only reads optional TRADER_* settings.
 
@@ -22,6 +22,8 @@ app.add_typer(backtest.app, name="backtest")
 app.add_typer(report.app, name="report")
 app.add_typer(journal.app, name="journal")
 app.add_typer(killswitch.app, name="killswitch")
+app.add_typer(session.app, name="session")
+app.add_typer(live.app, name="live")
 
 
 @app.command("version")

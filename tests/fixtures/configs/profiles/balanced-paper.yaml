@@ -1,0 +1,64 @@
+# Document 2: initial Balanced paper profile (copy to configs/profiles/balanced-paper.yaml).
+# Every value below comes from an approved decision, a recorded hypothesis, or a labelled
+# recommendation. Financial-risk values are in configs/risk/balanced.yaml.
+schema_version: "1.0.0"
+kind: TradingProfile
+profile_id: balanced-paper
+version: 1
+status: validated                 # declared; re-verified at every load (PV-08)
+owner: Dahari Morgan-Parker
+description: Initial Balanced paper-trading profile for the V1 vertical slice.
+objective:
+  objective_id: balance_returns_consistency_drawdown
+  statement: "Balance strong returns with consistent performance and controlled drawdown."   # D-05
+  guaranteed_profitability_assumed: false                                                     # D-07
+  decision_ref: "D-05"
+capital:
+  paper_capital_usd: 2500         # D-04
+  accounting_currency: USD        # A-02
+  funds: simulated                # D-02
+risk_selection:
+  risk_profile_id: balanced       # D-09
+  risk_profile_version: 1
+  adaptation: within_selected_profile_bounds   # D-10
+  profile_switching: owner_only                # D-06
+universe:
+  construction: rules_based       # D-22
+  quote_currency: USD
+  allowed_tiers: [core, major, speculative]   # Major and Speculative empty until UD-06 and UD-18
+  core_assets: [BTC, ETH]                      # D-26
+  manual_allowlist: []                         # D-24 (none nominated yet)
+  disallowed_assets: []
+  instruments_in_scope: [BTC-USD, ETH-USD]     # H-05
+  eligibility_required_for_all: true           # D-25
+horizon:
+  holding_period: adaptive                     # D-15
+  primary_decision_timeframes: ["1h", "4h"]    # D-16
+  typical_holding:
+    description: "From roughly one hour through several days"   # D-17
+    enforced_limit: false
+  minute_data:
+    permitted_roles: [entry_exit_refinement, approved_intraday_strategies]   # D-18
+    entry_exit_refinement_enabled: false       # R-23: starts in V1.5
+    intraday_strategies_enabled: false         # UD-14 unresolved; D-19
+  excluded_styles: [high_frequency, latency_arbitrage]   # D-21
+execution:
+  permitted_environments: [backtest, paper]
+  autonomy_mode: paper_autonomous              # D-33
+  per_trade_approval_required: false           # D-34
+  instrument_types: [spot]
+  real_money_enabled: false
+  leverage_allowed: false
+  margin_allowed: false
+  short_selling_allowed: false
+  withdrawals_allowed: false
+  transfers_allowed: false
+explanations:
+  preference: every_decision                   # R-13 (recommendation)
+  narrative_source: recorded_facts_only
+  ai_generated_narratives_enabled: false
+data_sources:
+  active:
+    - source_id: market_candles                # D-37 V1
+      tier: "V1"
+      required_for_trading: true

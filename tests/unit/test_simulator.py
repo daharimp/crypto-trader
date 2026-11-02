@@ -85,11 +85,13 @@ def test_cancel_and_open_orders() -> None:
 
 def test_adapter_allowlist() -> None:
     """Only the simulated adapter can be built."""
-    assert ALLOWED_ADAPTERS == frozenset({"simulated"})
+    assert ALLOWED_ADAPTERS == frozenset({"simulated", "kraken_live"})
     import pytest
 
     with pytest.raises(AdapterNotAllowedError):
         build_adapter("binance", D(1), BASE_COSTS)
+    with pytest.raises(AdapterNotAllowedError, match="only via live session"):
+        build_adapter("kraken_live", D(1), BASE_COSTS)
     rep = _ad().submit_order(
         market_intent("BTC-USD", T0).model_construct(
             **{**market_intent("BTC-USD", T0).__dict__, "funds": "real"}

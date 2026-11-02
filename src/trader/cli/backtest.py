@@ -24,6 +24,9 @@ def run(
     cost_scenario: str | None = typer.Option(None, "--cost-scenario"),
     start: str | None = typer.Option(None, "--start"),
     end: str | None = typer.Option(None, "--end"),
+    eligibility_datasets: str | None = typer.Option(
+        None, "--eligibility-datasets", help="Comma-separated 1d datasets for eligibility."
+    ),
 ) -> None:
     """Run a backtest; print the run ID and report path. Exit 3 if blocked."""
     res = run_backtest(
@@ -36,6 +39,10 @@ def run(
         utc_option(start),
         utc_option(end),
         command="trader " + " ".join(sys.argv[1:]),
+        eligibility_datasets=[
+            d.strip() for d in (eligibility_datasets or "").split(",") if d.strip()
+        ]
+        or None,
     )
     typer.echo(f"run_id: {res.run_id}")
     if res.report_path:

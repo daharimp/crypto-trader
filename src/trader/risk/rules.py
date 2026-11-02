@@ -78,6 +78,8 @@ def fail(rule_id: str, code: ReasonCode, **detail: object) -> RuleResult:
 def rr01_profile_runnable(ctx: RiskContext, entry: bool) -> RuleResult:
     """RR-01: compiled profile runnable for this environment; profile not suspended."""
     st = ctx.profile.status
+    # Reason: paper and live need an active profile; activation records are checked by the
+    # compiler (PV-08), so a non-runnable compile already fails below.
     allowed = {"validated", "active"} if ctx.environment == Environment.BACKTEST else {"active"}
     if not ctx.compiled.runnable or ctx.compiled.environment != ctx.environment:
         return fail("RR-01", R.PROFILE_NOT_RUNNABLE, runnable=ctx.compiled.runnable)
@@ -91,7 +93,7 @@ def rr02_config_resolved(ctx: RiskContext, entry: bool) -> RuleResult:
     if ctx.compiled.blockers or ctx.params is None:
         refs = sorted({b.ref for b in ctx.compiled.blockers})
         return fail("RR-02", R.RISK_CONFIG_UNRESOLVED, blockers=",".join(refs) or "params")
-    if ctx.environment == Environment.PAPER:
+    if ctx.environment in (Environment.PAPER, Environment.LIVE):
         bad = [
             k
             for k, v in ctx.compiled.effective.items()
@@ -104,6 +106,8 @@ def rr02_config_resolved(ctx: RiskContext, entry: bool) -> RuleResult:
 
 def rr03_execution_enabled(ctx: RiskContext, entry: bool) -> RuleResult:
     """RR-03: kill switch disengaged; paper_autonomous; execution flag on."""
+    if ctx.owner_flatten and not entry:
+        return ok("RR-03", owner_flatten=True, kill_switch=ctx.controls.kill_switch.engaged)
     if ctx.controls.kill_switch.engaged:
         return fail("RR-03", R.KILL_SWITCH_ENGAGED, reason=ctx.controls.kill_switch.reason)
     if ctx.profile.execution.autonomy_mode != "paper_autonomous":
@@ -114,14 +118,18 @@ def rr03_execution_enabled(ctx: RiskContext, entry: bool) -> RuleResult:
 
 
 def rr04_safety(ctx: RiskContext, entry: bool) -> RuleResult:
-    """RR-04: safety constants hold (defence in depth; the schema already forbids them)."""
+    """RR-04: safety constants hold (defence in depth; the schema already forbids them).
+
+    Real money is allowed only in the live environment of a profile that enables it.
+    """
     ex = ctx.profile.execution
+    live = ctx.environment == Environment.LIVE
     safe = (
         ctx.profile.capital.funds == "simulated"
         and list(ex.instrument_types) == ["spot"]
+        and (not live or (ex.real_money_enabled and "live" in ex.permitted_environments))
         and not any(
             (
-                ex.real_money_enabled,
                 ex.leverage_allowed,
                 ex.margin_allowed,
                 ex.short_selling_allowed,
@@ -154,8 +162,10 @@ def rr05_instrument(ctx: RiskContext, entry: bool) -> RuleResult:
 
 
 def rr06_fresh(ctx: RiskContext, entry: bool) -> RuleResult:
-    """RR-06: snapshot fresh and quality ok."""
+    """RR-06: snapshot fresh and quality ok (an owner flatten exit may use the last price)."""
     s = ctx.snapshot
+    if ctx.owner_flatten and not entry and s.latest_bar is not None:
+        return ok("RR-06", owner_flatten=True, fresh=s.is_fresh)
     if not s.is_fresh:
         return fail("RR-06", R.STALE_DATA, expected_close=s.expected_latest_close_utc)
     if s.quality_status != "ok":

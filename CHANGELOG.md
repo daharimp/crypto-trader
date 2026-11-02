@@ -17,6 +17,10 @@ All notable changes are recorded here, following
 - Webhook alerts (ntfy, Slack, Discord); Dockerfile and docker-compose deployment; runbook.
 - Universe: SOL and XRP (Major), SUI (Speculative) alongside BTC and ETH (Core).
 - Repository setup: CI, Dependabot, issue and pull request templates, community files.
+- Backtests accept daily eligibility datasets (`--eligibility-datasets`); equal-weight
+  universe benchmark (`bm_ew_universe`).
+- EXP-2026-002: first real-data test on Kraken (no evidence of an edge; see
+  `docs/experiments/`).
 
 ### Changed
 - Owner decisions UD-01 to UD-22 resolved (risk profiles v2, eligibility v3, profile v4).

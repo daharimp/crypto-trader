@@ -185,7 +185,7 @@ especially the safety rules in [CLAUDE.md](CLAUDE.md).
 | Owner risk decisions UD-01 to UD-22 | Approved (see `docs/spec/product-requirements.md` §10.2) |
 | Paper trading on live Kraken prices | Ready; verified against real Kraken data |
 | Live trading | Built and gated; waiting on server setup, API key, preflight, the owner acknowledgement, and 42 paper cycles |
-| Real-data strategy evaluation | Not yet: Kraken's API gives 120 days of 4h candles, so longer history needs Kraken's downloadable data |
+| Real-data strategy evaluation | First test done ([EXP-2026-002](docs/experiments/EXP-2026-002-kraken-120d.md)): on 120 days of real data `sma_trend` was beaten by buy-and-hold. **No edge shown yet.** Longer history needs Kraken's downloadable data |
 
 Open items: [`BLOCKERS.md`](BLOCKERS.md) and [`TASK.md`](TASK.md). History:
 [`CHANGELOG.md`](CHANGELOG.md).

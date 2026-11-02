@@ -89,3 +89,16 @@ def test_kraken_client_honours_proxy_env(monkeypatch: pytest.MonkeyPatch) -> Non
     monkeypatch.delenv("REQUESTS_CA_BUNDLE")
     monkeypatch.delenv("SSL_CERT_FILE", raising=False)
     assert not make_kraken_client().https_proxy
+
+
+def test_ccxt_provider_applies_proxy(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The public data provider uses the same proxy handling as the session client."""
+    import types
+
+    from trader.data.providers.ccxt_public import apply_proxy_env
+
+    monkeypatch.setenv("HTTPS_PROXY", "http://p.invalid:1")
+    monkeypatch.delenv("REQUESTS_CA_BUNDLE", raising=False)
+    monkeypatch.delenv("SSL_CERT_FILE", raising=False)
+    c = types.SimpleNamespace(https_proxy=None, session=types.SimpleNamespace(verify=True))
+    assert apply_proxy_env(c).https_proxy == "http://p.invalid:1" and c.session.verify is True

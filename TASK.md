@@ -56,6 +56,14 @@
 - [ ] Owner: make the repository private; set the repo description and topics on GitHub;
       enable private vulnerability reporting and branch protection for `main`
 
+## 2026-11-02: EXP-2026-002 real-data test (owner approved option 1 only)
+
+- [x] Daily eligibility datasets in backtests; universe benchmark; proxy-aware data fetch
+- [x] Fetched 120 days of real 4h Kraken data (5 coins) and ran the cost x capital grid
+- [x] Report: `docs/experiments/EXP-2026-002-kraken-120d.md`. Verdict: no edge shown
+- [ ] (Not approved yet) server deployment walkthrough; comparison strategies (BL-022);
+      merge PR #1; full Kraken history and walk-forward (BL-025/BL-029); maker orders
+
 ## Discovered During Work
 
 - [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).

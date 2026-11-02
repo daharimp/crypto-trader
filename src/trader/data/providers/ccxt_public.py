@@ -7,6 +7,7 @@ and ``ccxt`` is imported only when this provider is used (tests mock it).
 from __future__ import annotations
 
 import importlib
+import os
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -15,6 +16,26 @@ from trader.common.clock import ensure_utc, timeframe_delta
 from trader.domain.candles import Candle
 
 _PAGE = 500
+
+
+def apply_proxy_env(client: Any) -> Any:
+    """
+    Make a ccxt client honour ``HTTPS_PROXY`` and a CA bundle (ccxt ignores them by default).
+
+    Args:
+        client (Any): ccxt exchange instance.
+
+    Returns:
+        Any: The same client.
+    """
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    if proxy:
+        client.https_proxy = proxy
+    ca = os.environ.get("REQUESTS_CA_BUNDLE") or os.environ.get("SSL_CERT_FILE")
+    session = getattr(client, "session", None)
+    if ca and session is not None:
+        session.verify = ca
+    return client
 
 
 class CcxtPublicCandleProvider:
@@ -45,7 +66,7 @@ class CcxtPublicCandleProvider:
         """
         if self._client is None:
             ccxt = importlib.import_module("ccxt")
-            self._client = getattr(ccxt, self.exchange)({"enableRateLimit": True})
+            self._client = apply_proxy_env(getattr(ccxt, self.exchange)({"enableRateLimit": True}))
         return self._client
 
     def fetch_candles(

@@ -10,9 +10,9 @@ every gate exists because the cost of a mistake here is real money.
 ## 0. Before you start (owner)
 
 - A **Kraken** account that is verified, available in your US state (check Kraken's site),
-  and funded with **USD**. Use an account or sub-account that holds **no BTC or ETH** you want
-  to keep separate: the bot assumes it is the only thing trading BTC/ETH there and halts if
-  balances change underneath it.
+  and funded with **USD**. Use a separate account or sub-account holding **only USD**: the
+  bot trades BTC, ETH, SOL, XRP, and SUI, assumes it is the only thing trading them there,
+  and halts if balances change underneath it.
 - A small always-on **Linux server** (UD-09): 1 vCPU, 1 GB RAM, Ubuntu 24.04 is plenty. Any
   provider works.
 - Optional phone alerts: install the free **ntfy** app and pick a long random topic name.
@@ -84,8 +84,11 @@ withdraw.
 
 Edit `configs/live/authorization.yaml` on the server:
 
+Already set by the owner on 2026-11-02 (UD-22): $250 cap and 42 paper cycles. What remains
+is the **acknowledgement in your own words**, with a version increment:
+
 ```yaml
-version: 2                       # increment on every change
+version: 3                       # increment on every change
 max_capital_usd: {value: 250, status: approved, ref: UD-22, approved_by: <your name>, approved_on: "YYYY-MM-DD"}
 min_paper_cycles_before_live: {value: 6, status: approved, ref: UD-22, approved_by: <your name>, approved_on: "YYYY-MM-DD"}
 acknowledgement:

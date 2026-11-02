@@ -41,8 +41,10 @@
 - [x] Kraken public data (4h signals, 1d eligibility) and Kraken live adapter (ccxt)
 - [x] BL-048 owner flatten; breaker reset requests; webhook alerts; preflight
 - [x] Dockerfile, docker-compose.yml, `.env.example`, `docs/operations/RUNBOOK.md`
-- [ ] Owner: set UD-22 and the acknowledgement; create API key; run preflight on the server
-- [ ] Owner: allow `api.kraken.com` here so real-data checks and backtests can run
+- [x] UD-22 set by owner 2026-11-02: $250 cap, 42 paper cycles
+- [x] Universe: SOL, XRP (Major) and SUI (Speculative) added (UD-06 option B, 2026-11-02)
+- [x] Real Kraken public data verified; real paper cycles run here for all five coins
+- [ ] Owner: write the live acknowledgement; create API key; run preflight on the server
 
 ## Discovered During Work
 

@@ -56,7 +56,7 @@ are needed.
 uv sync                     # includes ccxt (Kraken data and the live adapter)
 uv run ruff check .
 uv run mypy src
-uv run pytest               # 241 tests; add --cov=trader --cov-branch for coverage
+uv run pytest               # 242 tests; add --cov=trader --cov-branch for coverage
 uv run trader version
 ```
 
@@ -117,7 +117,7 @@ Configuration is read from `configs/` (override with `TRADER_CONFIGS_DIR`). Runt
 | `src/trader/domain/` | Framework-neutral Pydantic contracts (stdlib + pydantic only, T-47) |
 | `src/trader/profiles/` | Loader, policy rules PV/RP, experiment overlay, blockers, compiler |
 | `src/trader/data/` | CSV, synthetic, and optional CCXT providers; DQ-01..DQ-12; immutable store; snapshots |
-| `src/trader/universe/` | Asset registry and point-in-time eligibility |
+| `src/trader/universe/` | Asset registry (BTC, ETH Core; SOL, XRP Major; SUI Speculative) and point-in-time eligibility |
 | `src/trader/features/`, `regimes/`, `strategies/`, `ensemble/` | features-m1, null regime, `sma_trend` 1.0.0, pass-through ensemble |
 | `src/trader/risk/` | RR-01..RR-20, sizing, loss state, breaker, lockout, cooldowns, kill switch |
 | `src/trader/execution/` | Gate EG-01..EG-05, adapter allowlist, simulator, Kraken live adapter |

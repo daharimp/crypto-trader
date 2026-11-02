@@ -46,6 +46,16 @@
 - [x] Real Kraken public data verified; real paper cycles run here for all five coins
 - [ ] Owner: write the live acknowledgement; create API key; run preflight on the server
 
+## 2026-11-02: GitHub repository setup
+
+- [x] README rewrite (overview, how it works, safety controls, commands, configuration, status)
+- [x] LICENSE (proprietary, all rights reserved), CONTRIBUTING, SECURITY, CODE_OF_CONDUCT,
+      SUPPORT, CHANGELOG, `.editorconfig`
+- [x] `.github/`: CI workflow, Dependabot (uv + actions), CODEOWNERS, PR and issue templates
+- [x] Runbook: deploy key for the private repository; updating the code
+- [ ] Owner: make the repository private; set the repo description and topics on GitHub;
+      enable private vulnerability reporting and branch protection for `main`
+
 ## Discovered During Work
 
 - [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).

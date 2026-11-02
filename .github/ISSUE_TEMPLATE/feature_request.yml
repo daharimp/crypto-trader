@@ -1,0 +1,29 @@
+name: Feature or change request
+description: A new capability, strategy, asset, or a change to a risk setting.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What should change, and why?
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - New feature or improvement
+        - New strategy (research first, never straight to live)
+        - Add or remove an asset (owner decision UD-06; eligibility still applies)
+        - Change a risk value (owner decision; needs a version bump and approval)
+        - Operations or deployment
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety
+      options:
+        - label: This does not add leverage, margin, short selling, withdrawals, or transfers.
+          required: true

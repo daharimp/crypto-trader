@@ -23,7 +23,13 @@ every gate exists because the cost of a mistake here is real money.
 # on the server, as a normal user with sudo
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER" && newgrp docker
-git clone https://github.com/daharimp/crypto-trader.git && cd crypto-trader
+# The repository is private: give the server a read-only deploy key.
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/crypto_trader_deploy -C "crypto-trader server"
+cat ~/.ssh/crypto_trader_deploy.pub
+# On GitHub: repo Settings -> Deploy keys -> Add deploy key -> paste it; leave
+# "Allow write access" UNTICKED.
+printf 'Host github.com\n  IdentityFile ~/.ssh/crypto_trader_deploy\n' >> ~/.ssh/config
+git clone git@github.com:daharimp/crypto-trader.git && cd crypto-trader
 git checkout main            # or the branch you were told to deploy
 cp .env.example .env && chmod 600 .env
 mkdir -p data && sudo chown 1000:1000 data
@@ -142,6 +148,20 @@ unexpected error. Investigate, fix, then disengage the kill switch.
 Any edit to the profile, risk profile, eligibility, or authorization requires a **version
 increment**. A running session detects the change and halts (kill switch). Then:
 re-run `profile activate` for the environment, disengage the kill switch, restart the service.
+
+## 8a. Updating the code
+
+```bash
+docker compose run --rm cli killswitch engage --reason "update"   # positions and stops stay
+git pull
+docker compose build
+docker compose up -d paper            # or: docker compose --profile live up -d live
+docker compose run --rm cli session status
+docker compose run --rm cli killswitch disengage --reason "update done"
+```
+
+If the update changed a profile, risk, eligibility, or authorization file, re-run
+`profile activate` first (section 8). Read `CHANGELOG.md` before updating a live bot.
 
 ## 9. Emergency without the server
 

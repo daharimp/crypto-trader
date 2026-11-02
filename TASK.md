@@ -48,7 +48,8 @@
 
 - [x] `trader.perps`: math, fail-closed config (UD-23), risk checks and sizing, paper simulator, replay, read-only Jupiter prices
 - [x] CLI `trader perps validate|prices|backtest`; T-46 amended; paper-only safety test
-- [ ] Owner: approve UD-23 values in `configs/perps/jupiter.yaml` (check venue values against Jupiter docs)
+- [x] Owner approved UD-23 risk limits 2026-11-02 (v2): 25x max, 10x target, 20%/position, 400% total, 8% liquidation buffer, 3 positions, 15% daily loss, $2,500 paper
+- [ ] Venue values (fees, borrow rate, maintenance, venue max leverage): verify against Jupiter docs once `jup.ag` is reachable
 - [ ] Allow `jup.ag` in the cloud environment's network settings, then verify `trader perps prices`
 - [ ] Download SOL/ETH/BTC candles and run the perps backtest on real data
 - [ ] Forward paper perps session (reuse the BL-027 scheduler) once the backtest is reviewed

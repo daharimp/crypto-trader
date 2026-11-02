@@ -1,14 +1,15 @@
 # Jupiter Perps, PAPER ONLY (ADR-024). No wallet, no keys, no transactions.
-# Every value below is an UNRESOLVED owner decision (UD-23): perps commands exit 3 until the
-# owner sets each one with status: approved, approved_by, approved_on, and a version bump.
+# UD-23: the owner approved starting collateral and every risk limit on 2026-11-02 (v2).
+# Venue values (costs, venue_limits) stay TBD until checked against Jupiter's current docs;
+# perps commands exit 3 until those are approved too.
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:
 # https://dev.jup.ag and https://station.jup.ag/guides/perpetual-exchange
 schema_version: "1.0.0"
 kind: PerpsConfig
-version: 1
+version: 2
 venue: jupiter_perps
 mode: paper
-starting_collateral_usd: {value: TBD, status: unresolved, ref: UD-23}
+starting_collateral_usd: {value: 2500, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
 markets:
   # Token mints used only to read public USD prices (verify against Jupiter's token list).
   - {market: SOL, price_mint: So11111111111111111111111111111111111111112}
@@ -22,10 +23,10 @@ venue_limits:
   maintenance_bps: {value: TBD, status: unresolved, ref: UD-23, note: "remaining collateral at which Jupiter liquidates, bps of size"}
   venue_max_leverage: {value: TBD, status: unresolved, ref: UD-23}
 risk:
-  max_leverage: {value: TBD, status: unresolved, ref: UD-23}
-  target_leverage: {value: TBD, status: unresolved, ref: UD-23, note: "leverage used to size every new position"}
-  max_collateral_per_position_pct: {value: TBD, status: unresolved, ref: UD-23, note: "% of equity posted per position"}
-  max_total_size_pct_of_equity: {value: TBD, status: unresolved, ref: UD-23, note: "sum of open position sizes as % of equity"}
-  min_liquidation_distance_pct: {value: TBD, status: unresolved, ref: UD-23, note: "refuse opens whose liquidation price is closer than this"}
-  max_open_positions: {value: TBD, status: unresolved, ref: UD-23}
-  daily_loss_limit_pct: {value: TBD, status: unresolved, ref: UD-23}
+  max_leverage: {value: 25, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
+  target_leverage: {value: 10, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "leverage used to size every new position"}
+  max_collateral_per_position_pct: {value: 20, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "% of equity posted per position"}
+  max_total_size_pct_of_equity: {value: 400, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "sum of open position sizes as % of equity"}
+  min_liquidation_distance_pct: {value: 8, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "refuse opens whose liquidation price is closer than this"}
+  max_open_positions: {value: 3, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
+  daily_loss_limit_pct: {value: 15, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}

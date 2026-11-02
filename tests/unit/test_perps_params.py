@@ -18,10 +18,41 @@ from trader.perps.params import (
 )
 
 
-def test_shipped_config_is_unresolved_and_lists_every_key() -> None:
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def test_shipped_config_has_owner_limits_but_venue_values_block() -> None:
+    """UD-23 (2026-11-02): owner limits approved; venue values still TBD, so exit 3."""
     with pytest.raises(PerpsConfigUnresolvedError) as exc:
-        load_perps_params(Path(__file__).resolve().parents[2] / "configs")
-    assert exc.value.refs == ["UD-23"]
+        load_perps_params(ROOT / "configs")
+    assert exc.value.keys == [
+        "costs.open_fee_bps",
+        "costs.close_fee_bps",
+        "costs.borrow_rate_pct_per_hour",
+        "venue_limits.maintenance_bps",
+        "venue_limits.venue_max_leverage",
+    ]
+    from trader.perps.params import load_perps_file
+
+    cfg = load_perps_file(ROOT / "configs")
+    approved = {k: cfg.risk[k].value for k in RISK_KEYS}
+    assert approved == {
+        "max_leverage": Decimal(25),
+        "target_leverage": Decimal(10),
+        "max_collateral_per_position_pct": Decimal(20),
+        "max_total_size_pct_of_equity": Decimal(400),
+        "min_liquidation_distance_pct": Decimal(8),
+        "max_open_positions": Decimal(3),
+        "daily_loss_limit_pct": Decimal(15),
+    }
+    assert cfg.starting_collateral_usd.value == Decimal(2500) and cfg.version == 2
+    assert all(cfg.risk[k].approved_by == "owner" for k in RISK_KEYS)
+
+
+def test_frozen_fixture_config_is_all_tbd() -> None:
+    """Mechanism tests use the frozen all-TBD v1 copy, like the M1 fixtures (ADR-022)."""
+    with pytest.raises(PerpsConfigUnresolvedError) as exc:
+        load_perps_params(ROOT / "tests" / "fixtures" / "configs")
     for k in RISK_KEYS:
         assert f"risk.{k}" in exc.value.keys
     assert "starting_collateral_usd" in exc.value.keys
@@ -68,14 +99,6 @@ def test_approved_needs_approver() -> None:
 def test_inconsistent_leverage_rejected(overrides: dict[str, str]) -> None:
     with pytest.raises(ValueError):
         fixture_params(**overrides)
-
-
-def test_fixture_copy_matches_shipped_config() -> None:
-    root = Path(__file__).resolve().parents[2]
-    shipped = (root / "configs" / "perps" / "jupiter.yaml").read_text()
-    assert (
-        root / "tests" / "fixtures" / "configs" / "perps" / "jupiter.yaml"
-    ).read_text() == shipped
 
 
 def test_sizing_rounds_down_to_stay_under_cap() -> None:

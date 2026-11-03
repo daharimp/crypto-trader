@@ -64,6 +64,17 @@
 - [ ] (Not approved yet) server deployment walkthrough; comparison strategies (BL-022);
       merge PR #1; full Kraken history and walk-forward (BL-025/BL-029); maker orders
 
+## 2026-11-03: Owner approved all four next steps
+
+- [x] Comparison strategies (BL-022) with a random-entry control
+- [x] Lower costs: post-only limit orders in the simulator; fee tier in preflight
+- [x] Full-history tooling: `trader data import-kraken`, `trader research compare`
+- [x] EXP-2026-003 on the 120 days available: `docs/experiments/EXP-2026-003-*`
+- [ ] Owner: upload Kraken OHLCVT files (XBT/ETH/SOL/XRP/SUI USD, 240 and 1440) for the
+      full-history rerun
+- [ ] Owner: set up the server and start paper (RUNBOOK steps 1-2)
+- [ ] Live limit orders (post-only on Kraken, fill polling, prompt stops), if approved
+
 ## Discovered During Work
 
 - [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).

@@ -21,6 +21,13 @@ All notable changes are recorded here, following
   universe benchmark (`bm_ew_universe`).
 - EXP-2026-002: first real-data test on Kraken (no evidence of an edge; see
   `docs/experiments/`).
+- Comparison strategies (BL-022): `tsmom`, `mean_reversion`, `volatility_breakout`, and the
+  research-only `random_entry` control; feature set `features-m2`.
+- Post-only limit orders in the simulator (cost scenarios `base_maker`, `stress_maker`);
+  live trading refuses them for now. Preflight reports the account's real fee tier.
+- `trader data import-kraken` for Kraken's downloadable OHLCVT history and
+  `trader research compare` (strategies x windows x costs with a matched random control).
+- EXP-2026-003: strategy comparison on real data (no edge; limit orders cut fees by a third).
 
 ### Changed
 - Owner decisions UD-01 to UD-22 resolved (risk profiles v2, eligibility v3, profile v4).

@@ -114,6 +114,7 @@ Follow **[`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md)** step by st
 |---|---|
 | `trader version` | Version and safety statement |
 | `trader profile validate PROFILE -e backtest\|paper\|live` | Show whether a run is allowed, every error, and unresolved decisions (exit 0/2/3) |
+| `trader profile build [--answers FILE] [--dry-run] [--update]` | Interview: one question per risk setting with the spec's options; writes your own named profile, risk file, and spec sheet ([web form](docs/profile-builder/index.html)) |
 | `trader profile activate PROFILE -e paper\|live --reason "..."` | Owner activation record (required for paper and live) |
 | `trader session run --profile PROFILE -e paper\|live [--once]` | Run a forward session |
 | `trader session status` | Last cycle, equity, positions, breaker, stale cycles |
@@ -174,7 +175,7 @@ configs/  schemas/  experiments/  scripts/  tests/  docs/
 uv sync
 uv run ruff check . && uv run ruff format --check .
 uv run mypy src
-uv run pytest            # 275 tests, offline; a fake exchange stands in for Kraken
+uv run pytest            # 300+ tests, offline; a fake exchange stands in for Kraken
 ```
 
 CI runs these on every pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the rules,
@@ -199,7 +200,7 @@ Open items: [`BLOCKERS.md`](BLOCKERS.md) and [`TASK.md`](TASK.md). History:
 |---|---|
 | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) | Server setup, paper, preflight, going live, daily operation, emergencies |
 | [`docs/spec/`](docs/spec/README.md) | The original specification package (requirements, architecture, risk schema) |
-| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 to ADR-023) |
+| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 to ADR-024) |
 | [`PLANNING.md`](PLANNING.md) | Architecture summary and current milestone |
 | [`SUPPORT.md`](SUPPORT.md) | Where to get help |
 | [`SECURITY.md`](SECURITY.md) | Reporting vulnerabilities; what to do if a key is exposed |

@@ -41,6 +41,24 @@ Check: `version` prints the safety statement.
 
 Optional alerts: put `ALERT_WEBHOOK_URL=https://ntfy.sh/<your-topic>` in `.env`.
 
+## 1a. Build your own profile (optional)
+
+Answer one question per risk setting, either in the terminal or with the web form
+(`docs/profile-builder/index.html`, then save its answers as `answers.json` on the server):
+
+```bash
+mkdir -p docs/profiles && sudo chown 1000:1000 configs/profiles configs/risk docs/profiles
+docker compose run --rm builder                                    # terminal interview
+docker compose run --rm -v ./answers.json:/app/answers.json:ro builder --answers answers.json
+```
+
+Only the `builder` service can write `configs/`; the bot services keep it read-only.
+
+It writes `configs/profiles/<name>.yaml`, `configs/risk/<name>.yaml`, and a spec sheet in
+`docs/profiles/`. Use `configs/profiles/<name>.yaml` instead of `balanced-paper.yaml` in the
+steps below and set `TRADER_PROFILE=configs/profiles/<name>.yaml` in `.env` so the `paper` and
+`live` services run it.
+
 ## 2. Start paper trading on live Kraken prices (starts the track record)
 
 ```bash

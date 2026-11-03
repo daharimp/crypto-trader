@@ -91,3 +91,4 @@
 - [ ] Owner: write the Aggressive acknowledgement (PV-03) so the profile can switch to Aggressive.
 - [ ] Owner: pick the 1h sleeve strategy (EXP-2026-004 part 1 is inconclusive; full history needs `*_60.csv` uploads).
 - [ ] Build the isolated 1h intraday sleeve (separate ledger, sleeve loss limits, 1h session cycle), paper first.
+- [x] Profile builder (2026-11-03): `trader profile build` interview + `--answers`, `trader profile questions`, web form, named risk profiles, ADR-024.

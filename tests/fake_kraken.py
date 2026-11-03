@@ -168,6 +168,9 @@ class FakeKraken:
         self.orders[oid]["status"] = "canceled"
         return {"id": oid}
 
+    def fetch_trading_fee(self, symbol: str) -> dict[str, Any]:
+        return {"symbol": symbol, "maker": 0.0025, "taker": 0.004}
+
     def fetch_balance(self) -> dict[str, Any]:
         self._check_stops()
         return {"total": {k: float(v) for k, v in self.balances.items()}}

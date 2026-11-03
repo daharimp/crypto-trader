@@ -94,6 +94,7 @@ def run_preflight(
         ok, msg = _classify(exc, False)
         out.append(Check("balance query (Query Funds permission)", ok, msg))
         return out
+    out.append(_fee_tier(adapter))
     for iid in sorted(adapter.symbols):
         amount = adapter.min_amount(iid)
         price = _last_price(data, iid, now)
@@ -119,6 +120,31 @@ def run_preflight(
         )
     )
     return out
+
+
+def _fee_tier(adapter: KrakenLiveAdapter, symbol: str = "BTC/USD") -> Check:
+    """
+    Report the account's real Kraken maker/taker fees (Kraken's trade-volume endpoint).
+
+    Informational: the cost scenarios assume 0.40% taker / 0.25% maker; compare and update
+    ``configs/costs/*.yaml`` if your tier differs.
+
+    Args:
+        adapter (KrakenLiveAdapter): Live adapter.
+        symbol (str): Market to query.
+
+    Returns:
+        Check: Always passes; the detail carries the fees or why they were unavailable.
+    """
+    try:
+        fee = adapter.client.fetch_trading_fee(symbol)
+        maker, taker = Decimal(str(fee["maker"])) * 100, Decimal(str(fee["taker"])) * 100
+        note = "" if taker <= Decimal("0.40") else " (higher than the 0.40% base assumption)"
+        return Check(
+            "account fee tier", True, f"{symbol}: maker {maker:.3f}%, taker {taker:.3f}%{note}"
+        )
+    except Exception as exc:  # noqa: BLE001 - informational only
+        return Check("account fee tier", True, f"unavailable ({type(exc).__name__}: {exc})")
 
 
 def _last_price(data: KrakenMarketData, iid: str, now: datetime) -> Any:

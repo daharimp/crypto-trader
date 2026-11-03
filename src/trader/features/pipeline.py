@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
+from trader.common.clock import timeframe_delta
 from trader.domain.candles import Candle
 from trader.domain.features import FeatureSet
 
-from .definitions import DEFINITIONS_HASH, FEATURE_SET_VERSION, WARMUP_BARS
+from .definitions import DEFINITIONS_HASH, FEATURE_SET_VERSION, SMOOTHING_WINDOW_BARS, WARMUP_BARS
 
 
 def sma(values: list[Decimal], n: int) -> Decimal | None:
@@ -50,6 +51,66 @@ def wilder_atr(candles: list[Candle], n: int = 14) -> Decimal | None:
     return atr
 
 
+def wilder_rsi(closes: list[Decimal], n: int = 14) -> Decimal | None:
+    """
+    Wilder RSI of a close series.
+
+    Args:
+        closes (list[Decimal]): Closes, oldest first.
+        n (int): Period.
+
+    Returns:
+        Decimal | None: RSI in [0, 100], or None with fewer than ``n + 1`` closes.
+    """
+    if len(closes) < n + 1:
+        return None
+    diffs = [b - a for a, b in zip(closes, closes[1:], strict=False)]
+    gain = sum((d for d in diffs[:n] if d > 0), Decimal(0)) / n
+    loss = sum((-d for d in diffs[:n] if d < 0), Decimal(0)) / n
+    for d in diffs[n:]:
+        gain = (gain * (n - 1) + max(d, Decimal(0))) / n
+        loss = (loss * (n - 1) + max(-d, Decimal(0))) / n
+    if loss == 0:
+        return Decimal(100) if gain > 0 else Decimal(50)
+    return Decimal(100) - Decimal(100) / (1 + gain / loss)
+
+
+def bollinger(closes: list[Decimal], n: int = 20, k: int = 2) -> tuple[Decimal, ...] | None:
+    """
+    Bollinger bands (population standard deviation).
+
+    Args:
+        closes (list[Decimal]): Closes.
+        n (int): Period.
+        k (int): Band width in standard deviations.
+
+    Returns:
+        tuple[Decimal, ...] | None: ``(lower, mid, upper)`` or None if too short.
+    """
+    if len(closes) < n:
+        return None
+    last = closes[-n:]
+    mid = sum(last, Decimal(0)) / n
+    std = (sum(((c - mid) ** 2 for c in last), Decimal(0)) / n).sqrt()
+    return mid - k * std, mid, mid + k * std
+
+
+def trailing_return(closes: list[Decimal], bars: int) -> Decimal | None:
+    """
+    ``close[t] / close[t - bars] - 1``.
+
+    Args:
+        closes (list[Decimal]): Closes.
+        bars (int): Lookback in bars.
+
+    Returns:
+        Decimal | None: Return, or None if too short.
+    """
+    if len(closes) < bars + 1 or closes[-bars - 1] == 0:
+        return None
+    return closes[-1] / closes[-bars - 1] - 1
+
+
 def compute_features(
     window: list[Candle],
     instrument_id: str,
@@ -59,7 +120,7 @@ def compute_features(
     dataset_ids: list[str],
 ) -> FeatureSet:
     """
-    Compute ``features-m1`` at ``as_of_utc`` from closed candles only.
+    Compute ``features-m2`` at ``as_of_utc`` from closed candles only.
 
     Args:
         window (list[Candle]): Candles with ``close_time_utc <= as_of_utc``.
@@ -73,12 +134,24 @@ def compute_features(
         FeatureSet: Features (values None until warm-up).
     """
     closes = [c.close for c in window]
+    smooth = window[-SMOOTHING_WINDOW_BARS:]
+    bb = bollinger(closes)
+    lookback = int(timedelta(days=7) / timeframe_delta(timeframe))
+    prev = window[:-1]
     values: dict[str, Decimal | None] = {
         "sma_20": sma(closes, 20),
         "sma_50": sma(closes, 50),
         "sma_20_prev": sma(closes[:-1], 20),
         "sma_50_prev": sma(closes[:-1], 50),
-        "atr_14": wilder_atr(window, 14),
+        "atr_14": wilder_atr(smooth, 14),
+        "rsi_14": wilder_rsi([c.close for c in smooth], 14),
+        "bb_lower_20": bb[0] if bb else None,
+        "bb_mid_20": bb[1] if bb else None,
+        "bb_upper_20": bb[2] if bb else None,
+        "high_20_prev": max(c.high for c in prev[-20:]) if len(prev) >= 20 else None,
+        "low_10_prev": min(c.low for c in prev[-10:]) if len(prev) >= 10 else None,
+        "ret_7d": trailing_return(closes, lookback),
+        "ret_7d_prev": trailing_return(closes[:-1], lookback),
     }
     return FeatureSet(
         schema_version="1.0.0",

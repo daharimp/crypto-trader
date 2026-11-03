@@ -45,6 +45,7 @@ class OrderType(StrEnum):
 
     MARKET = "market"
     STOP_MARKET = "stop_market"
+    LIMIT = "limit"  # post-only limit (maker); simulator and paper only so far
 
 
 class EnsembleAction(StrEnum):
@@ -182,6 +183,7 @@ class ReasonCode(StrEnum):
     ADAPTER_NOT_ALLOWED = "ADAPTER_NOT_ALLOWED"
     INTENT_EXPIRED = "INTENT_EXPIRED"
     EXCHANGE_ERROR = "EXCHANGE_ERROR"
+    LIMIT_NOT_FILLED = "LIMIT_NOT_FILLED"
 
 
 class ValidationErrorCode(StrEnum):

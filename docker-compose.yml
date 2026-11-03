@@ -18,13 +18,13 @@ x-trader: &trader
 services:
   paper:
     <<: *trader
-    command: ["session", "run", "--profile", "configs/profiles/balanced-paper.yaml",
+    command: ["session", "run", "--profile", "${TRADER_PROFILE:-configs/profiles/balanced-paper.yaml}",
               "--environment", "paper"]
 
   live:
     <<: *trader
     profiles: ["live"]  # never starts unless explicitly requested with --profile live
-    command: ["session", "run", "--profile", "configs/profiles/balanced-paper.yaml",
+    command: ["session", "run", "--profile", "${TRADER_PROFILE:-configs/profiles/balanced-paper.yaml}",
               "--environment", "live"]
 
   cli:
@@ -32,3 +32,15 @@ services:
     profiles: ["cli"]
     restart: "no"
     entrypoint: ["/app/.venv/bin/trader"]
+
+  # Owner-only: the profile builder is the one service that may write configs (ADR-024).
+  # The bot services keep configs read-only.
+  builder:
+    <<: *trader
+    profiles: ["cli"]
+    restart: "no"
+    entrypoint: ["/app/.venv/bin/trader", "profile", "build", "--docs-dir", "docs/profiles"]
+    volumes:
+      - ./data:/app/data
+      - ./configs:/app/configs
+      - ./docs/profiles:/app/docs/profiles

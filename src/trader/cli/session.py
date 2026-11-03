@@ -20,12 +20,16 @@ app = typer.Typer(help="Run and control forward paper/live sessions.", no_args_i
 def run(
     profile: Path = typer.Option(..., "--profile"),
     environment: Environment = typer.Option(..., "--environment", "-e", help="paper or live"),
-    strategy: str = typer.Option("sma_trend", "--strategy"),
-    timeframe: str = typer.Option("4h", "--timeframe"),
+    strategy: str | None = typer.Option(
+        None, "--strategy", help="Default: the profile's trading_spec, else sma_trend."
+    ),
+    timeframe: str | None = typer.Option(
+        None, "--timeframe", help="Default: the profile's trading_spec, else 4h."
+    ),
     once: bool = typer.Option(False, "--once", help="Process due cycles once, then exit."),
 ) -> None:
     """Run a session until stopped (SIGTERM/Ctrl-C). Exit 2/3 if a gate refuses to start."""
-    from trader.session.config import SessionConfig, SessionError
+    from trader.session.config import SessionConfig, SessionError, session_defaults
     from trader.session.factory import kraken_adapter_factory
     from trader.session.market_data import (
         KrakenMarketData,
@@ -42,6 +46,7 @@ def run(
         b = compile_bundle(profile, environment)
         if b.registry is None:
             raise SessionError(2, "; ".join(b.compiled.errors))
+        strategy, timeframe = session_defaults(b.profile, strategy, timeframe)
         data = KrakenMarketData(make_kraken_client(), kraken_symbols(Registry(b.registry)))
         runner = SessionRunner(
             SessionConfig(profile, environment, strategy, timeframe),

@@ -10,7 +10,9 @@ from trader.domain.enums import Environment
 from trader.evaluation.report import non_approved_values
 from trader.profiles.compiler import compile_bundle, exit_code
 
-app = typer.Typer(help="Validate and compile trading profiles.", no_args_is_help=True)
+app = typer.Typer(
+    help="Validate, compile, build, and activate trading profiles.", no_args_is_help=True
+)
 
 
 def _print_summary(compiled) -> None:  # type: ignore[no-untyped-def]
@@ -105,3 +107,13 @@ def activate(
         f"activated {bundle.profile.profile_id} v{bundle.profile.version} for "
         f"{environment.value} (hash {compiled.trading_profile_hash[:19]}...)"
     )
+
+
+def _register_builder() -> None:
+    """Attach ``build`` and ``questions`` (kept in their own module for size)."""
+    from .profile_build import register
+
+    register(app)
+
+
+_register_builder()

@@ -32,7 +32,9 @@ properties:
   kind:
     const: RiskProfile
   risk_profile_id:
-    enum: [conservative, balanced, aggressive]
+    type: string
+    pattern: "^[a-z][a-z0-9-]{2,63}$"
+    description: The spec presets (conservative, balanced, aggressive) or an owner-built profile (ADR-024).
   version:
     type: integer
     minimum: 1

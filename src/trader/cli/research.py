@@ -28,7 +28,7 @@ def _split(text: str | None) -> list[str]:
 @app.command("compare")
 def compare(
     profile: Path = typer.Option(..., "--profile"),
-    datasets: str = typer.Option(..., "--datasets", help="Comma-separated 4h datasets."),
+    datasets: str = typer.Option(..., "--datasets", help="Comma-separated datasets at --timeframe."),
     start: str = typer.Option(..., "--start"),
     end: str = typer.Option(..., "--end"),
     strategies: str = typer.Option(
@@ -39,6 +39,10 @@ def compare(
     random_seeds: int = typer.Option(10, "--random-seeds"),
     eligibility_datasets: str | None = typer.Option(None, "--eligibility-datasets"),
     out: Path = typer.Option(Path("data/research/compare"), "--out"),
+    timeframe: str = typer.Option("4h", "--timeframe", help="Decision timeframe: 1h or 4h."),
+    reference: str = typer.Option(
+        "sma_trend", "--reference", help="Strategy the random control is matched to."
+    ),
 ) -> None:
     """Run the comparison and write compare.json and compare.md to --out."""
     from trader.common.paths import configs_root
@@ -57,6 +61,8 @@ def compare(
         random_seeds=random_seeds,
         eligibility_datasets=_split(eligibility_datasets) or None,
         configs_root=configs_root(),
+        timeframe=timeframe,
+        reference_strategy=reference,
     )
     out.mkdir(parents=True, exist_ok=True)
     try:

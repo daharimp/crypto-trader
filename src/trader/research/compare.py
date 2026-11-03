@@ -22,6 +22,25 @@ from trader.backtest.runner import run_backtest
 from trader.common.paths import data_root
 
 STEP = timedelta(hours=4)
+TIMEFRAME_STEPS = {"1h": timedelta(hours=1), "4h": timedelta(hours=4)}
+
+
+def timeframe_step(timeframe: str) -> timedelta:
+    """
+    Bar length of a decision timeframe.
+
+    Args:
+        timeframe (str): ``1h`` or ``4h``.
+
+    Returns:
+        timedelta: Bar length.
+
+    Raises:
+        ValueError: For an unsupported timeframe.
+    """
+    if timeframe not in TIMEFRAME_STEPS:
+        raise ValueError(f"unsupported timeframe {timeframe!r}; use 1h or 4h")
+    return TIMEFRAME_STEPS[timeframe]
 
 
 @dataclass
@@ -42,14 +61,17 @@ class CompareConfig:
     timeframe: str = "4h"
 
 
-def window_bounds(start: datetime, end: datetime, n: int) -> list[tuple[datetime, datetime]]:
+def window_bounds(
+    start: datetime, end: datetime, n: int, step: timedelta = STEP
+) -> list[tuple[datetime, datetime]]:
     """
-    Split ``[start, end]`` into ``n`` consecutive windows aligned to 4h bar closes.
+    Split ``[start, end]`` into ``n`` consecutive windows aligned to bar closes.
 
     Args:
         start (datetime): First decision time.
         end (datetime): Last decision time.
         n (int): Number of windows (>= 1).
+        step (timedelta): Bar length (default 4h).
 
     Returns:
         list[tuple[datetime, datetime]]: Window bounds.
@@ -57,14 +79,15 @@ def window_bounds(start: datetime, end: datetime, n: int) -> list[tuple[datetime
     Raises:
         ValueError: If the range is too short for ``n`` windows of at least one week.
     """
-    bars = int((end - start) / STEP)
-    if n < 1 or bars // n < 42:
+    bars = int((end - start) / step)
+    # Reason: every window must span at least 7 days whatever the bar length.
+    if n < 1 or bars // n < int(timedelta(days=7) / step):
         raise ValueError(f"range of {bars} bars is too short for {n} windows of >= 7 days")
     size = bars // n
     out = []
     for k in range(n):
-        s = start + k * size * STEP
-        e = end if k == n - 1 else s + size * STEP
+        s = start + k * size * step
+        e = end if k == n - 1 else s + size * step
         out.append((s, e))
     return out
 
@@ -162,7 +185,8 @@ class Comparison:
         """
         n_inst = max(1, len({d for d in self.cfg.datasets}))
         trades = max(ref.get("trades", 0), 1)
-        hold_bars = max(ref.get("hold_hours", 0.0) / 4.0, 1.0)
+        bar_hours = timeframe_step(self.cfg.timeframe) / timedelta(hours=1)
+        hold_bars = max(ref.get("hold_hours", 0.0) / bar_hours, 1.0)
         p_entry = min(max(trades / (bars * n_inst), 1e-4), 0.5)
         p_exit = min(max(1.0 / hold_bars, 1e-4), 0.9)
         path = self.root / "strategies" / "random_entry.yaml"
@@ -182,8 +206,10 @@ class Comparison:
             dict[str, Any]: Runs and summary.
         """
         cfg = self.cfg
-        for w, (s, e) in enumerate(window_bounds(cfg.start, cfg.end, cfg.windows), start=1):
-            bars = int((e - s) / STEP)
+        step = timeframe_step(cfg.timeframe)
+        windows = window_bounds(cfg.start, cfg.end, cfg.windows, step)
+        for w, (s, e) in enumerate(windows, start=1):
+            bars = int((e - s) / step)
             for cost in cfg.cost_scenarios:
                 refs: dict[str, dict[str, Any]] = {}
                 for strat in cfg.strategies:

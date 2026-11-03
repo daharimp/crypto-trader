@@ -87,6 +87,19 @@ def test_window_bounds() -> None:
         window_bounds(T0, T0 + timedelta(days=10), 3)
 
 
+def test_window_bounds_1h_and_unknown_timeframe() -> None:
+    """1h windows step by the hour, still need 7 days each; unknown timeframes are refused."""
+    from trader.research.compare import timeframe_step
+
+    step = timeframe_step("1h")
+    w = window_bounds(T0, T0 + timedelta(days=21, hours=1), 3, step)
+    assert len(w) == 3 and w[1][0] == T0 + timedelta(hours=168)
+    with pytest.raises(ValueError):
+        window_bounds(T0, T0 + timedelta(days=20), 3, step)
+    with pytest.raises(ValueError):
+        timeframe_step("30m")
+
+
 def test_compare_runs_grid_and_random_control(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

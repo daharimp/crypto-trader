@@ -83,3 +83,11 @@
 - [ ] DQ-12 cross-timeframe consistency is optional in M1 and not implemented (needs 1h + 4h datasets).
 - [x] Owner decisions UD-01..UD-21 resolved 2026-11-01 except UD-14 (deferred) and UD-20 (venue).
 - [ ] Next milestone M2: BL-021..BL-030 (`docs/spec/execution-plan.md` §5).
+
+## 2026-11-03: Riskier swing + 1h quick trades (owner request)
+
+- [x] Generalize `trader research compare` to 1h (`--timeframe`, `--reference`); EXP-2026-004 part 1 (1h screen, 30 days of API data).
+- [x] Record owner decisions: Aggressive swing profile chosen; UD-14 revisit: 1h, 10% cap, sleeve limits 2.5% / 12.5% (`aggressive.yaml` v3).
+- [ ] Owner: write the Aggressive acknowledgement (PV-03) so the profile can switch to Aggressive.
+- [ ] Owner: pick the 1h sleeve strategy (EXP-2026-004 part 1 is inconclusive; full history needs `*_60.csv` uploads).
+- [ ] Build the isolated 1h intraday sleeve (separate ledger, sleeve loss limits, 1h session cycle), paper first.

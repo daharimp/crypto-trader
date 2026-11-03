@@ -28,7 +28,7 @@ def _split(text: str | None) -> list[str]:
 @app.command("compare")
 def compare(
     profile: Path = typer.Option(..., "--profile"),
-    datasets: str = typer.Option(..., "--datasets", help="Comma-separated datasets at --timeframe."),
+    datasets: str = typer.Option(..., "--datasets", help="Datasets at --timeframe."),
     start: str = typer.Option(..., "--start"),
     end: str = typer.Option(..., "--end"),
     strategies: str = typer.Option(

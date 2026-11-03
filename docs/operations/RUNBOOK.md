@@ -96,7 +96,7 @@ is the **acknowledgement in your own words**, with a version increment:
 ```yaml
 version: 3                       # increment on every change
 max_capital_usd: {value: 250, status: approved, ref: UD-22, approved_by: <your name>, approved_on: "YYYY-MM-DD"}
-min_paper_cycles_before_live: {value: 6, status: approved, ref: UD-22, approved_by: <your name>, approved_on: "YYYY-MM-DD"}
+min_paper_cycles_before_live: {value: 42, status: approved, ref: UD-22, approved_by: <your name>, approved_on: "YYYY-MM-DD"}
 acknowledgement:
   acknowledged_by: <your name>
   acknowledged_at_utc: "YYYY-MM-DDTHH:MM:SSZ"

@@ -174,7 +174,7 @@ configs/  schemas/  experiments/  scripts/  tests/  docs/
 uv sync
 uv run ruff check . && uv run ruff format --check .
 uv run mypy src
-uv run pytest            # 242 tests, offline; a fake exchange stands in for Kraken
+uv run pytest            # 275 tests, offline; a fake exchange stands in for Kraken
 ```
 
 CI runs these on every pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the rules,

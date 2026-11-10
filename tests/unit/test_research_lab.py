@@ -11,13 +11,16 @@ from trader.research.lab import (
     SPOT,
     Costs,
     donchian,
+    donchian_ensemble,
     evaluate,
     metrics,
     simulate,
     sma_stance,
     split,
     squeeze_breakout,
+    squeeze_plus,
     tsmom,
+    vol_target,
 )
 
 
@@ -87,3 +90,37 @@ def test_metrics_on_buy_and_hold_matches_price_minus_fee() -> None:
     r = metrics(df, pd.Series(1.0, index=df.index), Costs("x", 0.0))
     assert r.trades == 1 and r.exposure > 0.99
     assert r.max_drawdown >= 0
+
+
+@pytest.mark.parametrize(
+    "sig",
+    [
+        squeeze_plus(vol_mult=1.5, trend=200, time_stop=12, shorts_below_trend=True),
+        donchian_ensemble(),
+        vol_target(tsmom(42, False)),
+    ],
+)
+def test_exp011_signals_have_no_look_ahead(sig) -> None:  # type: ignore[no-untyped-def]
+    df = _frame()
+    pd.testing.assert_series_equal(sig(df).iloc[:1000], sig(df.iloc[:1000]), check_names=False)
+
+
+def test_squeeze_plus_defaults_match_original() -> None:
+    df = _frame()
+    pd.testing.assert_series_equal(
+        squeeze_plus()(df), squeeze_breakout(42, 0.25, 3.0, False)(df), check_names=False
+    )
+
+
+def test_vol_target_never_exceeds_one_and_shrinks_in_wild_markets() -> None:
+    df = _frame()
+    s = vol_target(lambda d: pd.Series(1.0, index=d.index), annual_target=0.05)(df)
+    assert s.max() <= 1.0 and s.dropna().iloc[-1] < 1.0
+    assert set((s * 4).round().unique()) <= set(range(0, 5))
+
+
+def test_filters_only_remove_entries() -> None:
+    df = _frame()
+    base = squeeze_plus()(df)
+    filtered = squeeze_plus(vol_mult=1.5)(df)
+    assert (filtered != 0).sum() <= (base != 0).sum()

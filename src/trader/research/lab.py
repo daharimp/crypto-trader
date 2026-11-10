@@ -302,3 +302,105 @@ def evaluate(df: pd.DataFrame, sig: Signal, costs: Costs, holdout: bool = False)
     folds, hold = split(df)
     ranges = [hold] if holdout else folds
     return [metrics(df.iloc[a:b], target.iloc[a:b], costs) for a, b in ranges]
+
+
+# ---------- EXP-2026-011 hypotheses (research pass 2026-11-10) ----------
+
+
+def squeeze_plus(
+    n: int = 42,
+    squeeze_q: float = 0.25,
+    stop_atr: float = 3.0,
+    vol_mult: float = 0.0,
+    trend: int = 0,
+    time_stop: int = 0,
+    shorts_below_trend: bool = False,
+) -> Signal:
+    """
+    Volatility-squeeze breakout with optional filters, each one testable on its own.
+
+    Args:
+        n (int): Breakout lookback in bars.
+        squeeze_q (float): Quiet means range width in this lowest quantile of 300 bars.
+        stop_atr (float): Trailing stop distance in ATR(14).
+        vol_mult (float): If > 0, the breakout bar's volume must exceed this multiple of
+            its 20-bar average.
+        trend (int): If > 0, longs only above (shorts only below) this moving average.
+        time_stop (int): If > 0, exit when price has not moved 1 ATR in favor within this
+            many bars.
+        shorts_below_trend (bool): Allow shorts, only below the trend average.
+
+    Returns:
+        Signal: Position after each close.
+    """
+
+    def f(df: pd.DataFrame) -> pd.Series:
+        a = atr(df, 14).to_numpy(dtype=float)
+        width = (df["high"].rolling(n).max() - df["low"].rolling(n).min()) / df["close"]
+        thresh = width.rolling(300, min_periods=100).quantile(squeeze_q).shift(1)
+        quiet = (width.shift(1) <= thresh).to_numpy(dtype=bool)
+        hi = df["high"].rolling(n).max().shift(1).to_numpy(dtype=float)
+        lo = df["low"].rolling(n).min().shift(1).to_numpy(dtype=float)
+        vol_ok = (
+            (df["volume"] > vol_mult * df["volume"].rolling(20).mean().shift(1))
+            if vol_mult > 0
+            else pd.Series(True, index=df.index)
+        ).to_numpy(dtype=bool)
+        ma = df["close"].rolling(trend).mean().to_numpy(dtype=float) if trend else None
+        c = df["close"].to_numpy(dtype=float)
+        pos, stop, entry, entry_atr, age = 0.0, 0.0, 0.0, 0.0, 0
+        out = np.zeros(len(df))
+        for i in range(len(df)):
+            ai = float(a[i])
+            if pos != 0:
+                age += 1
+                if pos == 1:
+                    stop = max(stop, c[i] - stop_atr * ai)
+                    hit = c[i] < stop
+                    moved = c[i] - entry >= entry_atr
+                else:
+                    stop = min(stop, c[i] + stop_atr * ai)
+                    hit = c[i] > stop
+                    moved = entry - c[i] >= entry_atr
+                if hit or (time_stop and age >= time_stop and not moved):
+                    pos = 0.0
+            if pos == 0 and quiet[i] and vol_ok[i] and not math.isnan(ai):
+                up = ma is None or (not math.isnan(ma[i]) and c[i] > ma[i])
+                down = ma is not None and not math.isnan(ma[i]) and c[i] < ma[i]
+                if c[i] > hi[i] and up:
+                    pos, stop = 1.0, c[i] - stop_atr * ai
+                elif shorts_below_trend and c[i] < lo[i] and down:
+                    pos, stop = -1.0, c[i] + stop_atr * ai
+                if pos != 0:
+                    entry, entry_atr, age = c[i], ai, 0
+            out[i] = pos
+        return pd.Series(out, index=df.index)
+
+    return f
+
+
+def donchian_ensemble(windows: tuple[int, ...] = (20, 55, 120), shorts: bool = False) -> Signal:
+    """Average of several Donchian breakout positions (exit window = entry / 2)."""
+
+    def f(df: pd.DataFrame) -> pd.Series:
+        parts = [donchian(w, max(w // 2, 5), shorts)(df) for w in windows]
+        return sum(parts[1:], parts[0]) / len(parts)
+
+    return f
+
+
+def vol_target(sig: Signal, annual_target: float = 0.4, lookback: int = 42) -> Signal:
+    """
+    Scale a signal so its expected volatility is about ``annual_target``, never above 1x.
+
+    The scale uses realized volatility up to the decision bar and is rounded to quarter
+    steps so small volatility changes do not trigger trades.
+    """
+
+    def f(df: pd.DataFrame) -> pd.Series:
+        rv = df["close"].pct_change().rolling(lookback).std() * math.sqrt(BARS_PER_YEAR)
+        scale = (annual_target / rv).clip(upper=1.0)
+        scale = (scale * 4).round() / 4
+        return (sig(df) * scale).fillna(0.0)
+
+    return f

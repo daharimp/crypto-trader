@@ -1,7 +1,7 @@
 # Eligibility rules. UD-18 option A and UD-06 option A approved by the owner on 2026-11-01.
 schema_version: "1.0.0"
 kind: EligibilityRules
-version: 2
+version: 3
 criteria:
   liquidity:
     metric: median_daily_quote_volume_usd_30d
@@ -24,7 +24,7 @@ criteria:
     when_no_spread_data: {value: not_applicable, status: approved, ref: UD-18, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
   support: {rule: instrument_has_market_mapping_for_active_venue}
   explicit_exclusion: {rule: not_in_profile_disallowed_assets_and_not_registry_blocked}
-tier_assignment:  # UD-06 option A: no Major or Speculative assets in V1; revisit in V1.5
+tier_assignment:  # UD-06 option B (2026-11-02): owner-curated list in configs/universe/assets.yaml
   core: owner_approved_only
-  major: {value: none_permitted, status: approved, ref: UD-06, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
-  speculative: {value: none_permitted, status: approved, ref: UD-06, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-01"}
+  major: {value: owner_curated_list, status: approved, ref: UD-06, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-02"}
+  speculative: {value: owner_curated_list, status: approved, ref: UD-06, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-02"}

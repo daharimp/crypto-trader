@@ -33,7 +33,7 @@ from trader.profiles.compiler import CompileBundle, compile_bundle, exit_code
 from trader.risk.controls import PersistedKillSwitch
 from trader.risk.loss_state import LossTracker
 from trader.risk.params import risk_params_from_compiled
-from trader.strategies.registry import build_strategy
+from trader.strategies.registry import StrategyNotFoundError, build_strategy
 from trader.universe.eligibility import EligibilityEvaluator
 from trader.universe.registry import Registry
 
@@ -148,7 +148,7 @@ class SessionRunner:
             eligibility=EligibilityEvaluator(
                 b.compiled, b.profile, registry, empty, {}, timedelta(days=1)
             ),
-            strategy=build_strategy(self.cfg.strategy, self.cfg.configs_root),
+            strategy=self._strategy(),
             adapter=adapter,
             execution=ExecutionService(adapter),
             ledger=Ledger(cash=capital),
@@ -183,6 +183,23 @@ class SessionRunner:
             f"cash ${self.state.ledger.cash:.2f}; "
             f"positions {sorted(self.state.ledger.positions)}"
         )
+
+    def _strategy(self) -> Any:
+        """
+        Build the session strategy; research-only controls are refused.
+
+        Returns:
+            Any: Strategy.
+
+        Raises:
+            SessionError: If the strategy cannot run in a forward session.
+        """
+        try:
+            return build_strategy(
+                self.cfg.strategy, self.cfg.configs_root, self.cfg.timeframe, forward_session=True
+            )
+        except (StrategyNotFoundError, ValueError) as exc:
+            raise SessionError(2, f"strategy unavailable: {exc}") from exc
 
     def _init_live_cash(self) -> None:
         """

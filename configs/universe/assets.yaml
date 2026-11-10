@@ -1,13 +1,21 @@
 # Asset registry (handoff §6.4). Core = BTC and ETH (D-26).
 schema_version: "1.0.0"
 kind: AssetRegistry
-version: 2
+version: 3
 assets:
   - {asset_id: BTC, name: Bitcoin, tier: core, tier_status: approved, aliases: [XBT], blocked: false}
   - {asset_id: ETH, name: Ether, tier: core, tier_status: approved, aliases: [], blocked: false}
+  # UD-06 option B (owner, 2026-11-02): owner-curated non-Core list; eligibility still applies.
+  - {asset_id: SOL, name: Solana, tier: major, tier_status: approved, aliases: [], blocked: false}
+  - {asset_id: XRP, name: XRP, tier: major, tier_status: approved, aliases: [XXRP], blocked: false}
+  - {asset_id: SUI, name: Sui, tier: speculative, tier_status: approved, aliases: [], blocked: false}
 instruments:
   - {instrument_id: BTC-USD, base: BTC, quote: USD, type: spot, quantity_step: "0.00000001"}
   - {instrument_id: ETH-USD, base: ETH, quote: USD, type: spot, quantity_step: "0.00000001"}
+  - {instrument_id: SOL-USD, base: SOL, quote: USD, type: spot, quantity_step: "0.00000001"}
+  - {instrument_id: XRP-USD, base: XRP, quote: USD, type: spot, quantity_step: "0.00000001"}
+  # Kraken's SUI/USD lot step is 0.00001 (checked 2026-11-02).
+  - {instrument_id: SUI-USD, base: SUI, quote: USD, type: spot, quantity_step: "0.00001"}
 market_symbol_map:
   - {market_id: "sim:BTC-USD", venue_id: sim, venue_symbol: BTC-USD, instrument_id: BTC-USD}
   - {market_id: "sim:ETH-USD", venue_id: sim, venue_symbol: ETH-USD, instrument_id: ETH-USD}
@@ -16,3 +24,12 @@ market_symbol_map:
   # UD-20 (2026-11-01): Kraken, USD-quoted spot. ccxt symbols.
   - {market_id: "kraken:BTC-USD", venue_id: kraken, venue_symbol: BTC/USD, instrument_id: BTC-USD}
   - {market_id: "kraken:ETH-USD", venue_id: kraken, venue_symbol: ETH/USD, instrument_id: ETH-USD}
+  - {market_id: "sim:SOL-USD", venue_id: sim, venue_symbol: SOL-USD, instrument_id: SOL-USD}
+  - {market_id: "csv:SOL-USD", venue_id: csv, venue_symbol: SOL-USD, instrument_id: SOL-USD}
+  - {market_id: "kraken:SOL-USD", venue_id: kraken, venue_symbol: SOL/USD, instrument_id: SOL-USD}
+  - {market_id: "sim:XRP-USD", venue_id: sim, venue_symbol: XRP-USD, instrument_id: XRP-USD}
+  - {market_id: "csv:XRP-USD", venue_id: csv, venue_symbol: XRP-USD, instrument_id: XRP-USD}
+  - {market_id: "kraken:XRP-USD", venue_id: kraken, venue_symbol: XRP/USD, instrument_id: XRP-USD}
+  - {market_id: "sim:SUI-USD", venue_id: sim, venue_symbol: SUI-USD, instrument_id: SUI-USD}
+  - {market_id: "csv:SUI-USD", venue_id: csv, venue_symbol: SUI-USD, instrument_id: SUI-USD}
+  - {market_id: "kraken:SUI-USD", venue_id: kraken, venue_symbol: SUI/USD, instrument_id: SUI-USD}

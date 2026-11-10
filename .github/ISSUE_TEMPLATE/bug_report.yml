@@ -1,0 +1,41 @@
+name: Bug report
+description: Something behaved incorrectly (wrong decision, crash, refused run, bad report).
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        **Never paste API keys, `.env` contents, webhook URLs, or account details.**
+        If money may be at risk, engage the kill switch first (RUNBOOK §7).
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options: [backtest, paper, live, CLI only]
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Command and exit code
+      description: The exact `trader ...` command and its exit code (0, 1, 2, 3, or 4).
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log lines
+      description: From `docker compose logs --tail 200 <service>` or `data/logs/<run_id>.jsonl`.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Commit or branch
+      placeholder: e.g. main @ abc1234

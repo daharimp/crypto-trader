@@ -665,6 +665,28 @@ D-03, and SAFE-01 through ADR-023 (gated `live` environment; leverage, margin, s
 withdrawals, and transfers remain impossible). A new unresolved decision UD-22 holds the live
 capital cap and the paper prerequisite.
 
+**2026-11-02. Owner: Dahari Morgan-Parker.** UD-06 changed from option A to **option B**
+(owner-curated list): **SOL and XRP as Major** (H-02 15% per asset), **SUI as Speculative**
+(H-03 5% per asset, H-04 10% total), each still subject to UD-18 eligibility on Kraken
+(30-day median volume on 2026-11-02: SOL $25.7M, XRP $25.5M, SUI $11.4M). UD-22 approved:
+$250 live capital cap, 42 forward paper cycles before live. Configs: `assets.yaml` v3,
+`eligibility.yaml` v3, `balanced-paper.yaml` v4 (paper track record counts restart at v4).
+
+**2026-11-03. Owner: Dahari Morgan-Parker.** The owner wants riskier swing trading on 4h and
+small quick plays on a shorter chart. Choices made in chat:
+
+- **Swing risk:** switch from Balanced to the **Aggressive** risk profile (values already
+  approved on 2026-11-01: 1.5% per trade, 5% daily, 25% breaker, 45/20/7.5/15% caps, 90%
+  exposure, 8 positions). PV-03 still requires the owner's written acknowledgement in the
+  trading profile before the switch takes effect; until then the profile stays on Balanced.
+- **UD-14 revisited:** intraday quick trades on **1h** (not 30m). Cap **10%** (a D-20
+  candidate), chosen by the owner ahead of the full cap test. Sleeve limits **option B**
+  (half of the Aggressive limits): **2.5% daily** and **12.5% drawdown**, on sleeve equity.
+  Recorded in `configs/risk/aggressive.yaml` v3. Intraday stays disabled
+  (`intraday_strategies_enabled: false`) until the owner picks the sleeve's strategy
+  ("test all, then pick"; EXP-2026-004) and the isolated sleeve is built.
+- **Rollout:** everything paper first; swing and intraday go live together later.
+
 ### UD-22: Live capital cap and paper prerequisite
 
 - **Why it matters.** Bounds the real money at risk while the strategy has no real-data

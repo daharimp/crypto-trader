@@ -27,7 +27,7 @@ def test_activate_paper_then_live_gate(root: Path) -> None:
     """Paper activates; live refuses until the paper track record exists."""
     p = str(root / "profiles" / "balanced-paper.yaml")
     r = _cli("profile", "activate", p, "-e", "paper", "--reason", "start")
-    assert r.exit_code == 0 and "activated balanced-paper v3 for paper" in r.stdout
+    assert r.exit_code == 0 and "activated balanced-paper v4 for paper" in r.stdout
     r = _cli("profile", "activate", p, "-e", "live", "--reason", "go")
     assert r.exit_code == 2 and "paper track record 0 cycles" in r.stdout
     assert _cli("profile", "activate", p, "-e", "backtest", "--reason", "x").exit_code == 2

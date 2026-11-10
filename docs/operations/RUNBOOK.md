@@ -10,9 +10,9 @@ every gate exists because the cost of a mistake here is real money.
 ## 0. Before you start (owner)
 
 - A **Kraken** account that is verified, available in your US state (check Kraken's site),
-  and funded with **USD**. Use an account or sub-account that holds **no BTC or ETH** you want
-  to keep separate: the bot assumes it is the only thing trading BTC/ETH there and halts if
-  balances change underneath it.
+  and funded with **USD**. Use a separate account or sub-account holding **only USD**: the
+  bot trades BTC, ETH, SOL, XRP, and SUI, assumes it is the only thing trading them there,
+  and halts if balances change underneath it.
 - A small always-on **Linux server** (UD-09): 1 vCPU, 1 GB RAM, Ubuntu 24.04 is plenty. Any
   provider works.
 - Optional phone alerts: install the free **ntfy** app and pick a long random topic name.
@@ -23,7 +23,13 @@ every gate exists because the cost of a mistake here is real money.
 # on the server, as a normal user with sudo
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER" && newgrp docker
-git clone https://github.com/daharimp/crypto-trader.git && cd crypto-trader
+# The repository is private: give the server a read-only deploy key.
+ssh-keygen -t ed25519 -N "" -f ~/.ssh/crypto_trader_deploy -C "crypto-trader server"
+cat ~/.ssh/crypto_trader_deploy.pub
+# On GitHub: repo Settings -> Deploy keys -> Add deploy key -> paste it; leave
+# "Allow write access" UNTICKED.
+printf 'Host github.com\n  IdentityFile ~/.ssh/crypto_trader_deploy\n' >> ~/.ssh/config
+git clone git@github.com:daharimp/crypto-trader.git && cd crypto-trader
 git checkout crypto-trader   # until it is merged to main
 cp .env.example .env && chmod 600 .env
 mkdir -p data && sudo chown 1000:1000 data
@@ -34,6 +40,24 @@ docker compose run --rm cli version
 Check: `version` prints the safety statement.
 
 Optional alerts: put `ALERT_WEBHOOK_URL=https://ntfy.sh/<your-topic>` in `.env`.
+
+## 1a. Build your own profile (optional)
+
+Answer one question per risk setting, either in the terminal or with the web form
+(`docs/profile-builder/index.html`, then save its answers as `answers.json` on the server):
+
+```bash
+mkdir -p docs/profiles && sudo chown 1000:1000 configs/profiles configs/risk docs/profiles
+docker compose run --rm builder                                    # terminal interview
+docker compose run --rm -v ./answers.json:/app/answers.json:ro builder --answers answers.json
+```
+
+Only the `builder` service can write `configs/`; the bot services keep it read-only.
+
+It writes `configs/profiles/<name>.yaml`, `configs/risk/<name>.yaml`, and a spec sheet in
+`docs/profiles/`. Use `configs/profiles/<name>.yaml` instead of `balanced-paper.yaml` in the
+steps below and set `TRADER_PROFILE=configs/profiles/<name>.yaml` in `.env` so the `paper` and
+`live` services run it.
 
 ## 1b. Server that already runs n8n (or other apps)
 
@@ -126,10 +150,13 @@ withdraw.
 
 Edit `configs/live/authorization.yaml` on the server:
 
+Already set by the owner on 2026-11-02 (UD-22): $250 cap and 42 paper cycles. What remains
+is the **acknowledgement in your own words**, with a version increment:
+
 ```yaml
-version: 2                       # increment on every change
+version: 3                       # increment on every change
 max_capital_usd: {value: 250, status: approved, ref: UD-22, approved_by: <your name>, approved_on: "YYYY-MM-DD"}
-min_paper_cycles_before_live: {value: 6, status: approved, ref: UD-22, approved_by: <your name>, approved_on: "YYYY-MM-DD"}
+min_paper_cycles_before_live: {value: 42, status: approved, ref: UD-22, approved_by: <your name>, approved_on: "YYYY-MM-DD"}
 acknowledgement:
   acknowledged_by: <your name>
   acknowledged_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
@@ -181,6 +208,20 @@ unexpected error. Investigate, fix, then disengage the kill switch.
 Any edit to the profile, risk profile, eligibility, or authorization requires a **version
 increment**. A running session detects the change and halts (kill switch). Then:
 re-run `profile activate` for the environment, disengage the kill switch, restart the service.
+
+## 8a. Updating the code
+
+```bash
+docker compose run --rm cli killswitch engage --reason "update"   # positions and stops stay
+git pull
+docker compose build
+docker compose up -d paper            # or: docker compose --profile live up -d live
+docker compose run --rm cli session status
+docker compose run --rm cli killswitch disengage --reason "update done"
+```
+
+If the update changed a profile, risk, eligibility, or authorization file, re-run
+`profile activate` first (section 8). Read `CHANGELOG.md` before updating a live bot.
 
 ## 9. Emergency without the server
 

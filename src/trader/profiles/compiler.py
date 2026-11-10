@@ -202,6 +202,24 @@ def compile_bundle(
                 f"{risk.version} != requested {rs.risk_profile_version}"
             )
             risk = None
+        if risk is not None and risk.risk_profile_id != rs.risk_profile_id:
+            errors.append(
+                f"{E.RISK_PROFILE_NOT_FOUND.value} [PV-04]: {rp_path.name} declares "
+                f"{risk.risk_profile_id!r}, not {rs.risk_profile_id!r}"
+            )
+            risk = None
+        # Reason: D-06 generalized (ADR-024): any profile that demands explicit selection
+        # (Aggressive and every owner-built profile) needs the owner's acknowledgement.
+        if (
+            risk is not None
+            and risk.selection.explicit_selection_required
+            and rs.aggressive_acknowledgement is None
+            and rs.risk_profile_id != "aggressive"  # PV-03 already reports this case
+        ):
+            errors.append(
+                f"{E.AGGRESSIVE_NOT_ACKNOWLEDGED.value} [PV-03]: {rs.risk_profile_id} requires "
+                "explicit selection with an owner acknowledgement"
+            )
         if risk is not None:
             errors.extend(check_intraday(profile, risk))
             _base_effective("risk", risk, effective, refs)
@@ -229,6 +247,13 @@ def compile_bundle(
     if environment == Environment.LIVE:
         live, hashes["live"] = apply_live_authorization(
             configs_root, profile, st, effective, refs, errors
+        )
+    if environment == Environment.LIVE and costs.get("order_style", "market") != "market":
+        # Reason: limit orders exist only in the simulator; the Kraken adapter places market
+        # orders and stops. Fail closed instead of sending an untested order type.
+        errors.append(
+            f"{E.LIVE_NOT_AUTHORIZED.value}: order_style "
+            f"{costs.get('order_style')} is not supported for live trading yet"
         )
     tiers = _tiers_in_scope(profile, registry)
     blockers = find_blockers(required_fields(environment, tiers), effective, refs)

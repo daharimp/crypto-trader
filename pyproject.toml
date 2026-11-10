@@ -1,7 +1,14 @@
 [project]
 name = "ai-crypto-trader"
 version = "0.1.0"
-description = "AI-assisted crypto paper-trading research system (simulated funds only)."
+description = "Risk-first crypto trading bot: paper trading by default, gated live spot trading on Kraken."
+license = {file = "LICENSE"}
+authors = [{name = "Dahari Morgan-Parker"}]
+classifiers = [
+  # Reason: proprietary code; this classifier makes PyPI refuse an accidental upload.
+  "Private :: Do Not Upload",
+  "Programming Language :: Python :: 3",
+]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem or exposed API key
+    url: https://github.com/daharimp/crypto-trader/security/advisories/new
+    about: Report privately. Never post keys or security details in an issue.
+  - name: Operating the bot (setup, paper, live, emergencies)
+    url: https://github.com/daharimp/crypto-trader/blob/main/docs/operations/RUNBOOK.md
+    about: Step-by-step runbook.

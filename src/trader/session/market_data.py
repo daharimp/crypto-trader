@@ -11,6 +11,7 @@ import pandas as pd
 
 from trader.common.hashing import sha256_hex
 from trader.data.frames import COLUMNS, canonical_text, frame_to_candles
+from trader.data.providers.ccxt_public import apply_proxy_env
 from trader.data.quality import run_quality_checks
 from trader.domain.candles import Candle
 from trader.domain.market import DatasetManifest, SourceRef
@@ -43,7 +44,8 @@ def make_kraken_client(api_key: str | None = None, api_secret: str | None = None
         ccxt = importlib.import_module("ccxt")
     except ModuleNotFoundError as exc:
         raise MarketDataError("ccxt is not installed: run `uv sync --extra ccxt`") from exc
-    client = ccxt.kraken({"enableRateLimit": True})
+    # Reason: ccxt ignores standard proxy variables; honour them for servers behind a proxy.
+    client = apply_proxy_env(ccxt.kraken({"enableRateLimit": True}))
     if api_key and api_secret:
         # Reason: credentials are set as attributes, never written to config or logs.
         client.apiKey, client.secret = api_key, api_secret

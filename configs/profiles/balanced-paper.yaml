@@ -4,7 +4,7 @@
 schema_version: "1.0.0"
 kind: TradingProfile
 profile_id: balanced-paper
-version: 3
+version: 4
 status: active                    # owner, 2026-11-01: paper and live (ADR-023)
 owner: Dahari Morgan-Parker
 description: Initial Balanced paper-trading profile for the V1 vertical slice.
@@ -27,9 +27,12 @@ universe:
   quote_currency: USD
   allowed_tiers: [core, major, speculative]   # Major and Speculative empty until UD-06 and UD-18
   core_assets: [BTC, ETH]                      # D-26
-  manual_allowlist: []                         # D-24 (none nominated yet)
+  manual_allowlist:                            # D-24; owner nominations, 2026-11-02 (UD-06 B)
+    - {asset_id: SOL, nominated_by: Dahari Morgan-Parker, nominated_at_utc: "2026-11-02T00:00:00Z", note: "Major"}
+    - {asset_id: XRP, nominated_by: Dahari Morgan-Parker, nominated_at_utc: "2026-11-02T00:00:00Z", note: "Major"}
+    - {asset_id: SUI, nominated_by: Dahari Morgan-Parker, nominated_at_utc: "2026-11-02T00:00:00Z", note: "Speculative"}
   disallowed_assets: []
-  instruments_in_scope: [BTC-USD, ETH-USD]     # H-05
+  instruments_in_scope: [BTC-USD, ETH-USD, SOL-USD, XRP-USD, SUI-USD]   # H-05 + UD-06 B
   eligibility_required_for_all: true           # D-25
 horizon:
   holding_period: adaptive                     # D-15

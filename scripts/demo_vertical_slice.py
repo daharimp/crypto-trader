@@ -71,12 +71,22 @@ def main() -> None:
     # EXP-2026-001 targets values the owner has now approved, so RP-12 rejects it.
     trader("profile", "validate", PROFILE, "--environment", "backtest",
            "--experiment", EXPERIMENT, expect=2)  # fmt: skip
-    btc = synth("BTC-USD", "42", "30000")
-    eth = synth("ETH-USD", "43", "2000")
+    # The approved universe (UD-06 B): Core BTC/ETH, Major SOL/XRP, Speculative SUI.
+    ids = [
+        synth(i, seed, px)
+        for i, seed, px in (
+            ("BTC-USD", "42", "30000"),
+            ("ETH-USD", "43", "2000"),
+            ("SOL-USD", "44", "90"),
+            ("XRP-USD", "45", "1.2"),
+            ("SUI-USD", "46", "0.9"),
+        )
+    ]
+    btc = ids[0]
     trader("data", "validate", btc)
     trader("data", "list")
     # Evaluation starts after the 365 days of history required by UD-18 (approved).
-    out = trader("backtest", "run", "--profile", PROFILE, "--datasets", f"{btc},{eth}",
+    out = trader("backtest", "run", "--profile", PROFILE, "--datasets", ",".join(ids),
                  "--strategy", "sma_trend", "--timeframe", "4h",
                  "--start", "2024-01-01T00:00:00Z")  # fmt: skip
     m = re.search(r"run_id: (\S+)", out)

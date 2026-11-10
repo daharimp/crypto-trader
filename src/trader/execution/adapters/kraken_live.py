@@ -236,6 +236,8 @@ class KrakenLiveAdapter:
         problems: list[str] = []
         if intent.funds != "real" or intent.environment != Environment.LIVE:
             problems.append(ReasonCode.ADAPTER_NOT_ALLOWED.value)
+        if intent.order_type == OrderType.LIMIT:
+            problems.append(ReasonCode.ADAPTER_NOT_ALLOWED.value)  # not supported live yet
         if intent.instrument_id not in self.symbols:
             problems.append(ReasonCode.ASSET_NOT_SUPPORTED.value)
             return problems

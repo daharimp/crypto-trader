@@ -1,0 +1,49 @@
+9 tests per idea = 3 coins x 3 time periods. 1x, after costs. Holdout sealed.
+venue         idea                                    >0  >B&H  sortino  avg ret worst DD trades
+kraken_spot   squeeze 42 q0.25 stop3.0 L               4     7     0.25     4.9%    21.1%     54
+kraken_spot   sma_stance 50/200 LS                     5     5     0.54    10.9%    64.0%     67
+kraken_spot   sma_stance 50/200 L                      4     6     0.37     9.2%    38.6%     35
+kraken_spot   donchian 120/40 L                        5     5     0.19     3.1%    38.6%     39
+kraken_spot   donchian 120/40 L +trend200              5     5    -0.01    -0.6%    38.8%     61
+jupiter_perps squeeze 42 q0.25 stop3.0 L               4     6    -0.04    -0.0%    22.1%     54
+jupiter_perps rsi_reversion 14 <25 >50 trend200 L      3     6     0.07    -0.0%    13.9%     47
+kraken_spot   donchian 120/40 LS                       5     4    -0.21    -7.2%    57.8%     75
+kraken_spot   rsi_reversion 14 <25 >50 trend200 L      3     5    -0.10    -2.5%    14.4%     47
+jupiter_perps rsi_reversion 14 <30 >60 trend200 L      3     5    -0.16    -3.6%    17.4%     73
+kraken_spot   tsmom 252 L                              3     5    -0.19    -2.1%    45.2%    122
+kraken_spot   squeeze 20 q0.3 stop3.0 L                4     4    -0.23    -4.2%    41.9%     99
+jupiter_perps donchian 20/10 L +trend200               3     5    -0.36    -6.0%    42.3%    139
+kraken_spot   donchian 20/10 L +trend200               3     5    -0.38    -5.8%    45.6%    139
+kraken_spot   donchian 55/20 L                         3     5    -0.42    -7.6%    41.4%     75
+jupiter_perps donchian 120/40 L                        3     5    -0.46    -8.7%    42.9%     39
+kraken_spot   donchian 55/20 L +trend200               3     5    -0.47    -8.4%    44.3%     99
+kraken_spot   squeeze 42 q0.25 stop3.0 LS              4     4    -0.49    -7.1%    40.4%    100
+jupiter_perps donchian 120/40 L +trend200              3     5    -0.51    -9.7%    42.0%     61
+jupiter_perps sma_stance 50/200 L                      3     5    -0.62   -10.3%    46.5%     35
+kraken_spot   rsi_reversion 14 <30 >60 trend200 L      3     4    -0.33    -6.5%    18.1%     73
+kraken_spot   sma_stance 20/50 L                       3     4    -0.40   -10.4%    55.2%    126
+kraken_spot   donchian 120/40 LS +trend200             3     4    -0.40   -11.5%    57.8%    102
+jupiter_perps squeeze 20 q0.2 stop2.0 L                3     4    -0.47    -8.4%    34.8%    111
+kraken_spot   squeeze 20 q0.2 stop2.0 L                3     4    -0.59    -9.9%    38.2%    111
+
+Buy & hold per period (SOL / BTC / ETH):
+  period 1: -12% / +39% / -34%
+  period 2: +5% / +7% / +83%
+  period 3: -41% / -22% / -31%
+
+Top 3 per coin detail:
+
+kraken_spot | squeeze 42 q0.25 stop3.0 L
+  SOL: -9% vs B&H -12% dd 21% n=6 | +13% vs B&H +5% dd 16% n=8 | -1% vs B&H -41% dd 15% n=4
+  BTC: -10% vs B&H +39% dd 21% n=7 | +11% vs B&H +7% dd 8% n=5 | -10% vs B&H -22% dd 14% n=7
+  ETH: +15% vs B&H -34% dd 11% n=5 | +48% vs B&H +83% dd 16% n=6 | -14% vs B&H -31% dd 16% n=6
+
+kraken_spot | sma_stance 50/200 LS
+  SOL: -1% vs B&H -12% dd 58% n=7 | -28% vs B&H +5% dd 64% n=8 | +4% vs B&H -41% dd 32% n=8
+  BTC: +37% vs B&H +39% dd 24% n=7 | -35% vs B&H +7% dd 52% n=12 | +10% vs B&H -22% dd 25% n=6
+  ETH: +77% vs B&H -34% dd 28% n=3 | +47% vs B&H +83% dd 55% n=8 | -13% vs B&H -31% dd 45% n=8
+
+kraken_spot | sma_stance 50/200 L
+  SOL: +9% vs B&H -12% dd 38% n=4 | -8% vs B&H +5% dd 39% n=4 | -14% vs B&H -41% dd 22% n=4
+  BTC: +43% vs B&H +39% dd 20% n=4 | -16% vs B&H +7% dd 29% n=6 | -3% vs B&H -22% dd 16% n=3
+  ETH: +22% vs B&H -34% dd 24% n=2 | +67% vs B&H +83% dd 37% n=4 | -17% vs B&H -31% dd 22% n=4

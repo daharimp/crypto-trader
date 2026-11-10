@@ -56,6 +56,12 @@ extend-exclude = ["docs/spec"]
 select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["B008"]
 
+[tool.ruff.lint.per-file-ignores]
+# Reason: QuantConnect algorithms must use LEAN's `from AlgorithmImports import *` (ADR-026).
+"research/lean/*.py" = ["F403", "F405"]
+# Reason: research scripts print wide result tables.
+"research/*.py" = ["E501"]
+
 [tool.ruff.format]
 # Reason: black-compatible formatting (CLAUDE.md asks for black; ruff format is a drop-in).
 quote-style = "double"

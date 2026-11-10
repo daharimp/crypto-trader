@@ -63,6 +63,15 @@
 - [x] Owner approved venue values 2026-11-10 (v3): 7 bps open/close, liquidation at size/500, 250x venue max; borrow first 0.0016%/h, then changed to the cautious 0.01%/h (v4)
 - [x] Checked: charging the opening fee on top of collateral leaves the same recorded collateral as Jupiter's deposit-minus-fee; no change needed
 
+## 2026-11-10: Strategy research lab (ADR-026, EXP-2026-010)
+
+- [x] `trader.research.lab`: no-look-ahead harness, costs and borrow, 3 walk-forward folds, sealed 180-day holdout; 8 tests
+- [x] Sweep of 40 ideas x SOL/BTC/ETH x Jupiter perps and Kraken spot costs (`research/EXP-2026-010-results.txt`)
+- [x] Holdout opened once for 2 pre-chosen ideas (`research/EXP-2026-010-holdout.txt`)
+- [x] QuantConnect version of the squeeze breakout for owner confirmation (`research/lean/`, not run here)
+- [ ] Owner: run `research/lean/squeeze_breakout_main.py` in QuantConnect's web IDE and share the result
+- [ ] Register the squeeze breakout as a real strategy class with tests, then a spot paper run (BL-022)
+
 ## Discovered During Work
 
 - [ ] 2026-11-10 real-data perps replay (Coinbase 4h, Sep 2024 to Nov 2026, SOL+BTC, sma_stance): at the approved 10x it ends at $259 from $2,500 (92.8% max drawdown, 14 liquidations); long-only $1,255. A leverage sweep shows about breakeven at 1.1x and larger losses at every higher level: the signal has no edge after costs, so leverage only magnifies losses. Perps need better strategies (BL-022 to BL-025) before any forward paper run.

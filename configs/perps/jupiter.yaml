@@ -1,4 +1,4 @@
-# Jupiter Perps, PAPER ONLY (ADR-024). No wallet, no keys, no transactions.
+# Jupiter Perps, PAPER ONLY (ADR-025). No wallet, no keys, no transactions.
 # UD-23: the owner approved starting collateral and every risk limit on 2026-11-02 (v2).
 # Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3); borrow set to the cautious assumption (v4); 10% of equity per position (v5).
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:

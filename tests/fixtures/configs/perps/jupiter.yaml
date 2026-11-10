@@ -1,4 +1,4 @@
-# Jupiter Perps, PAPER ONLY (ADR-024). No wallet, no keys, no transactions.
+# Jupiter Perps, PAPER ONLY (ADR-025). No wallet, no keys, no transactions.
 # Every value below is an UNRESOLVED owner decision (UD-23): perps commands exit 3 until the
 # owner sets each one with status: approved, approved_by, approved_on, and a version bump.
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:

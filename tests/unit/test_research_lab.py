@@ -1,4 +1,4 @@
-"""Research lab: no look-ahead, costs charged, holdout sealed (ADR-026)."""
+"""Research lab: no look-ahead, costs charged, holdout sealed (ADR-027)."""
 
 from __future__ import annotations
 

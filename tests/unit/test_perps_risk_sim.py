@@ -1,4 +1,4 @@
-"""Perps risk checks and the paper account (ADR-024)."""
+"""Perps risk checks and the paper account (ADR-025)."""
 
 from __future__ import annotations
 

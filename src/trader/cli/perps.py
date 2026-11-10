@@ -1,4 +1,4 @@
-"""``trader perps validate|prices|backtest``: Jupiter Perps, paper only (ADR-024)."""
+"""``trader perps validate|prices|backtest``: Jupiter Perps, paper only (ADR-025)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from trader.perps.prices import PriceUnavailableError, fetch_prices
 
 from .common import EXIT_BLOCKED, EXIT_INVALID
 
-app = typer.Typer(help="Jupiter Perps research, paper only (ADR-024).", no_args_is_help=True)
+app = typer.Typer(help="Jupiter Perps research, paper only (ADR-025).", no_args_is_help=True)
 
 
 def _params_or_exit() -> PerpsParams:

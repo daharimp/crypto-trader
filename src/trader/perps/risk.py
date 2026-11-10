@@ -1,4 +1,4 @@
-"""Deterministic perps risk checks and sizing (ADR-024).
+"""Deterministic perps risk checks and sizing (ADR-025).
 
 Strategies only say long, short, or flat. This module alone decides whether a position may
 open and how large it is, from owner-approved limits (UD-23). A rejection lists every

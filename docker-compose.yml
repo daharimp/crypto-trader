@@ -3,7 +3,7 @@
 #   docker compose up -d paper                       # forward paper session
 #   docker compose --profile live up -d live         # real money (only after the runbook gates)
 #   docker compose run --rm cli session status       # any trader command
-#   docker compose up -d dashboard                   # read-only phone dashboard (ADR-025)
+#   docker compose up -d dashboard                   # read-only phone dashboard (ADR-026)
 # Project name keeps these containers separate from other stacks on the same server (n8n).
 name: crypto-trader
 x-trader: &trader

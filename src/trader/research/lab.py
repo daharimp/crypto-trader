@@ -1,4 +1,4 @@
-"""Strategy research lab: fast tests of many ideas on real candles (ADR-026).
+"""Strategy research lab: fast tests of many ideas on real candles (ADR-027).
 
 Research only. It never trades and is never imported by the trading pipeline. Rules:
 

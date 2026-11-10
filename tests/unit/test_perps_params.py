@@ -1,4 +1,4 @@
-"""Perps configuration fails closed (ADR-024, UD-23)."""
+"""Perps configuration fails closed (ADR-025, UD-23)."""
 
 from __future__ import annotations
 

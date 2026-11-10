@@ -25,7 +25,7 @@ ADR-022, ADR-023). UD-14 is resolved as "no intraday trading in V1" and stays `T
 - Docker image build (Docker Hub rate-limited here): the frozen production install was
   verified; build on the server with `docker compose build`.
 
-## Perps (ADR-024), added 2026-11-02
+## Perps (ADR-025), added 2026-11-02
 
 | Activity | Needs | Current behavior |
 |---|---|---|

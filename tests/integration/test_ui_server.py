@@ -1,4 +1,4 @@
-"""Dashboard server: routes, read-only enforcement, error handling (ADR-025)."""
+"""Dashboard server: routes, read-only enforcement, error handling (ADR-026)."""
 
 from __future__ import annotations
 

@@ -6,12 +6,12 @@
 - Add new tasks to `TASK.md` with the date; mark them done when finished; record discoveries
   under "Discovered During Work".
 
-### Non-negotiable safety rules (docs/spec/code-session-handoff.md §0.1, amended by ADR-023 and ADR-024)
+### Non-negotiable safety rules (docs/spec/code-session-handoff.md §0.1, amended by ADR-023 and ADR-025)
 - Paper/simulated by default. Real-money **spot** orders exist only in the gated `live`
   environment through `trader/execution/adapters/kraken_live.py` (ADR-023 lists the gates).
   Never weaken or bypass a live gate, the capital cap, or the adapter parameter allowlist.
 - Never add withdrawals or transfers, in any form. Leverage, shorting, and perpetuals exist
-  only in the paper-only `trader/perps/` package (ADR-024): no wallet keys, no signing, no
+  only in the paper-only `trader/perps/` package (ADR-025): no wallet keys, no signing, no
   transactions, and every perps risk value stays `TBD` until the owner approves it (UD-23).
   Spot code stays long-only with no leverage or margin. API keys are read only from environment variables on the server, never stored in
   the repository, configs, logs, or chat.

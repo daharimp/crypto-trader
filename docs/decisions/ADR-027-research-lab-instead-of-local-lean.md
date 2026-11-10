@@ -1,4 +1,4 @@
-# ADR-026: In-repo research lab; QuantConnect for outside confirmation
+# ADR-027: In-repo research lab; QuantConnect for outside confirmation
 
 - **Status:** Accepted (2026-11-10; owner asked for a QuantConnect research setup)
 - **Context:** The perps baseline loses on real data. The owner asked for QuantConnect to

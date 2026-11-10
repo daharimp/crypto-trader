@@ -1,4 +1,4 @@
-"""T-46 (amended by ADR-023, ADR-024): no withdrawal or transfer paths anywhere; leverage and
+"""T-46 (amended by ADR-023, ADR-025): no withdrawal or transfer paths anywhere; leverage and
 margin exist only in the paper-only ``trader.perps`` package.
 
 Real orders exist only in the Kraken live adapter; credentials are read only in the Kraken
@@ -25,7 +25,7 @@ KEY_PATH = {
     SRC / "trader" / "session" / "factory.py",
     SRC / "trader" / "cli" / "live.py",
 }
-# ADR-024: leverage/margin vocabulary is allowed only inside the paper-only perps package.
+# ADR-025: leverage/margin vocabulary is allowed only inside the paper-only perps package.
 PERPS_PKG = SRC / "trader" / "perps"
 PERPS_ONLY = ("leverage", "margin")
 # Reason: the only permitted occurrences are the always-false *_allowed safety constants.
@@ -115,7 +115,7 @@ def test_t46_safety_constants() -> None:
 
 
 def test_adr024_perps_package_is_paper_only() -> None:
-    """ADR-024: perps never signs, sends transactions, touches keys, or uses ccxt."""
+    """ADR-025: perps never signs, sends transactions, touches keys, or uses ccxt."""
     from trader.perps.params import PerpsConfigFile
 
     assert PerpsConfigFile.model_fields["mode"].annotation.__args__ == ("paper",)  # type: ignore[union-attr]
@@ -152,7 +152,7 @@ def test_adr024_perps_package_is_paper_only() -> None:
 
 
 def test_adr025_dashboard_is_read_only() -> None:
-    """ADR-025: the dashboard package defines no write handler and touches no controls or keys."""
+    """ADR-026: the dashboard package defines no write handler and touches no controls or keys."""
     import re
 
     ui = SRC / "trader" / "ui"

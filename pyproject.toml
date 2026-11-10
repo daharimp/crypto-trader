@@ -57,7 +57,7 @@ select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["B008"]
 
 [tool.ruff.lint.per-file-ignores]
-# Reason: QuantConnect algorithms must use LEAN's `from AlgorithmImports import *` (ADR-026).
+# Reason: QuantConnect algorithms must use LEAN's `from AlgorithmImports import *` (ADR-027).
 "research/lean/*.py" = ["F403", "F405"]
 # Reason: research scripts print wide result tables.
 "research/*.py" = ["E501"]

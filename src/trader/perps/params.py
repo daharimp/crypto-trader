@@ -1,4 +1,4 @@
-"""Perps configuration: venue costs and owner risk limits (ADR-024, UD-23).
+"""Perps configuration: venue costs and owner risk limits (ADR-025, UD-23).
 
 No defaults exist here. Every value is either ``TBD`` (unresolved) or owner-approved with
 an approver and a date. Any unresolved value makes the whole configuration unusable, and

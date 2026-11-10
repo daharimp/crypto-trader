@@ -1,9 +1,9 @@
-"""Paper-only perpetual futures on Jupiter Perps (ADR-024).
+"""Paper-only perpetual futures on Jupiter Perps (ADR-025).
 
 This package is isolated from the spot pipeline: it has its own position model, its own
 deterministic risk checks, and its own paper simulator. It never submits transactions,
 never reads a wallet key, and only reads public prices. Leverage and shorting exist here
-and nowhere else in ``src/`` (T-46 as amended by ADR-024).
+and nowhere else in ``src/`` (T-46 as amended by ADR-025).
 """
 
 from .math import PerpSide

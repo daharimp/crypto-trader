@@ -1,4 +1,4 @@
-"""Read-only dashboard HTTP server (ADR-025). GET only; binds to localhost by default."""
+"""Read-only dashboard HTTP server (ADR-026). GET only; binds to localhost by default."""
 
 from __future__ import annotations
 

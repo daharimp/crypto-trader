@@ -1,4 +1,4 @@
-"""Perps arithmetic (ADR-024)."""
+"""Perps arithmetic (ADR-025)."""
 
 from __future__ import annotations
 

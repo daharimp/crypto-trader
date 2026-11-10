@@ -1,4 +1,4 @@
-"""Paper perps account: simulated opens, closes, borrow fees, and liquidations (ADR-024).
+"""Paper perps account: simulated opens, closes, borrow fees, and liquidations (ADR-025).
 
 Nothing here talks to a venue. Prices are passed in by the caller. Every state change is
 appended to ``events`` so a run can be journaled and replayed.

@@ -1,4 +1,4 @@
-"""Dashboard data builders (ADR-025). No network: fake fetchers and temp state."""
+"""Dashboard data builders (ADR-026). No network: fake fetchers and temp state."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Deployment config stays safe (ADR-023, ADR-025): dashboard private and read-only."""
+"""Deployment config stays safe (ADR-023, ADR-026): dashboard private and read-only."""
 
 from __future__ import annotations
 

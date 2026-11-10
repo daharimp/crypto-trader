@@ -44,7 +44,7 @@
 - [ ] Owner: set UD-22 and the acknowledgement; create API key; run preflight on the server
 - [ ] Owner: allow `api.kraken.com` here so real-data checks and backtests can run
 
-## 2026-11-02: Jupiter Perps, paper only (ADR-024)
+## 2026-11-02: Jupiter Perps, paper only (ADR-025)
 
 - [x] `trader.perps`: math, fail-closed config (UD-23), risk checks and sizing, paper simulator, replay, read-only Jupiter prices
 - [x] CLI `trader perps validate|prices|backtest`; T-46 amended; paper-only safety test
@@ -54,7 +54,7 @@
 - [ ] Download SOL/ETH/BTC candles and run the perps backtest on real data
 - [ ] Forward paper perps session (reuse the BL-027 scheduler) once the backtest is reviewed
 
-## 2026-11-10: Phone dashboard (ADR-025, BL-041/BL-042 first cut)
+## 2026-11-10: Phone dashboard (ADR-026, BL-041/BL-042 first cut)
 
 - [x] `trader ui serve`: read-only server, phone page, TradingView Lightweight Charts bundled
 - [x] Live Kraken candles + SMA 20/50, live Jupiter price, paper perps markers and liquidation line, sessions and kill switch
@@ -63,7 +63,7 @@
 - [x] Owner approved venue values 2026-11-10 (v3): 7 bps open/close, liquidation at size/500, 250x venue max; borrow first 0.0016%/h, then changed to the cautious 0.01%/h (v4)
 - [x] Checked: charging the opening fee on top of collateral leaves the same recorded collateral as Jupiter's deposit-minus-fee; no change needed
 
-## 2026-11-10: Strategy research lab (ADR-026, EXP-2026-010)
+## 2026-11-10: Strategy research lab (ADR-027, EXP-2026-010)
 
 - [x] `trader.research.lab`: no-look-ahead harness, costs and borrow, 3 walk-forward folds, sealed 180-day holdout; 8 tests
 - [x] Sweep of 40 ideas x SOL/BTC/ETH x Jupiter perps and Kraken spot costs (`research/EXP-2026-010-results.txt`)

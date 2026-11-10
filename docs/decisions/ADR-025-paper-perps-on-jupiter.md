@@ -1,4 +1,4 @@
-# ADR-024: Paper-only perpetual futures research on Jupiter Perps
+# ADR-025: Paper-only perpetual futures research on Jupiter Perps
 
 - **Status:** Accepted (owner decision, 2026-11-01; amends ADR-023 "never add leverage,
   margin, shorting, derivatives" for paper research only)

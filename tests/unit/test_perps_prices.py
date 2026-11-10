@@ -1,4 +1,4 @@
-"""Jupiter price parsing fails closed (ADR-024). No network: a fake getter."""
+"""Jupiter price parsing fails closed (ADR-025). No network: a fake getter."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Replay a perps paper account over historical candles (ADR-024).
+"""Replay a perps paper account over historical candles (ADR-025).
 
 Research baseline signal ``sma_stance``: long while SMA(fast) > SMA(slow), short while
 below, flat during warm-up. Decisions use closes up to bar *i*; orders fill at the open of

@@ -1,4 +1,4 @@
-"""Pure Decimal arithmetic for perpetual positions (ADR-024).
+"""Pure Decimal arithmetic for perpetual positions (ADR-025).
 
 The liquidation model mirrors the structure Jupiter Perps documents: a position is
 liquidated when its remaining collateral (collateral + PnL - close fee - borrow fees)

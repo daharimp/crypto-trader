@@ -1,4 +1,4 @@
-"""``trader ui serve``: read-only phone dashboard (ADR-025)."""
+"""``trader ui serve``: read-only phone dashboard (ADR-026)."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from trader.risk.controls import PersistedKillSwitch
 from trader.ui.data import kraken_public_ohlc, status_snapshot
 from trader.ui.server import Sources, serve
 
-app = typer.Typer(help="Read-only dashboard (ADR-025).", no_args_is_help=True)
+app = typer.Typer(help="Read-only dashboard (ADR-026).", no_args_is_help=True)
 
 
 def _kill_switch() -> dict[str, Any] | None:
@@ -44,7 +44,7 @@ def serve_cmd(
         prices,
     )
     # Reason: in Docker the server binds 0.0.0.0 inside the container, while compose
-    # publishes it on the host's 127.0.0.1 only (docker-compose.yml, ADR-025).
+    # publishes it on the host's 127.0.0.1 only (docker-compose.yml, ADR-026).
     in_container = os.environ.get("TRADER_IN_CONTAINER") == "1"
     if host not in ("127.0.0.1", "localhost", "::1") and not in_container:
         typer.echo(

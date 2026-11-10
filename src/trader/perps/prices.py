@@ -1,4 +1,4 @@
-"""Read-only public prices from Jupiter's Price API (ADR-024).
+"""Read-only public prices from Jupiter's Price API (ADR-025).
 
 Only HTTP GET of a public endpoint; no wallet, no signing, no transaction building. The
 response shape is parsed defensively: anything unexpected raises, so callers fail closed.

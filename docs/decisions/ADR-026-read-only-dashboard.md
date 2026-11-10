@@ -1,4 +1,4 @@
-# ADR-025: Read-only phone dashboard with bundled TradingView Lightweight Charts
+# ADR-026: Read-only phone dashboard with bundled TradingView Lightweight Charts
 
 - **Status:** Accepted (owner chose "own dashboard + TradingView charts", phone first, 2026-11-10)
 - **Context:** The owner wants to watch the bot from a phone: prices, the strategy's view,

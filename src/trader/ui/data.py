@@ -1,4 +1,4 @@
-"""Data the dashboard shows, built from saved state and public data (ADR-025).
+"""Data the dashboard shows, built from saved state and public data (ADR-026).
 
 Every function here is read-only. Market data comes through an injectable candle fetcher so
 tests never touch the network.

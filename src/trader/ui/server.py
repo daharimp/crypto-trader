@@ -10,13 +10,13 @@ from importlib import resources
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+from .data import MARKETS, TIMEFRAMES, Fetcher, candles_payload, fetch_bars, perps_payload
+
 # Reason: the only static files served, by exact name; no path from the request reaches disk.
 VENDOR = {
     "/vendor/lightweight-charts-4.2.0.js": ("lightweight-charts-4.2.0.js", "text/javascript"),
     "/vendor/LIGHTWEIGHT-CHARTS-LICENSE.txt": ("LIGHTWEIGHT-CHARTS-LICENSE.txt", "text/plain"),
 }
-
-from .data import MARKETS, TIMEFRAMES, Fetcher, candles_payload, fetch_bars, perps_payload
 
 CACHE_SECONDS = 60
 

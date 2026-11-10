@@ -24,7 +24,7 @@ every gate exists because the cost of a mistake here is real money.
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER" && newgrp docker
 git clone https://github.com/daharimp/crypto-trader.git && cd crypto-trader
-git checkout claude/crypto-trader-mvp   # until it is merged to main
+git checkout crypto-trader   # until it is merged to main
 cp .env.example .env && chmod 600 .env
 mkdir -p data && sudo chown 1000:1000 data
 docker compose build

@@ -82,7 +82,7 @@
 ## 2026-11-10: Deploy on the owner's n8n VPS (plan approved)
 
 - [x] `dashboard` compose service: localhost-only port, read-only mounts, project name `crypto-trader`
-- [x] RUNBOOK: 1b server with n8n, 1c ntfy, 2b Tailscale dashboard; deploy branch `claude/crypto-trader-mvp`
+- [x] RUNBOOK: 1b server with n8n, 1c ntfy, 2b Tailscale dashboard; deploy branch `crypto-trader`
 - [x] `tests/safety/test_deploy_config.py`
 - [ ] Owner: run RUNBOOK S1-S6 on the VPS and share the outputs
 

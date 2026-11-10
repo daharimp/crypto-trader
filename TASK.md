@@ -60,10 +60,13 @@
 - [x] Live Kraken candles + SMA 20/50, live Jupiter price, paper perps markers and liquidation line, sessions and kill switch
 - [x] Tests: data builders, routes, 405 on writes, 400/404/502 handling, read-only safety scan
 - [x] Jupiter docs verified (docs.jup.ag): 0.06% base + >=0.01% price impact per side, liquidation at size/500, 250x max, all remaining collateral lost on liquidation
-- [ ] Owner: approve venue values and pick the borrow-rate assumption, then run the real-data perps backtest
-- [ ] Simulator: deduct the opening fee from collateral (Jupiter's model) instead of from cash
+- [x] Owner approved venue values 2026-11-10 (v3): 7 bps open/close, 0.0016%/h borrow (today's rate), liquidation at size/500, 250x venue max
+- [x] Checked: charging the opening fee on top of collateral leaves the same recorded collateral as Jupiter's deposit-minus-fee; no change needed
 
 ## Discovered During Work
+
+- [ ] 2026-11-10 real-data perps replay (Coinbase 4h, Sep 2024 to Nov 2026, SOL+BTC, sma_stance): at the approved 10x it ends at $259 from $2,500 (92.8% max drawdown, 14 liquidations); long-only $1,255. A leverage sweep shows about breakeven at 1.1x and larger losses at every higher level: the signal has no edge after costs, so leverage only magnifies losses. Perps need better strategies (BL-022 to BL-025) before any forward paper run.
+- [ ] 2026-11-10 real-data spot backtest (balanced profile, sma_trend, BTC+ETH): +5.4% vs +27.2% buy-and-hold BTC; max drawdown 5.3% vs 53.6%; Sortino 1.01 vs 0.71; only 6 closed trades (fails sample-size gate G-09).
 
 - [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).
 - [ ] Real-data evaluation: Kraken OHLC gives only 720 candles; long 4h backtests need Kraken's downloadable history (CSV import).

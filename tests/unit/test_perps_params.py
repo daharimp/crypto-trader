@@ -20,32 +20,22 @@ from trader.perps.params import (
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_shipped_config_has_owner_limits_but_venue_values_block() -> None:
-    """UD-23 (2026-11-02): owner limits approved; venue values still TBD, so exit 3."""
-    with pytest.raises(PerpsConfigUnresolvedError) as exc:
-        load_perps_params(ROOT / "configs")
-    assert exc.value.keys == [
-        "costs.open_fee_bps",
-        "costs.close_fee_bps",
-        "costs.borrow_rate_pct_per_hour",
-        "venue_limits.maintenance_bps",
-        "venue_limits.venue_max_leverage",
-    ]
-    from trader.perps.params import load_perps_file
-
-    cfg = load_perps_file(ROOT / "configs")
-    approved = {k: cfg.risk[k].value for k in RISK_KEYS}
-    assert approved == {
-        "max_leverage": Decimal(25),
-        "target_leverage": Decimal(10),
-        "max_collateral_per_position_pct": Decimal(20),
-        "max_total_size_pct_of_equity": Decimal(400),
-        "min_liquidation_distance_pct": Decimal(8),
-        "max_open_positions": Decimal(3),
-        "daily_loss_limit_pct": Decimal(15),
-    }
-    assert cfg.starting_collateral_usd.value == Decimal(2500) and cfg.version == 2
-    assert all(cfg.risk[k].approved_by == "owner" for k in RISK_KEYS)
+def test_shipped_config_is_fully_approved() -> None:
+    """UD-23: owner limits (2026-11-02) and venue values (2026-11-10) approved; v3."""
+    p = load_perps_params(ROOT / "configs")
+    assert p.version == 3
+    assert (p.open_fee_bps, p.close_fee_bps, p.maintenance_bps) == (
+        Decimal(7),
+        Decimal(7),
+        Decimal(20),
+    )
+    assert p.borrow_rate_pct_per_hour == Decimal("0.0016") and p.venue_max_leverage == Decimal(250)
+    assert (p.max_leverage, p.target_leverage) == (Decimal(25), Decimal(10))
+    assert p.max_collateral_per_position_pct == Decimal(20)
+    assert p.max_total_size_pct_of_equity == Decimal(400)
+    assert p.min_liquidation_distance_pct == Decimal(8) and p.max_open_positions == 3
+    assert p.daily_loss_limit_pct == Decimal(15) and p.starting_collateral_usd == Decimal(2500)
+    assert set(p.markets) == {"SOL", "ETH", "BTC"}
 
 
 def test_frozen_fixture_config_is_all_tbd() -> None:

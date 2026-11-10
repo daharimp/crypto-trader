@@ -1,12 +1,11 @@
 # Jupiter Perps, PAPER ONLY (ADR-024). No wallet, no keys, no transactions.
 # UD-23: the owner approved starting collateral and every risk limit on 2026-11-02 (v2).
-# Venue values (costs, venue_limits) stay TBD until checked against Jupiter's current docs;
-# perps commands exit 3 until those are approved too.
+# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3).
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:
 # https://dev.jup.ag and https://station.jup.ag/guides/perpetual-exchange
 schema_version: "1.0.0"
 kind: PerpsConfig
-version: 2
+version: 3
 venue: jupiter_perps
 mode: paper
 starting_collateral_usd: {value: 2500, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
@@ -16,12 +15,12 @@ markets:
   - {market: ETH, price_mint: 7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs}
   - {market: BTC, price_mint: 3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh}
 costs:
-  open_fee_bps: {value: TBD, status: unresolved, ref: UD-23, note: "venue fee to open, bps of size"}
-  close_fee_bps: {value: TBD, status: unresolved, ref: UD-23, note: "venue fee to close, bps of size"}
-  borrow_rate_pct_per_hour: {value: TBD, status: unresolved, ref: UD-23, note: "Jupiter's rate varies with pool use; pick a conservative assumption"}
+  open_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
+  close_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
+  borrow_rate_pct_per_hour: {value: 0.0016, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "owner chose today's rate (docs.jup.ag example, 2026-11-10); real rate rises with pool use"}
 venue_limits:
-  maintenance_bps: {value: TBD, status: unresolved, ref: UD-23, note: "remaining collateral at which Jupiter liquidates, bps of size"}
-  venue_max_leverage: {value: TBD, status: unresolved, ref: UD-23}
+  maintenance_bps: {value: 20, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "liquidation at size/500 (docs.jup.ag liquidation, 2026-11-10)"}
+  venue_max_leverage: {value: 250, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "trading maximum (docs.jup.ag positions, 2026-11-10)"}
 risk:
   max_leverage: {value: 25, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
   target_leverage: {value: 10, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "leverage used to size every new position"}

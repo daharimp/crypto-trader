@@ -20,6 +20,8 @@ All notable changes are recorded here, following
 ## [Unreleased]
 
 ### Added
+- `trader research snapshot`: live Kraken state per coin compared with what happened after
+  similar states in history, in dollars with 90% ranges (ADR-029).
 - Gated live spot trading on Kraken (ADR-023): `live` environment, live authorization
   (capital cap and paper prerequisite, UD-22), profile activation (`trader profile activate`).
 - Forward paper and live sessions (`trader session run|status|flatten|reset-breaker`) with

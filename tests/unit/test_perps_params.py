@@ -21,15 +21,15 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_shipped_config_is_fully_approved() -> None:
-    """UD-23: owner limits (2026-11-02) and venue values (2026-11-10) approved; v3."""
+    """UD-23: owner limits (2026-11-02) and venue values (2026-11-10) approved; cautious borrow, v4."""
     p = load_perps_params(ROOT / "configs")
-    assert p.version == 3
+    assert p.version == 4
     assert (p.open_fee_bps, p.close_fee_bps, p.maintenance_bps) == (
         Decimal(7),
         Decimal(7),
         Decimal(20),
     )
-    assert p.borrow_rate_pct_per_hour == Decimal("0.0016") and p.venue_max_leverage == Decimal(250)
+    assert p.borrow_rate_pct_per_hour == Decimal("0.01") and p.venue_max_leverage == Decimal(250)
     assert (p.max_leverage, p.target_leverage) == (Decimal(25), Decimal(10))
     assert p.max_collateral_per_position_pct == Decimal(20)
     assert p.max_total_size_pct_of_equity == Decimal(400)

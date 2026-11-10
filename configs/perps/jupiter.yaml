@@ -1,11 +1,11 @@
 # Jupiter Perps, PAPER ONLY (ADR-024). No wallet, no keys, no transactions.
 # UD-23: the owner approved starting collateral and every risk limit on 2026-11-02 (v2).
-# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3).
+# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3); borrow set to the cautious assumption (v4).
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:
 # https://dev.jup.ag and https://station.jup.ag/guides/perpetual-exchange
 schema_version: "1.0.0"
 kind: PerpsConfig
-version: 3
+version: 4
 venue: jupiter_perps
 mode: paper
 starting_collateral_usd: {value: 2500, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
@@ -17,7 +17,7 @@ markets:
 costs:
   open_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
   close_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
-  borrow_rate_pct_per_hour: {value: 0.0016, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "owner chose today's rate (docs.jup.ag example, 2026-11-10); real rate rises with pool use"}
+  borrow_rate_pct_per_hour: {value: 0.01, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "owner chose cautious (about 6x the 0.0016%/h, near past busy periods); $12/day on a $5,000 position"}
 venue_limits:
   maintenance_bps: {value: 20, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "liquidation at size/500 (docs.jup.ag liquidation, 2026-11-10)"}
   venue_max_leverage: {value: 250, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "trading maximum (docs.jup.ag positions, 2026-11-10)"}

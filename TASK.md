@@ -60,7 +60,7 @@
 - [x] Live Kraken candles + SMA 20/50, live Jupiter price, paper perps markers and liquidation line, sessions and kill switch
 - [x] Tests: data builders, routes, 405 on writes, 400/404/502 handling, read-only safety scan
 - [x] Jupiter docs verified (docs.jup.ag): 0.06% base + >=0.01% price impact per side, liquidation at size/500, 250x max, all remaining collateral lost on liquidation
-- [x] Owner approved venue values 2026-11-10 (v3): 7 bps open/close, 0.0016%/h borrow (today's rate), liquidation at size/500, 250x venue max
+- [x] Owner approved venue values 2026-11-10 (v3): 7 bps open/close, liquidation at size/500, 250x venue max; borrow first 0.0016%/h, then changed to the cautious 0.01%/h (v4)
 - [x] Checked: charging the opening fee on top of collateral leaves the same recorded collateral as Jupiter's deposit-minus-fee; no change needed
 
 ## Discovered During Work

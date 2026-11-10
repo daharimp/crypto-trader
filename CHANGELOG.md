@@ -19,6 +19,9 @@ All notable changes are recorded here, following
 
 ## [Unreleased]
 
+- Research: `trader.research.bots` simulates grid, DCA-with-safety-orders, and plain DCA bots
+  on hourly candles with maker/taker fees (ADR-028).
+
 ### Added
 - Gated live spot trading on Kraken (ADR-023): `live` environment, live authorization
   (capital cap and paper prerequisite, UD-22), profile activation (`trader profile activate`).

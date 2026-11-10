@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_shipped_config_is_fully_approved() -> None:
-    """UD-23: owner limits (2026-11-02) and venue values (2026-11-10) approved; cautious borrow, v4."""
+    """UD-23: owner limits (2026-11-02) and venue values (2026-11-10); cautious borrow, v4."""
     p = load_perps_params(ROOT / "configs")
     assert p.version == 4
     assert (p.open_fee_bps, p.close_fee_bps, p.maintenance_bps) == (

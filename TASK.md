@@ -79,6 +79,13 @@
 - [x] Owner set perps collateral to 10% of equity per position (UD-23, perps config v5)
 - [ ] Forward paper run of the best candidate on the server (the only clean test left)
 
+## 2026-11-10: Deploy on the owner's n8n VPS (plan approved)
+
+- [x] `dashboard` compose service: localhost-only port, read-only mounts, project name `crypto-trader`
+- [x] RUNBOOK: 1b server with n8n, 1c ntfy, 2b Tailscale dashboard; deploy branch `claude/crypto-trader-mvp`
+- [x] `tests/safety/test_deploy_config.py`
+- [ ] Owner: run RUNBOOK S1-S6 on the VPS and share the outputs
+
 ## Discovered During Work
 
 - [ ] 2026-11-10 real-data perps replay (Coinbase 4h, Sep 2024 to Nov 2026, SOL+BTC, sma_stance): at the approved 10x it ends at $259 from $2,500 (92.8% max drawdown, 14 liquidations); long-only $1,255. A leverage sweep shows about breakeven at 1.1x and larger losses at every higher level: the signal has no edge after costs, so leverage only magnifies losses. Perps need better strategies (BL-022 to BL-025) before any forward paper run.

@@ -24,7 +24,7 @@ every gate exists because the cost of a mistake here is real money.
 curl -fsSL https://get.docker.com | sudo sh
 sudo usermod -aG docker "$USER" && newgrp docker
 git clone https://github.com/daharimp/crypto-trader.git && cd crypto-trader
-git checkout main            # or the branch you were told to deploy
+git checkout claude/crypto-trader-mvp   # until it is merged to main
 cp .env.example .env && chmod 600 .env
 mkdir -p data && sudo chown 1000:1000 data
 docker compose build
@@ -35,12 +35,38 @@ Check: `version` prints the safety statement.
 
 Optional alerts: put `ALERT_WEBHOOK_URL=https://ntfy.sh/<your-topic>` in `.env`.
 
+## 1b. Server that already runs n8n (or other apps)
+
+The bot runs beside n8n without touching it: its own folder, its own compose project
+(`crypto-trader`), no shared ports or volumes. Check the server first:
+
+```bash
+uname -a; lsb_release -a; free -h; df -h /
+docker --version; docker compose version
+docker ps --format '{{.Names}}  {{.Ports}}'
+```
+
+Need: Linux, at least 1 GB RAM free with n8n running, 5 GB disk free, Docker with compose v2,
+and nothing already using port 8787. If Docker is already installed for n8n, **skip the
+`get.docker.com` line** in step 1 and do the rest. Never run `docker compose down` from the
+n8n folder for the bot, or from the bot folder for n8n.
+
+## 1c. Phone alerts with ntfy
+
+Install the free **ntfy** app, subscribe to a long random topic name (it acts as a password),
+then on the server:
+
+```bash
+nano .env      # ALERT_WEBHOOK_URL=https://ntfy.sh/<your-topic>   ALERT_WEBHOOK_KIND=ntfy
+curl -d "trader alert test" "ntfy.sh/<your-topic>"     # should arrive on the phone
+```
+
 ## 2. Start paper trading on live Kraken prices (starts the track record)
 
 ```bash
 docker compose run --rm cli profile activate configs/profiles/balanced-paper.yaml \
   --environment paper --reason "start paper track record"
-docker compose up -d paper
+docker compose up -d paper dashboard
 docker compose logs -f paper        # Ctrl-C to stop watching; the session keeps running
 docker compose run --rm cli session status
 ```
@@ -48,6 +74,22 @@ docker compose run --rm cli session status
 Check: `session status` shows a `last bar` that advances every 4 hours (00, 04, 08, 12, 16,
 20 UTC, about 2 minutes after the hour). Each completed bar counts toward the paper track
 record that live trading requires.
+
+## 2b. Dashboard on your phone with Tailscale
+
+The dashboard is read-only and listens on the server's `127.0.0.1:8787` only. Tailscale makes
+it reachable from your own devices and nobody else's.
+
+```bash
+docker compose up -d dashboard
+curl -s http://127.0.0.1:8787/api/status          # JSON means it is running
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up                                  # log in with the same account as your phone
+sudo tailscale serve --bg 8787                     # prints https://<server>.<tailnet>.ts.net
+```
+
+Install Tailscale on the phone, sign in with the same account, and open the printed address.
+To stop sharing: `sudo tailscale serve reset`.
 
 ## 3. Create the Kraken API key (owner, on kraken.com)
 

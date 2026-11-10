@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import typer
@@ -42,7 +43,10 @@ def serve_cmd(
         load_perps_params,
         prices,
     )
-    if host not in ("127.0.0.1", "localhost", "::1"):
+    # Reason: in Docker the server binds 0.0.0.0 inside the container, while compose
+    # publishes it on the host's 127.0.0.1 only (docker-compose.yml, ADR-025).
+    in_container = os.environ.get("TRADER_IN_CONTAINER") == "1"
+    if host not in ("127.0.0.1", "localhost", "::1") and not in_container:
         typer.echo(
             "warning: serving beyond this machine; put it behind a VPN or SSH tunnel", err=True
         )

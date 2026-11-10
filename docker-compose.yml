@@ -3,6 +3,9 @@
 #   docker compose up -d paper                       # forward paper session
 #   docker compose --profile live up -d live         # real money (only after the runbook gates)
 #   docker compose run --rm cli session status       # any trader command
+#   docker compose up -d dashboard                   # read-only phone dashboard (ADR-025)
+# Project name keeps these containers separate from other stacks on the same server (n8n).
+name: crypto-trader
 x-trader: &trader
   build: .
   env_file: .env
@@ -26,6 +29,15 @@ services:
     profiles: ["live"]  # never starts unless explicitly requested with --profile live
     command: ["session", "run", "--profile", "configs/profiles/balanced-paper.yaml",
               "--environment", "live"]
+
+  dashboard:
+    <<: *trader
+    command: ["ui", "serve", "--host", "0.0.0.0", "--port", "8787"]
+    # Reason: published on the server's localhost only; Tailscale serves it to your devices.
+    ports: ["127.0.0.1:8787:8787"]
+    volumes:
+      - ./data:/app/data:ro
+      - ./configs:/app/configs:ro
 
   cli:
     <<: *trader

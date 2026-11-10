@@ -5,7 +5,8 @@ ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     TRADER_DATA_DIR=/app/data \
-    TRADER_CONFIGS_DIR=/app/configs
+    TRADER_CONFIGS_DIR=/app/configs \
+    TRADER_IN_CONTAINER=1
 
 RUN pip install --no-cache-dir "uv>=0.5,<1" && useradd --create-home --uid 1000 trader
 WORKDIR /app

@@ -54,6 +54,15 @@
 - [ ] Download SOL/ETH/BTC candles and run the perps backtest on real data
 - [ ] Forward paper perps session (reuse the BL-027 scheduler) once the backtest is reviewed
 
+## 2026-11-10: Phone dashboard (ADR-025, BL-041/BL-042 first cut)
+
+- [x] `trader ui serve`: read-only server, phone page, TradingView Lightweight Charts bundled
+- [x] Live Kraken candles + SMA 20/50, live Jupiter price, paper perps markers and liquidation line, sessions and kill switch
+- [x] Tests: data builders, routes, 405 on writes, 400/404/502 handling, read-only safety scan
+- [x] Jupiter docs verified (docs.jup.ag): 0.06% base + >=0.01% price impact per side, liquidation at size/500, 250x max, all remaining collateral lost on liquidation
+- [ ] Owner: approve venue values and pick the borrow-rate assumption, then run the real-data perps backtest
+- [ ] Simulator: deduct the opening fee from collateral (Jupiter's model) instead of from cash
+
 ## Discovered During Work
 
 - [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).

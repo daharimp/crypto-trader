@@ -149,3 +149,28 @@ def test_adr024_perps_package_is_paper_only() -> None:
             # Reason: the only network call is an HTTP GET with no body (Request without data).
             if isinstance(node, ast.Call) and getattr(node.func, "attr", "") == "Request":
                 assert not any(k.arg in ("data", "method") for k in node.keywords), f.name
+
+
+def test_adr025_dashboard_is_read_only() -> None:
+    """ADR-025: the dashboard package defines no write handler and touches no controls or keys."""
+    import re
+
+    ui = SRC / "trader" / "ui"
+    assert "do_GET" in (ui / "server.py").read_text()
+    words = (
+        "engage(",
+        "disengage(",
+        "flatten",
+        "reset_breaker",
+        "create_order",
+        "apiKey",
+        "secret",
+        "write_text",
+        "unlink",
+    )
+    for f in ui.rglob("*.py"):
+        text = f.read_text()
+        for word in words:
+            assert word not in text, f"{f.name}: {word}"
+        # Reason: the builtin open() could write files; urlopen() is a read-only GET here.
+        assert not re.search(r"(?<![\w.])open\(", text), f"{f.name}: builtin open("

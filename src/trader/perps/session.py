@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from .backtest import Bar, sma_stance
-from .math import PerpSide
+from .math import PerpSide, typical_daily_move
 from .params import PerpsParams
 from .simulator import PaperPerpsAccount, PerpPosition
 
@@ -108,8 +108,9 @@ def describe(event: dict[str, Any]) -> str:
     kind, m, side = event["event"], event.get("market"), event.get("side")
     if kind == "OPENED":
         return (
-            f"opened {side} {m}: ${event['size_usd']} position on ${event['collateral_usd']} "
-            f"collateral at {event['entry']}; liquidation near {event['liquidation_price']}"
+            f"opened {side} {m} at {event.get('leverage', '?')}x: ${event['size_usd']} position "
+            f"on ${event['collateral_usd']} collateral at {event['entry']}; "
+            f"liquidation near {event['liquidation_price']}"
         )
     if kind == "CLOSED":
         return (
@@ -286,8 +287,14 @@ class PerpsSession:
             }
             if len(fills) == len(bars):
                 acct.halted = self.halted()
+                per_day = round(timedelta(days=1) / step)
                 for m in bars:
                     closes = [b.close for b in bars[m] if b.open_time_utc <= t]
+                    move = typical_daily_move(closes, per_day)
+                    if move is None:
+                        acct.daily_moves.pop(m, None)
+                    else:
+                        acct.daily_moves[m] = move
                     acct.apply_signal(m, self.signal(closes), fills, now if newest else closes_at)
                 equity = acct.equity(fills)
                 peak = max(Decimal(self.meta["peak_equity_usd"]), equity)

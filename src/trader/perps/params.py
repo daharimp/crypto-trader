@@ -98,6 +98,12 @@ class PerpsParams:
     min_liquidation_distance_pct: Decimal
     max_open_positions: int
     daily_loss_limit_pct: Decimal
+    # Optional (ADR-032): when set, each new position's leverage is assessed from the
+    # market's recent volatility, with ``target_leverage`` as the ceiling.
+    liquidation_buffer_daily_moves: Decimal | None = None
+
+
+BUFFER_KEY = "liquidation_buffer_daily_moves"
 
 
 class PerpsConfigUnresolvedError(Exception):
@@ -160,6 +166,15 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
                 refs.add(pv.ref if pv else "UD-23")
             else:
                 values[k] = Decimal(pv.value)
+    buffer = cfg.risk.get(BUFFER_KEY)
+    if buffer is not None:
+        if buffer.value == "TBD":
+            missing.append(f"risk.{BUFFER_KEY}")
+            refs.add(buffer.ref)
+        elif Decimal(buffer.value) <= 0:
+            raise ValueError(f"risk.{BUFFER_KEY} must be positive")
+        else:
+            values[BUFFER_KEY] = Decimal(buffer.value)
     start = cfg.starting_collateral_usd
     if start.value == "TBD":
         missing.append("starting_collateral_usd")

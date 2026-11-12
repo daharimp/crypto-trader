@@ -123,6 +123,14 @@
 - [x] 8 published-rule trials x BTC/ETH/SOL (5-10 years) at approved perps costs and a no-borrow bound (`research/EXP-2026-013-results.txt`)
 - [ ] Replace the borrow assumption with real historical perps funding rates and re-run the same trials
 
+## 2026-11-12: Margin and perps focus (owner decision UD-24)
+
+- [x] Forward paper perps session, long and short on live prices (ADR-031)
+- [ ] Owner: start it on the server (`docker compose up -d perps`)
+- [ ] Per-market venue values so HYPE (Jupiter beta market) can be added; needs the owner's funding-rate assumption and HYPE opening leverage
+- [ ] Better two-sided signals with evidence (separate session: "Addressing trading strategy")
+- [ ] Show the perps paper session on the dashboard
+
 ## 2026-11-10: EXP-2026-012 retail bot styles (owner: test before choosing Cryptohopper/Pionex)
 
 - [x] Grid, DCA-bot, and plain-DCA simulators on hourly candles (ADR-028, PR #3)

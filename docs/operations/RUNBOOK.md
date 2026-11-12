@@ -115,6 +115,23 @@ sudo tailscale serve --bg 8787                     # prints https://<server>.<ta
 Install Tailscale on the phone, sign in with the same account, and open the printed address.
 To stop sharing: `sudo tailscale serve reset`.
 
+## 2c. Leverage practice: paper perps, long and short (ADR-031)
+
+This runs beside the spot paper bot with its own simulated $2,500. It goes long in uptrends
+and short in downtrends at the leverage limits you approved (UD-23). It has no keys and
+cannot place a real order.
+
+```bash
+docker compose up -d perps
+docker compose run --rm cli perps paper status
+docker compose logs --tail 20 perps
+```
+
+Check: `status` shows equity, any open long or short positions, and `bars processed` rising
+by one every 4 hours. Opens, closes, and liquidations arrive as phone alerts starting with
+`[perps paper]`. The emergency stop (`trader killswitch engage`) blocks new paper positions
+here too.
+
 ## 3. Create the Kraken API key (owner, on kraken.com)
 
 Kraken Pro → Settings → API → Create key. Grant **only**:

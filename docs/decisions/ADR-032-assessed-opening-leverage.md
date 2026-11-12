@@ -27,3 +27,10 @@
   window reacts slowly to a sudden change in volatility. Whether assessed leverage beats
   fixed leverage in dollars is not yet tested on history; that belongs to the strategy
   research track.
+- **Amendment, owner decision UD-27 (2026-11-12):** "i also want it to have the option to go
+  higher than 12x when a good position is there." The ceiling (`target_leverage`) is raised to
+  **25x** and `min_liquidation_distance_pct` lowered from 8 to **3.5** (perps config v8), so a
+  calm market can open above 12x: about 1.6% a day opens near 15x, 1.2% near 20x, under 0.9%
+  at 25x. The total-size cap (400% of equity) is unchanged, so one 25x position (250% of
+  equity) blocks a second one of that size. "Good position" here means a calm market only;
+  raising leverage on signal strength is a research question, not built.

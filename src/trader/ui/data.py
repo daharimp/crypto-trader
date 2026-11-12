@@ -19,12 +19,25 @@ from trader.features.pipeline import sma
 from trader.perps.backtest import Bar, run_perps_backtest
 from trader.perps.params import PerpsConfigUnresolvedError, PerpsParams
 
-# Reason: chart markets are fixed; a query parameter can never pick an arbitrary symbol.
-MARKETS = {"BTC": "BTC/USD", "ETH": "ETH/USD", "SOL": "SOL/USD"}
+# Reason: chart markets are fixed (the trading universe); a query parameter can never pick
+# an arbitrary symbol.
+MARKETS = {
+    "BTC": "BTC/USD",
+    "ETH": "ETH/USD",
+    "SOL": "SOL/USD",
+    "XRP": "XRP/USD",
+    "SUI": "SUI/USD",
+}
 TIMEFRAMES = ("1h", "4h", "1d")
 Fetcher = Callable[[str, str], list[list[float]]]
 KRAKEN_OHLC = "https://api.kraken.com/0/public/OHLC"
-_KRAKEN_PAIRS = {"BTC/USD": "XBTUSD", "ETH/USD": "ETHUSD", "SOL/USD": "SOLUSD"}
+_KRAKEN_PAIRS = {
+    "BTC/USD": "XBTUSD",
+    "ETH/USD": "ETHUSD",
+    "SOL/USD": "SOLUSD",
+    "XRP/USD": "XRPUSD",
+    "SUI/USD": "SUIUSD",
+}
 _MINUTES = {"1h": 60, "4h": 240, "1d": 1440}
 
 
@@ -33,7 +46,7 @@ def kraken_public_ohlc(symbol: str, timeframe: str) -> list[list[float]]:
     Public Kraken candles over plain HTTPS GET (no keys, no ccxt).
 
     Args:
-        symbol (str): ``BTC/USD``, ``ETH/USD`` or ``SOL/USD``.
+        symbol (str): A value of ``MARKETS``, e.g. ``BTC/USD``.
         timeframe (str): ``1h``, ``4h`` or ``1d``.
 
     Returns:
@@ -61,16 +74,27 @@ def _num(x: Any) -> float:
     return float(Decimal(str(x)))
 
 
-def status_snapshot(data_root: Path, kill_switch: dict[str, Any] | None) -> dict[str, Any]:
+def _opt(x: Any) -> float | None:
+    """``_num`` that passes None through."""
+    return None if x is None else _num(x)
+
+
+def status_snapshot(
+    data_root: Path,
+    kill_switch: dict[str, Any] | None,
+    live_gate: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Summarize every saved forward session for the dashboard.
 
     Args:
         data_root (Path): Data directory holding ``state/session-*.json``.
         kill_switch (dict[str, Any] | None): Kill-switch state, or None if never set.
+        live_gate (dict[str, Any] | None): Owner-approved live requirements to display
+            (paper cycles needed, capital cap), or None when unknown.
 
     Returns:
-        dict[str, Any]: ``{kill_switch, sessions}``.
+        dict[str, Any]: ``{kill_switch, sessions, live_gate}``.
     """
     sessions: list[dict[str, Any]] = []
     for f in sorted((data_root / "state").glob("session-*.json")):
@@ -83,6 +107,13 @@ def status_snapshot(data_root: Path, kill_switch: dict[str, Any] | None) -> dict
         sessions.append(
             {
                 "name": f.stem,
+                "environment": meta.get("environment"),
+                # Reason: cycles this session has run; the live gate counts completed paper
+                # cycles itself (`trader live preflight`), so this is a progress display only.
+                "cycles": int(d.get("ids", {}).get("cyc", 0)),
+                "day_start_usd": _opt(d.get("loss", {}).get("day_start")),
+                "high_water_usd": _opt(d.get("loss", {}).get("hwm")),
+                "fees_usd": _opt(led.get("fees_usd")),
                 "last_bar": meta.get("last_t1"),
                 "last_cycle_utc": meta.get("last_cycle_wall_utc"),
                 "equity_usd": _num(meta.get("equity_usd", led["cash"])),
@@ -111,7 +142,7 @@ def status_snapshot(data_root: Path, kill_switch: dict[str, Any] | None) -> dict
                 "stale_cycles": meta.get("stale_cycles", 0),
             }
         )
-    return {"kill_switch": kill_switch, "sessions": sessions}
+    return {"kill_switch": kill_switch, "sessions": sessions, "live_gate": live_gate}
 
 
 def fetch_bars(fetch: Fetcher, market: str, timeframe: str) -> list[Bar]:
@@ -120,7 +151,7 @@ def fetch_bars(fetch: Fetcher, market: str, timeframe: str) -> list[Bar]:
 
     Args:
         fetch (Fetcher): ``(symbol, timeframe) -> [[ms, o, h, l, c, v], ...]``.
-        market (str): ``BTC``, ``ETH`` or ``SOL``.
+        market (str): A key of ``MARKETS``.
         timeframe (str): ``1h``, ``4h`` or ``1d``.
 
     Returns:
@@ -225,3 +256,43 @@ def perps_payload(
         "rejections": r.rejections,
         "markers": markers,
     }
+
+
+def watch_payload(
+    bars: dict[str, list[Bar]], last: dict[str, float], fast: int = 20, slow: int = 50
+) -> list[dict[str, Any]]:
+    """
+    One row per market for the watchlist: price, 24h change, trend, and a 7-day sparkline.
+
+    ``trend`` is the stance the ``sma_trend`` strategy reads on 4h bars: ``up`` while the
+    fast average is above the slow one, else ``down``; None until both averages exist.
+
+    Args:
+        bars (dict[str, list[Bar]]): Complete 4h bars per market, oldest first.
+        last (dict[str, float]): Latest traded price per market (the forming candle's close).
+        fast (int): Fast SMA period.
+        slow (int): Slow SMA period.
+
+    Returns:
+        list[dict[str, Any]]: Rows in ``MARKETS`` order; a market without bars is skipped.
+    """
+    rows: list[dict[str, Any]] = []
+    for market in MARKETS:
+        series = bars.get(market) or []
+        if not series:
+            continue
+        closes = [b.close for b in series]
+        price = last.get(market, _num(closes[-1]))
+        # Reason: six 4h bars back is the close 24 hours before the latest complete bar.
+        day_ago = _num(closes[-7]) if len(closes) >= 7 else None
+        f, s = sma(closes, fast), sma(closes, slow)
+        rows.append(
+            {
+                "market": market,
+                "price": price,
+                "change_24h_pct": None if not day_ago else (price / day_ago - 1) * 100,
+                "trend": None if f is None or s is None else ("up" if f > s else "down"),
+                "spark": [_num(c) for c in closes[-42:]] + [price],
+            }
+        )
+    return rows

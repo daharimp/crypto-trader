@@ -23,8 +23,16 @@ def base() -> Iterator[str]:
         calls.append(sym)
         return _rows(120)
 
+    def fetch_some(sym: str, tf: str) -> list[list[float]]:
+        if sym == "SUI/USD":
+            raise OSError("one market down")
+        return fetch(sym, tf)
+
     src = Sources(
-        lambda: {"kill_switch": None, "sessions": []}, fetch, fixture_params, lambda: {"SOL": 85.5}
+        lambda: {"kill_switch": None, "sessions": []},
+        fetch_some,
+        fixture_params,
+        lambda: {"SOL": 85.5},
     )
     httpd = serve(src, "127.0.0.1", 0)
     t = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -49,6 +57,31 @@ def test_page_and_vendor_library_served(base: str) -> None:
     assert _get(base + "/vendor/LIGHTWEIGHT-CHARTS-LICENSE.txt")[0] == 200
 
 
+@pytest.mark.parametrize(
+    ("path", "ctype", "marker"),
+    [
+        ("/app.css", "text/css", b".desk"),
+        ("/desk.js", "text/javascript", b"window.Desk"),
+        ("/widgets.js", "text/javascript", b"/api/watch"),
+    ],
+)
+def test_workspace_assets_served_by_exact_name(
+    base: str, path: str, ctype: str, marker: bytes
+) -> None:
+    with urllib.request.urlopen(base + path, timeout=10) as r:
+        assert r.status == 200 and r.headers["Content-Type"].startswith(ctype)
+        assert marker in r.read()
+    page = _get(base + "/")[1]
+    assert path.encode() in page
+
+
+def test_watch_lists_markets_and_survives_one_failing(base: str) -> None:
+    rows = json.loads(_get(base + "/api/watch")[1])
+    assert [r["market"] for r in rows] == ["BTC", "ETH", "SOL", "XRP"]  # SUI's fetch failed
+    assert all(r["trend"] in ("up", "down") and len(r["spark"]) > 2 for r in rows)
+    assert _get(base + "/api/candles?market=XRP&timeframe=4h")[0] == 200
+
+
 def test_api_routes(base: str) -> None:
     assert json.loads(_get(base + "/api/status")[1]) == {"kill_switch": None, "sessions": []}
     assert json.loads(_get(base + "/api/prices")[1]) == {"SOL": 85.5}
@@ -63,7 +96,10 @@ def test_bad_inputs_rejected(base: str, path: str) -> None:
     assert _get(base + path)[0] == 400
 
 
-@pytest.mark.parametrize("path", ["/nope", "/vendor/../server.py", "/static/index.html"])
+@pytest.mark.parametrize(
+    "path",
+    ["/nope", "/vendor/../server.py", "/static/index.html", "/app.js", "/static/app.css"],
+)
 def test_unknown_paths_404(base: str, path: str) -> None:
     assert _get(base + path)[0] == 404
 

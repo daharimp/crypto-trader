@@ -8,8 +8,16 @@ from pathlib import Path
 import pytest
 
 from tests.perps_support import fixture_params
+from trader.perps.backtest import Bar
 from trader.perps.params import PerpsConfigUnresolvedError
-from trader.ui.data import candles_payload, fetch_bars, perps_payload, status_snapshot
+from trader.ui.data import (
+    MARKETS,
+    candles_payload,
+    fetch_bars,
+    perps_payload,
+    status_snapshot,
+    watch_payload,
+)
 
 
 def _rows(n: int, start: float = 100.0) -> list[list[float]]:
@@ -103,4 +111,70 @@ def test_status_snapshot_reads_sessions_and_survives_bad_files(tmp_path: Path) -
 
 
 def test_status_snapshot_empty(tmp_path: Path) -> None:
-    assert status_snapshot(tmp_path, None) == {"kill_switch": None, "sessions": []}
+    assert status_snapshot(tmp_path, None) == {
+        "kill_switch": None,
+        "sessions": [],
+        "live_gate": None,
+    }
+
+
+def test_status_snapshot_reports_progress_fields_and_live_gate(tmp_path: Path) -> None:
+    st = tmp_path / "state"
+    st.mkdir()
+    (st / "session-paper.json").write_text(
+        json.dumps(
+            {
+                "meta": {"environment": "paper", "equity_usd": "2504.6"},
+                "ledger": {"cash": "1890.12", "fees_usd": "6.41", "positions": {}, "trades": []},
+                "ids": {"cyc": 17},
+                "loss": {"day_start": "2498.2", "hwm": "2511.0"},
+            }
+        )
+    )
+    gate = {"min_paper_cycles": 42, "max_capital_usd": 250, "acknowledged": False}
+    out = status_snapshot(tmp_path, None, gate)
+    s = out["sessions"][0]
+    assert out["live_gate"] == gate
+    assert (s["environment"], s["cycles"]) == ("paper", 17)
+    assert (s["day_start_usd"], s["high_water_usd"], s["fees_usd"]) == (2498.2, 2511.0, 6.41)
+
+
+def test_status_snapshot_tolerates_state_without_progress_fields(tmp_path: Path) -> None:
+    st = tmp_path / "state"
+    st.mkdir()
+    (st / "session-old.json").write_text(
+        json.dumps({"meta": {}, "ledger": {"cash": "100", "positions": {}, "trades": []}})
+    )
+    s = status_snapshot(tmp_path, None)["sessions"][0]
+    assert s["cycles"] == 0 and s["day_start_usd"] is None and s["fees_usd"] is None
+
+
+def _bars(n: int) -> list[Bar]:
+    return fetch_bars(lambda sym, tf: _rows(n + 1), "BTC", "4h")
+
+
+def test_markets_cover_the_trading_universe() -> None:
+    assert list(MARKETS) == ["BTC", "ETH", "SOL", "XRP", "SUI"]
+    assert len(fetch_bars(lambda sym, tf: _rows(10), "SUI", "4h")) == 9
+
+
+def test_watch_payload_reports_price_change_trend_and_sparkline() -> None:
+    bars = _bars(120)
+    # Reason: _rows rises for 30 bars then falls for 30; bars 90-119 fall, so fast < slow.
+    row = watch_payload({"BTC": bars}, {"BTC": 50.0})[0]
+    assert row["market"] == "BTC" and row["price"] == 50.0
+    assert row["trend"] == "down"
+    assert row["change_24h_pct"] == pytest.approx((50.0 / float(bars[-7].close) - 1) * 100)
+    assert len(row["spark"]) == 43 and row["spark"][-1] == 50.0
+
+
+def test_watch_payload_short_history_has_no_trend_and_uses_last_close() -> None:
+    bars = _bars(5)
+    row = watch_payload({"ETH": bars}, {})[0]
+    assert row["trend"] is None and row["change_24h_pct"] is None
+    assert row["price"] == float(bars[-1].close)
+
+
+def test_watch_payload_skips_markets_without_bars() -> None:
+    assert watch_payload({"BTC": [], "SOL": _bars(60)}, {})[0]["market"] == "SOL"
+    assert watch_payload({}, {}) == []

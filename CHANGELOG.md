@@ -20,6 +20,8 @@ All notable changes are recorded here, following
 ## [Unreleased]
 
 ### Added
+- Dashboard redesigned as a workspace of widgets you can drag to reorder, resize, hide, and
+  open for detail, on phone and computer; all five coins; road-to-live progress (ADR-030).
 - Gated live spot trading on Kraken (ADR-023): `live` environment, live authorization
   (capital cap and paper prerequisite, UD-22), profile activation (`trader profile activate`).
 - Forward paper and live sessions (`trader session run|status|flatten|reset-breaker`) with

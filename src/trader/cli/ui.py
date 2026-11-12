@@ -7,9 +7,10 @@ from typing import Any
 
 import typer
 
-from trader.common.paths import data_root
+from trader.common.paths import configs_root, data_root
 from trader.perps.params import load_perps_file, load_perps_params
 from trader.perps.prices import fetch_prices
+from trader.profiles.loader import ConfigLoadError, load_yaml
 from trader.risk.controls import PersistedKillSwitch
 from trader.ui.data import kraken_public_ohlc, status_snapshot
 from trader.ui.server import Sources, serve
@@ -22,6 +23,25 @@ def _kill_switch() -> dict[str, Any] | None:
     if s is None:
         return None
     return {k: str(v) for k, v in s.model_dump(mode="json").items()}
+
+
+def _live_gate() -> dict[str, Any] | None:
+    """Owner-approved live requirements for display, or None if unreadable or unapproved."""
+    try:
+        raw = load_yaml(configs_root() / "live" / "authorization.yaml")
+    except ConfigLoadError:
+        return None
+    out: dict[str, Any] = {}
+    for key, name in (
+        ("min_paper_cycles_before_live", "min_paper_cycles"),
+        ("max_capital_usd", "max_capital_usd"),
+    ):
+        param = raw.get(key)
+        # Reason: show only owner-approved numbers; TBD or hypothesis values are not displayed.
+        if isinstance(param, dict) and param.get("status") == "approved":
+            out[name] = param.get("value")
+    out["acknowledged"] = raw.get("acknowledgement") is not None
+    return out
 
 
 @app.command("serve")
@@ -38,7 +58,7 @@ def serve_cmd(
         return {k: float(v) for k, v in fetch_prices(markets).items()}
 
     src = Sources(
-        lambda: status_snapshot(data_root(), _kill_switch()),
+        lambda: status_snapshot(data_root(), _kill_switch(), _live_gate()),
         kraken_public_ohlc,
         load_perps_params,
         prices,

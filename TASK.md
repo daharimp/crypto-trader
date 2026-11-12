@@ -117,6 +117,14 @@
 - [x] `tests/safety/test_deploy_config.py`
 - [ ] Owner: run RUNBOOK S1-S6 on the VPS and share the outputs
 
+## 2026-11-12: Margin and perps focus (owner decision UD-24)
+
+- [x] Forward paper perps session, long and short on live prices (ADR-031)
+- [ ] Owner: start it on the server (`docker compose up -d perps`)
+- [ ] Per-market venue values so HYPE (Jupiter beta market) can be added; needs the owner's funding-rate assumption and HYPE opening leverage
+- [ ] Better two-sided signals with evidence (separate session: "Addressing trading strategy")
+- [ ] Show the perps paper session on the dashboard
+
 ## Discovered During Work
 
 - [ ] 2026-11-10 real-data perps replay (Coinbase 4h, Sep 2024 to Nov 2026, SOL+BTC, sma_stance): at the approved 10x it ends at $259 from $2,500 (92.8% max drawdown, 14 liquidations); long-only $1,255. A leverage sweep shows about breakeven at 1.1x and larger losses at every higher level: the signal has no edge after costs, so leverage only magnifies losses. Perps need better strategies (BL-022 to BL-025) before any forward paper run.

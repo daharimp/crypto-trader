@@ -59,3 +59,9 @@ def test_docker_build_has_every_file_package_metadata_needs() -> None:
     needed = {"pyproject.toml", "uv.lock", meta["readme"], meta["license"]["file"]}
     assert needed <= _copied_before_sync()
     assert all((ROOT / f).is_file() for f in needed)
+
+
+def test_perps_service_is_paper_practice_with_no_ports() -> None:
+    perps = _compose()["services"]["perps"]
+    assert perps["command"] == ["perps", "paper", "run"]
+    assert "ports" not in perps and "profiles" not in perps

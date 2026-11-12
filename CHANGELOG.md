@@ -20,6 +20,8 @@ All notable changes are recorded here, following
 ## [Unreleased]
 
 ### Added
+- `trader perps paper run|status` and a `perps` compose service: a forward paper perps
+  session that goes long in uptrends and short in downtrends on live prices (ADR-031).
 - Gated live spot trading on Kraken (ADR-023): `live` environment, live authorization
   (capital cap and paper prerequisite, UD-22), profile activation (`trader profile activate`).
 - Forward paper and live sessions (`trader session run|status|flatten|reset-breaker`) with

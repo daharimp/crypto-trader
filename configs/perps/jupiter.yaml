@@ -1,11 +1,11 @@
 # Jupiter Perps, PAPER ONLY (ADR-025). No wallet, no keys, no transactions.
 # UD-23: the owner approved starting collateral and every risk limit on 2026-11-02 (v2).
-# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3); borrow set to the cautious assumption (v4); 10% of equity per position (v5).
+# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3); borrow set to the cautious assumption (v4); 10% of equity per position (v5); trades open at 12x (UD-25, v6).
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:
 # https://dev.jup.ag and https://station.jup.ag/guides/perpetual-exchange
 schema_version: "1.0.0"
 kind: PerpsConfig
-version: 5
+version: 6
 venue: jupiter_perps
 mode: paper
 starting_collateral_usd: {value: 2500, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
@@ -23,7 +23,7 @@ venue_limits:
   venue_max_leverage: {value: 250, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "trading maximum (docs.jup.ag positions, 2026-11-10)"}
 risk:
   max_leverage: {value: 25, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
-  target_leverage: {value: 10, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "leverage used to size every new position"}
+  target_leverage: {value: 12, status: approved, ref: UD-25, approved_by: owner, approved_on: "2026-11-12", note: "leverage used to size every new position; raised from 10 ('we want to get a little risky'); the highest whole number the 8% liquidation-distance rule allows"}
   max_collateral_per_position_pct: {value: 10, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "% of equity posted per position"}
   max_total_size_pct_of_equity: {value: 400, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "sum of open position sizes as % of equity"}
   min_liquidation_distance_pct: {value: 8, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "refuse opens whose liquidation price is closer than this"}

@@ -21,16 +21,16 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_shipped_config_is_fully_approved() -> None:
-    """UD-23: owner limits, venue values, cautious borrow (v4), 10% per position (v5)."""
+    """UD-23 values (v2-v5) and UD-25: trades open at 12x (v6)."""
     p = load_perps_params(ROOT / "configs")
-    assert p.version == 5
+    assert p.version == 6
     assert (p.open_fee_bps, p.close_fee_bps, p.maintenance_bps) == (
         Decimal(7),
         Decimal(7),
         Decimal(20),
     )
     assert p.borrow_rate_pct_per_hour == Decimal("0.01") and p.venue_max_leverage == Decimal(250)
-    assert (p.max_leverage, p.target_leverage) == (Decimal(25), Decimal(10))
+    assert (p.max_leverage, p.target_leverage) == (Decimal(25), Decimal(12))
     assert p.max_collateral_per_position_pct == Decimal(10)
     assert p.max_total_size_pct_of_equity == Decimal(400)
     assert p.min_liquidation_distance_pct == Decimal(8) and p.max_open_positions == 3
@@ -101,3 +101,21 @@ def test_sizing_rounds_down_to_stay_under_cap() -> None:
     pr = size_open(p, v, "SOL", PerpSide.SHORT, Decimal(100))
     assert pr.collateral_usd == Decimal("199.85")
     assert check_open(p, v, pr).approved
+
+
+def test_shipped_opening_leverage_clears_the_owner_liquidation_rule() -> None:
+    """UD-25: at 12x both sides open about 8.06% from liquidation, above the 8% minimum."""
+    from trader.perps.math import PerpSide
+    from trader.perps.risk import AccountView, check_open, size_open
+
+    p = load_perps_params(ROOT / "configs")
+    equity = p.starting_collateral_usd
+    view = AccountView(equity, equity, equity, frozenset(), Decimal(0), False)
+    for side in PerpSide:
+        proposal = size_open(p, view, "SOL", side, Decimal(100))
+        decision = check_open(p, view, proposal)
+        assert decision.approved, decision.reasons
+        assert proposal.size_usd == proposal.collateral_usd * 12
+        assert abs(proposal.liquidation_price - 100) >= p.min_liquidation_distance_pct
+    # Three such positions stay inside the total-size cap (400% of equity).
+    assert 3 * 12 * p.max_collateral_per_position_pct <= p.max_total_size_pct_of_equity

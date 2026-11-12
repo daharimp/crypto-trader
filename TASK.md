@@ -117,6 +117,12 @@
 - [x] `tests/safety/test_deploy_config.py`
 - [ ] Owner: run RUNBOOK S1-S6 on the VPS and share the outputs
 
+## 2026-11-10: EXP-2026-013 two-sided trend following (owner: ride downtrends too)
+
+- [x] Pre-registered plan committed before results (`research/EXP-2026-013-plan.md`)
+- [x] 8 published-rule trials x BTC/ETH/SOL (5-10 years) at approved perps costs and a no-borrow bound (`research/EXP-2026-013-results.txt`)
+- [ ] Replace the borrow assumption with real historical perps funding rates and re-run the same trials
+
 ## Discovered During Work
 
 - [ ] 2026-11-10 real-data perps replay (Coinbase 4h, Sep 2024 to Nov 2026, SOL+BTC, sma_stance): at the approved 10x it ends at $259 from $2,500 (92.8% max drawdown, 14 liquidations); long-only $1,255. A leverage sweep shows about breakeven at 1.1x and larger losses at every higher level: the signal has no edge after costs, so leverage only magnifies losses. Perps need better strategies (BL-022 to BL-025) before any forward paper run.

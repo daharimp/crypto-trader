@@ -4,6 +4,7 @@
 #   docker compose --profile live up -d live         # real money (only after the runbook gates)
 #   docker compose run --rm cli session status       # any trader command
 #   docker compose up -d dashboard                   # read-only phone dashboard (ADR-026)
+#   docker compose up -d perps                       # paper leverage practice (ADR-031)
 # Project name keeps these containers separate from other stacks on the same server (n8n).
 name: crypto-trader
 x-trader: &trader
@@ -23,6 +24,12 @@ services:
     <<: *trader
     command: ["session", "run", "--profile", "${TRADER_PROFILE:-configs/profiles/balanced-paper.yaml}",
               "--environment", "paper"]
+
+  # Paper-only leverage practice, long and short, on live prices (ADR-031). It has no keys
+  # and cannot place a real order.
+  perps:
+    <<: *trader
+    command: ["perps", "paper", "run"]
 
   live:
     <<: *trader

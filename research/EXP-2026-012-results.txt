@@ -1,0 +1,49 @@
+folds: [('SOL', '2024-10-21', '2025-04-29'), ('SOL', '2025-04-29', '2025-11-05'), ('SOL', '2025-11-05', '2026-05-14'), ('BTC', '2024-10-21', '2025-04-29'), ('BTC', '2025-04-29', '2025-11-05'), ('BTC', '2025-11-05', '2026-05-14'), ('ETH', '2024-10-21', '2025-04-29'), ('ETH', '2025-04-29', '2025-11-05'), ('ETH', '2025-11-05', '2026-05-14')]
+
+=== kraken fees: 9 tests (3 coins x 3 periods), $2,500 start each ===
+idea                               >$0  >B&H   avg end worst end worst DD  avg fee  fills
+BH buy and hold (reference)          4     0     2,479     1,470      66%        -      0
+G1 grid fixed +-25%, 20 lines        5     7     2,472     1,848      40%       66   1829
+G2 grid rebuilt monthly +-15%        2     4     2,201     1,781      53%      282   6842
+G3 grid rebuilt weekly +-8%          0     0     1,558       870      69%      848  22827
+D1 DCA bot 5x2% steps, TP 1.5%       1     4     2,160     1,344      62%      210   1930
+D2 DCA bot 5x4% steps, TP 3%         6     6     2,601     1,793      52%      101    936
+B1 plain weekly DCA                  2     4     2,278     1,777      50%       12    252
+S0 squeeze breakout (control)        4     7     2,621     2,141      21%        -     54
+S1 squeeze, tighter stop 2 ATR       3     6     2,496     2,125      18%        -     65
+S2 squeeze, looser stop 4 ATR        4     7     2,715     2,040      24%        -     46
+
+=== pionex fees: 9 tests (3 coins x 3 periods), $2,500 start each ===
+idea                               >$0  >B&H   avg end worst end worst DD  avg fee  fills
+BH buy and hold (reference)          4     0     2,479     1,470      66%        -      0
+G1 grid fixed +-25%, 20 lines        5     7     2,523     1,886      39%       13   1829
+G2 grid rebuilt monthly +-15%        3     5     2,414     1,965      49%       59   6843
+G3 grid rebuilt weekly +-8%          2     3     2,138     1,408      56%      198  22830
+D1 DCA bot 5x2% steps, TP 1.5%       3     5     2,300     1,396      63%       51   2444
+D2 DCA bot 5x4% steps, TP 3%         6     6     2,631     1,600      51%       21   1036
+B1 plain weekly DCA                  2     4     2,287     1,785      50%        2    252
+S0 squeeze breakout (control)        5     7     2,747     2,247      18%        -     54
+S1 squeeze, tighter stop 2 ATR       6     6     2,643     2,248      15%        -     65
+S2 squeeze, looser stop 4 ATR        6     8     2,823     2,141      21%        -     46
+
+=== Reading (2026-11-10) ===
+Columns: >$0 = tests ending above $2,500; >B&H = tests beating buy-and-hold in the same
+window; avg/worst end = dollars after each ~6-month test; worst DD = largest peak-to-trough
+drop in any test; avg fee = dollars of fees per test (bots only); fills = orders filled.
+Period note: buy-and-hold averaged a small loss ($2,479) with drops up to 66%, so this is
+mostly a falling/sideways sample, which flatters grids and DCA bots that hold cash.
+
+1. Fixed grid (G1, Pionex default style): roughly breakeven ($2,472 Kraken, $2,523 Pionex
+   fees). It beat holding in 7/9 tests by losing less in falls, not by earning; worst drop 40%.
+2. Rebuilt grids (G2, G3) lose more the more often they rebuild: weekly cost $848 of fees per
+   test at Kraken and ended at $1,558 on average. Low Pionex fees shrink but do not fix this.
+3. DCA bot with tight safety orders (D1, common Cryptohopper preset): loses ($2,160 average,
+   worst $1,344, 62% drop). The wider version (D2) averaged $2,601 but with drops to 52%:
+   averaging down holds large losing positions in a fall.
+4. Our squeeze breakout (S0) stays best: $2,621 average, worst test $2,141, worst drop 21% at
+   Kraken fees ($2,747 at Pionex fees). S2 (looser stop) scored higher but was one of three
+   stop variants tried after the fact; not adopted without new data.
+5. Venue fees matter less than the strategy: Pionex's lower fees add about $50-130 per test
+   to every idea but do not change the ranking.
+Limits: 9 tests only; grid fills at exact line prices ignore queue position (optimistic);
+intrabar order is assumed (ADR-028). Holdout already used, so forward paper is the next test.

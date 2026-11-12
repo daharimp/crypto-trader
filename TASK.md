@@ -117,6 +117,12 @@
 - [x] `tests/safety/test_deploy_config.py`
 - [ ] Owner: run RUNBOOK S1-S6 on the VPS and share the outputs
 
+## 2026-11-10: EXP-2026-013 two-sided trend following (owner: ride downtrends too)
+
+- [x] Pre-registered plan committed before results (`research/EXP-2026-013-plan.md`)
+- [x] 8 published-rule trials x BTC/ETH/SOL (5-10 years) at approved perps costs and a no-borrow bound (`research/EXP-2026-013-results.txt`)
+- [ ] Replace the borrow assumption with real historical perps funding rates and re-run the same trials
+
 ## 2026-11-10: EXP-2026-012 retail bot styles (owner: test before choosing Cryptohopper/Pionex)
 
 - [x] Grid, DCA-bot, and plain-DCA simulators on hourly candles (ADR-028, PR #3)

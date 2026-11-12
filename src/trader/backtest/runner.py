@@ -183,7 +183,7 @@ def _run_backtest(
     if missing:
         return fail(2, f"no dataset for in-scope instruments: {missing}")
     try:
-        strat = build_strategy(strategy, configs_root)
+        strat = build_strategy(strategy, configs_root, timeframe)
     except (StrategyNotFoundError, ValueError) as exc:
         return fail(2, f"strategy unavailable: {exc}")
 

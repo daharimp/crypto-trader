@@ -1,0 +1,13 @@
+schema_version: "1.0.0"
+kind: StrategyRegistryEntry
+strategy_id: random_entry
+version: 1.0.0
+family: control
+kind_of_strategy: rule_based
+sleeve: core
+timeframes: ["1h", "4h"]
+parameters: {seed: 0, p_entry: 0.02, p_exit: 0.04}        # RECOMMENDATION (strategy-spec 4.2); research parameters
+feature_set_version: features-m2-1.0.0
+regime_eligibility: all
+lifecycle_state: control        # research only: sessions refuse it
+code_ref: trader.strategies.random_entry:RandomEntry

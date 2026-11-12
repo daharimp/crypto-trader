@@ -45,6 +45,8 @@ flowchart LR
     I --> J[Append-only<br/>hash-chained journal]
 ```
 
+- **Strategies:** `sma_trend` (default), plus research baselines `tsmom`, `mean_reversion`,
+  `volatility_breakout`, and a `random_entry` control that sessions refuse.
 - **Strategies never size orders.** They emit a direction only. A deterministic risk engine
   approves, shrinks, or rejects every proposal and computes the size.
 - **Sizing:** 1% of equity at risk per trade, with a stop at 2 × ATR(14) below entry. It is
@@ -112,6 +114,7 @@ Follow **[`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md)** step by st
 |---|---|
 | `trader version` | Version and safety statement |
 | `trader profile validate PROFILE -e backtest\|paper\|live` | Show whether a run is allowed, every error, and unresolved decisions (exit 0/2/3) |
+| `trader profile build [--answers FILE] [--dry-run] [--update]` | Interview: one question per risk setting with the spec's options; writes your own named profile, risk file, and spec sheet ([web form](docs/profile-builder/index.html)) |
 | `trader profile activate PROFILE -e paper\|live --reason "..."` | Owner activation record (required for paper and live) |
 | `trader session run --profile PROFILE -e paper\|live [--once]` | Run a forward session |
 | `trader session status` | Last cycle, equity, positions, breaker, stale cycles |
@@ -119,7 +122,8 @@ Follow **[`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md)** step by st
 | `trader session reset-breaker --reason "..."` | Reset a tripped drawdown breaker |
 | `trader killswitch status\|engage\|disengage --reason "..."` | Persisted kill switch |
 | `trader live preflight --profile PROFILE` | Check Kraken keys, permissions, balances, and order shapes; places no orders |
-| `trader data synth\|import\|fetch\|validate\|list` | Immutable, content-addressed datasets |
+| `trader data synth\|import\|import-kraken\|fetch\|validate\|list` | Immutable, content-addressed datasets (`import-kraken` reads Kraken's downloadable OHLCVT history) |
+| `trader research compare --profile ... --datasets ... --start ... --end ...` | Compare strategies across windows and cost scenarios against buy-and-hold and a matched random-entry control |
 | `trader backtest run --profile ... --datasets ID,... --strategy sma_trend --timeframe 4h` | Research backtest |
 | `trader report show RUN_ID [--format md\|json]` | Backtest report |
 | `trader journal verify RUN_ID` | Verify the hash chain and order traceability (exit 4 on tampering) |
@@ -171,7 +175,7 @@ configs/  schemas/  experiments/  scripts/  tests/  docs/
 uv sync
 uv run ruff check . && uv run ruff format --check .
 uv run mypy src
-uv run pytest            # 242 tests, offline; a fake exchange stands in for Kraken
+uv run pytest            # 300+ tests, offline; a fake exchange stands in for Kraken
 ```
 
 CI runs these on every pull request. See [CONTRIBUTING.md](CONTRIBUTING.md) for the rules,
@@ -185,7 +189,7 @@ especially the safety rules in [CLAUDE.md](CLAUDE.md).
 | Owner risk decisions UD-01 to UD-22 | Approved (see `docs/spec/product-requirements.md` §10.2) |
 | Paper trading on live Kraken prices | Ready; verified against real Kraken data |
 | Live trading | Built and gated; waiting on server setup, API key, preflight, the owner acknowledgement, and 42 paper cycles |
-| Real-data strategy evaluation | First test done ([EXP-2026-002](docs/experiments/EXP-2026-002-kraken-120d.md)): on 120 days of real data `sma_trend` was beaten by buy-and-hold. **No edge shown yet.** Longer history needs Kraken's downloadable data |
+| Real-data strategy evaluation | First test done ([EXP-2026-002](docs/experiments/EXP-2026-002-kraken-120d.md)): on 120 days of real data `sma_trend` was beaten by buy-and-hold. **No edge shown yet.** [EXP-2026-003](docs/experiments/EXP-2026-003-strategy-comparison-120d.md) compared four strategies against a random control: none beat holding in rising markets; limit orders cut fees by about a third. The full-history rerun needs Kraken's downloadable data |
 
 Open items: [`BLOCKERS.md`](BLOCKERS.md) and [`TASK.md`](TASK.md). History:
 [`CHANGELOG.md`](CHANGELOG.md).
@@ -196,7 +200,7 @@ Open items: [`BLOCKERS.md`](BLOCKERS.md) and [`TASK.md`](TASK.md). History:
 |---|---|
 | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) | Server setup, paper, preflight, going live, daily operation, emergencies |
 | [`docs/spec/`](docs/spec/README.md) | The original specification package (requirements, architecture, risk schema) |
-| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 to ADR-023) |
+| [`docs/decisions/`](docs/decisions/) | Architecture decision records (ADR-001 to ADR-024) |
 | [`PLANNING.md`](PLANNING.md) | Architecture summary and current milestone |
 | [`SUPPORT.md`](SUPPORT.md) | Where to get help |
 | [`SECURITY.md`](SECURITY.md) | Reporting vulnerabilities; what to do if a key is exposed |

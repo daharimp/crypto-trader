@@ -137,3 +137,21 @@ def test_paper_stale_data_escalates(paper) -> None:  # type: ignore[no-untyped-d
     assert runner.kill.is_engaged()
     assert runner.meta["stale_cycles"] >= 3
     assert runner.kill.state().trigger == "persistent_stale_data"  # type: ignore[union-attr]
+
+
+def test_session_refuses_control_strategy(paper) -> None:  # type: ignore[no-untyped-def]
+    """Failure: the random-entry control can never run in a paper or live session."""
+    from trader.session.config import SessionConfig
+    from trader.session.runner import SessionRunner
+
+    root, store = paper
+    runner, _, _ = make_runner(root, P, store)
+    ctl = SessionRunner(
+        SessionConfig(runner.cfg.profile, P, strategy="random_entry", configs_root=root),
+        runner.data,
+        clock=runner.clock,
+        store=store,
+        sleep=lambda s: None,
+    )
+    with pytest.raises(SessionError, match="control"):
+        ctl.start()

@@ -7,7 +7,7 @@ kind_of_strategy: rule_based
 sleeve: core
 timeframes: ["1h", "4h"]
 parameters: {fast: 20, slow: 50}        # RECOMMENDATION R-09
-feature_set_version: features-m1-1.0.0
+feature_set_version: features-m2-1.0.0     # same sma_20/sma_50/atr_14 values as m1
 regime_eligibility: all                 # M1: null classifier
 lifecycle_state: research
 code_ref: trader.strategies.sma_trend:SmaTrend

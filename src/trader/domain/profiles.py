@@ -11,7 +11,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from .common import DomainModel, SchemaVersion
+from .common import DomainModel, RiskProfileId, SchemaVersion
 
 AssetId = Annotated[str, Field(pattern=r"^[A-Z0-9]{2,15}$")]
 InstrumentId = Annotated[str, Field(pattern=r"^[A-Z0-9]{2,15}-[A-Z0-9]{2,10}$")]
@@ -62,11 +62,19 @@ class AggressiveAcknowledgement(DomainModel):
 class RiskSelection(DomainModel):
     """Owner's risk-profile selection (D-08 to D-10)."""
 
-    risk_profile_id: Literal["conservative", "balanced", "aggressive"]
+    risk_profile_id: RiskProfileId
     risk_profile_version: Annotated[int, Field(ge=1)]
     adaptation: Literal["within_selected_profile_bounds"]
     profile_switching: Literal["owner_only"]
     aggressive_acknowledgement: AggressiveAcknowledgement | None = None
+
+
+class TradingSpec(DomainModel):
+    """Session defaults chosen when the owner built the profile (ADR-024)."""
+
+    strategy_id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{2,63}$")]
+    decision_timeframe: Literal["1h", "4h"]
+    built_with: Literal["profile_builder"] = "profile_builder"
 
 
 class AllowlistEntry(DomainModel):
@@ -268,3 +276,4 @@ class TradingProfile(DomainModel):
     execution: Execution
     explanations: Explanations
     data_sources: DataSources
+    trading_spec: TradingSpec | None = None

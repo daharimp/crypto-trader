@@ -4,6 +4,19 @@ All notable changes are recorded here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## Unreleased (2026-11-03): profile builder
+
+- `trader profile build`: one question per risk setting, options from the spec (UD-01..UD-17)
+  for the chosen preset, custom values only inside the spec's range; writes a named risk
+  profile, trading profile, and spec sheet after a clean compile (ADR-024).
+- Web form `docs/profile-builder/index.html` (same question bank) produces `answers.json` for
+  `trader profile build --answers`.
+- Owner-named risk profiles; acknowledgement required for every explicitly selected profile;
+  risk file ID must match its file name.
+- `trader session run` defaults strategy and timeframe from the profile's `trading_spec`.
+- `TRADER_PROFILE` in `.env` selects the profile the Docker `paper`/`live` services run.
+- `trader research compare --timeframe 1h`; EXP-2026-004 part 1 (1h screen).
+
 ## [Unreleased]
 
 ### Added
@@ -21,6 +34,13 @@ All notable changes are recorded here, following
   universe benchmark (`bm_ew_universe`).
 - EXP-2026-002: first real-data test on Kraken (no evidence of an edge; see
   `docs/experiments/`).
+- Comparison strategies (BL-022): `tsmom`, `mean_reversion`, `volatility_breakout`, and the
+  research-only `random_entry` control; feature set `features-m2`.
+- Post-only limit orders in the simulator (cost scenarios `base_maker`, `stress_maker`);
+  live trading refuses them for now. Preflight reports the account's real fee tier.
+- `trader data import-kraken` for Kraken's downloadable OHLCVT history and
+  `trader research compare` (strategies x windows x costs with a matched random control).
+- EXP-2026-003: strategy comparison on real data (no edge; limit orders cut fees by a third).
 
 ### Changed
 - Owner decisions UD-01 to UD-22 resolved (risk profiles v2, eligibility v3, profile v4).

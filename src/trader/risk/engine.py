@@ -130,6 +130,7 @@ class RiskEngine:
         entry = rd.action_evaluated == "enter_long"
         side, purpose = (Side.BUY, OrderPurpose.ENTRY) if entry else (Side.SELL, OrderPurpose.EXIT)
         t = rd.decision_time_utc
+        limit = ctx.costs.order_style == "limit"
         latest = ctx.snapshot.latest_bar
         assert latest is not None
         return OrderIntent(
@@ -154,10 +155,11 @@ class RiskEngine:
             instrument_id=rd.instrument_id,
             side=side,
             purpose=purpose,
-            order_type=OrderType.MARKET,
+            order_type=OrderType.LIMIT if limit else OrderType.MARKET,
             quantity=rd.approved_quantity,
             reference_price=rd.reference_price,
             stop_price=None,
+            limit_price=self._limit_price(rd.reference_price, side, ctx) if limit else None,
             attached_stop_distance_pct=rd.stop.stop_distance_pct if entry and rd.stop else None,
             parent_order_intent_id=None,
             notional_estimate_usd=rd.approved_notional_usd,
@@ -169,6 +171,22 @@ class RiskEngine:
             decision_time_utc=t,
             created_at_utc=t,
         )
+
+    @staticmethod
+    def _limit_price(reference: Decimal, side: Side, ctx: RiskContext) -> Decimal:
+        """
+        Post-only limit price: just below the last close for buys, just above for sells.
+
+        Args:
+            reference (Decimal): Latest close.
+            side (Side): Side.
+            ctx (RiskContext): Context (cost scenario offset).
+
+        Returns:
+            Decimal: Limit price.
+        """
+        off = ctx.costs.limit_offset_bps / Decimal(10000)
+        return reference * (1 - off) if side == Side.BUY else reference * (1 + off)
 
     def build_protective_stop_intent(
         self, entry: OrderIntent, fill: ExecutionReport, rd: RiskDecision, ctx: RiskContext
@@ -211,6 +229,7 @@ class RiskEngine:
                 "quantity": fill.filled_quantity,
                 "reference_price": stop_price,
                 "stop_price": stop_price,
+                "limit_price": None,
                 "attached_stop_distance_pct": None,
                 "parent_order_intent_id": entry.order_intent_id,
                 "notional_estimate_usd": fill.filled_quantity * stop_price,

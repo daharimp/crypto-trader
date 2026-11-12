@@ -1,0 +1,13 @@
+schema_version: "1.0.0"
+kind: StrategyRegistryEntry
+strategy_id: mean_reversion
+version: 1.0.0
+family: mean_reversion
+kind_of_strategy: rule_based
+sleeve: core
+timeframes: ["1h", "4h"]
+parameters: {}        # RECOMMENDATION (strategy-spec 4.2); research parameters
+feature_set_version: features-m2-1.0.0
+regime_eligibility: all
+lifecycle_state: research
+code_ref: trader.strategies.mean_reversion:MeanReversion

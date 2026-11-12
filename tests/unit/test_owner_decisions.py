@@ -54,6 +54,9 @@ def _profile_for(risk_id: str, tmp_path: Path) -> Path:
     data = load(SHIPPED_PROFILE)
     data["profile_id"] = f"{risk_id}-check"
     data["risk_selection"]["risk_profile_id"] = risk_id
+    data["risk_selection"]["risk_profile_version"] = load(
+        SHIPPED_CONFIGS / "risk" / f"{risk_id}.yaml"
+    )["version"]
     if risk_id == "aggressive":
         data["risk_selection"]["aggressive_acknowledgement"] = {
             "acknowledged": True,
@@ -150,7 +153,7 @@ def test_rp08_profile_ordering() -> None:
 
 
 def test_every_approved_value_has_approver_and_date() -> None:
-    """Approved values record who approved them and when; only UD-14 stays TBD."""
+    """Approved values record who approved them and when (decision dates 11-01..11-03)."""
     for f in [
         *(SHIPPED_CONFIGS / "risk").glob("*.yaml"),
         SHIPPED_CONFIGS / "universe" / "eligibility.yaml",
@@ -158,7 +161,7 @@ def test_every_approved_value_has_approver_and_date() -> None:
         for line in f.read_text().splitlines():
             if "status: approved" in line:
                 assert "approved_by: Dahari Morgan-Parker" in line
-                assert re.search(r'approved_on: "2026-11-0[12]"', line), line
+                assert re.search(r'approved_on: "2026-11-0[123]"', line), line
             if "TBD" in line and not line.lstrip().startswith("#"):
                 assert "UD-14" in line, (f.name, line)
 
@@ -196,3 +199,23 @@ def test_intraday_still_disabled() -> None:
     with tempfile.TemporaryDirectory() as d:
         c = _compile(dump(Path(d) / "p.yaml", data))
     assert any(e.startswith("INTRADAY_NOT_APPROVED") for e in c.errors)
+
+
+def test_aggressive_intraday_sleeve_values_approved(tmp_path: Path) -> None:
+    """UD-14 revisit (2026-11-03): Aggressive sleeve 10% cap, 2.5% daily, 12.5% breaker."""
+    e = _compile(_profile_for("aggressive", tmp_path)).effective
+    assert e["risk.allocation.intraday_allocation_cap_pct"].value == D(10)
+    sleeve = "risk.allocation.intraday_sleeve_limits"
+    assert e[f"{sleeve}.daily_loss_limit_pct"].value == D("2.5")
+    assert e[f"{sleeve}.drawdown_circuit_breaker_pct"].value == D("12.5")
+
+
+def test_intraday_still_disabled_in_shipped_profile() -> None:
+    """Edge: approved sleeve values do not enable intraday; the profile flag stays off."""
+    assert load(SHIPPED_PROFILE)["horizon"]["minute_data"]["intraday_strategies_enabled"] is False
+
+
+def test_balanced_intraday_stays_unresolved() -> None:
+    """Failure guard: only Aggressive got sleeve values; Balanced remains TBD (fail closed)."""
+    risk = load(SHIPPED_CONFIGS / "risk" / "balanced.yaml")
+    assert risk["allocation"]["intraday_allocation_cap_pct"]["value"] == "TBD"

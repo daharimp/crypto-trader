@@ -64,6 +64,17 @@
 - [ ] (Not approved yet) server deployment walkthrough; comparison strategies (BL-022);
       merge PR #1; full Kraken history and walk-forward (BL-025/BL-029); maker orders
 
+## 2026-11-03: Owner approved all four next steps
+
+- [x] Comparison strategies (BL-022) with a random-entry control
+- [x] Lower costs: post-only limit orders in the simulator; fee tier in preflight
+- [x] Full-history tooling: `trader data import-kraken`, `trader research compare`
+- [x] EXP-2026-003 on the 120 days available: `docs/experiments/EXP-2026-003-*`
+- [ ] Owner: upload Kraken OHLCVT files (XBT/ETH/SOL/XRP/SUI USD, 240 and 1440) for the
+      full-history rerun
+- [ ] Owner: set up the server and start paper (RUNBOOK steps 1-2)
+- [ ] Live limit orders (post-only on Kraken, fill polling, prompt stops), if approved
+
 ## Discovered During Work
 
 - [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).
@@ -72,3 +83,12 @@
 - [ ] DQ-12 cross-timeframe consistency is optional in M1 and not implemented (needs 1h + 4h datasets).
 - [x] Owner decisions UD-01..UD-21 resolved 2026-11-01 except UD-14 (deferred) and UD-20 (venue).
 - [ ] Next milestone M2: BL-021..BL-030 (`docs/spec/execution-plan.md` §5).
+
+## 2026-11-03: Riskier swing + 1h quick trades (owner request)
+
+- [x] Generalize `trader research compare` to 1h (`--timeframe`, `--reference`); EXP-2026-004 part 1 (1h screen, 30 days of API data).
+- [x] Record owner decisions: Aggressive swing profile chosen; UD-14 revisit: 1h, 10% cap, sleeve limits 2.5% / 12.5% (`aggressive.yaml` v3).
+- [ ] Owner: write the Aggressive acknowledgement (PV-03) so the profile can switch to Aggressive.
+- [ ] Owner: pick the 1h sleeve strategy (EXP-2026-004 part 1 is inconclusive; full history needs `*_60.csv` uploads).
+- [ ] Build the isolated 1h intraday sleeve (separate ledger, sleeve loss limits, 1h session cycle), paper first.
+- [x] Profile builder (2026-11-03): `trader profile build` interview + `--answers`, `trader profile questions`, web form, named risk profiles, ADR-024.

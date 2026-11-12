@@ -31,6 +31,7 @@ class OrderIntent(DomainModel):
     quantity: Decimal
     reference_price: Decimal
     stop_price: Decimal | None
+    limit_price: Decimal | None = None
     attached_stop_distance_pct: Decimal | None
     parent_order_intent_id: str | None
     notional_estimate_usd: Decimal
@@ -53,10 +54,11 @@ class OrderIntent(DomainModel):
         Raises:
             ValueError: If the intent shape is invalid.
         """
+        market_or_limit = self.order_type in (OrderType.MARKET, OrderType.LIMIT)
         if self.purpose == OrderPurpose.ENTRY:
-            ok = self.side == Side.BUY and self.order_type == OrderType.MARKET
+            ok = self.side == Side.BUY and market_or_limit
         elif self.purpose == OrderPurpose.EXIT:
-            ok = self.side == Side.SELL and self.order_type == OrderType.MARKET
+            ok = self.side == Side.SELL and market_or_limit
         else:
             ok = (
                 self.side == Side.SELL
@@ -66,6 +68,10 @@ class OrderIntent(DomainModel):
             )
         if not ok:
             raise ValueError(f"invalid side/order_type for purpose {self.purpose}")
+        if (self.order_type == OrderType.LIMIT) != (
+            self.limit_price is not None and self.limit_price > 0
+        ):
+            raise ValueError("limit orders need a positive limit_price; others must not set one")
         if not self.signal_ids or not self.strategy_versions:
             raise ValueError("intents must reference signals and strategy versions (D-36)")
         if self.quantity <= 0:

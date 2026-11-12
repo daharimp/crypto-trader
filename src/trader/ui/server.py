@@ -10,12 +10,33 @@ from importlib import resources
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from .data import MARKETS, TIMEFRAMES, Fetcher, candles_payload, fetch_bars, perps_payload
+from trader.perps.backtest import Bar
+
+from .data import (
+    MARKETS,
+    TIMEFRAMES,
+    Fetcher,
+    candles_payload,
+    fetch_bars,
+    perps_payload,
+    watch_payload,
+)
 
 # Reason: the only static files served, by exact name; no path from the request reaches disk.
-VENDOR = {
-    "/vendor/lightweight-charts-4.2.0.js": ("lightweight-charts-4.2.0.js", "text/javascript"),
-    "/vendor/LIGHTWEIGHT-CHARTS-LICENSE.txt": ("LIGHTWEIGHT-CHARTS-LICENSE.txt", "text/plain"),
+STATIC = {
+    "/": ("index.html", "text/html"),
+    "/index.html": ("index.html", "text/html"),
+    "/app.css": ("app.css", "text/css"),
+    "/desk.js": ("desk.js", "text/javascript"),
+    "/widgets.js": ("widgets.js", "text/javascript"),
+    "/vendor/lightweight-charts-4.2.0.js": (
+        "vendor/lightweight-charts-4.2.0.js",
+        "text/javascript",
+    ),
+    "/vendor/LIGHTWEIGHT-CHARTS-LICENSE.txt": (
+        "vendor/LIGHTWEIGHT-CHARTS-LICENSE.txt",
+        "text/plain",
+    ),
 }
 
 CACHE_SECONDS = 60
@@ -46,17 +67,36 @@ class Sources:
             perps_params,
             prices,
         )
-        self._cache: dict[tuple[str, str], tuple[float, Any]] = {}
+        self._cache: dict[tuple[str, str], tuple[float, list[list[float]]]] = {}
 
-    def bars(self, market: str, timeframe: str) -> Any:
-        """Cached public bars (one fetch per market and timeframe per minute)."""
-        key = (market, timeframe)
+    def rows(self, symbol: str, timeframe: str) -> list[list[float]]:
+        """Cached raw public candles (one fetch per symbol and timeframe per minute)."""
+        key = (symbol, timeframe)
         hit = self._cache.get(key)
         if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
             return hit[1]
-        bars = fetch_bars(self.fetch, market, timeframe)
-        self._cache[key] = (time.monotonic(), bars)
-        return bars
+        rows = self.fetch(symbol, timeframe)
+        self._cache[key] = (time.monotonic(), rows)
+        return rows
+
+    def bars(self, market: str, timeframe: str) -> list[Bar]:
+        """Complete bars for one market, from the cached candles."""
+        return fetch_bars(self.rows, market, timeframe)
+
+    def watch(self) -> list[dict[str, Any]]:
+        """Watchlist rows for every market; a market whose data fails is left out."""
+        bars: dict[str, list[Bar]] = {}
+        last: dict[str, float] = {}
+        for market, symbol in MARKETS.items():
+            try:
+                rows = self.rows(symbol, "4h")
+                bars[market] = fetch_bars(self.rows, market, "4h")
+            except (OSError, ValueError, KeyError, StopIteration):
+                continue
+            if rows:
+                # Reason: the last row is the still-forming candle; its close is the latest price.
+                last[market] = float(rows[-1][4])
+        return watch_payload(bars, last)
 
 
 def make_handler(src: Sources) -> type[BaseHTTPRequestHandler]:
@@ -93,15 +133,14 @@ def make_handler(src: Sources) -> type[BaseHTTPRequestHandler]:
             market = q.get("market", "SOL")
             tf = q.get("timeframe", "4h")
             try:
-                if url.path in ("/", "/index.html"):
-                    page = resources.files("trader.ui").joinpath("static/index.html")
-                    self._send(200, page.read_bytes(), "text/html; charset=utf-8")
-                elif url.path in VENDOR:
-                    name, ctype = VENDOR[url.path]
-                    f = resources.files("trader.ui").joinpath(f"static/vendor/{name}")
+                if url.path in STATIC:
+                    name, ctype = STATIC[url.path]
+                    f = resources.files("trader.ui").joinpath(f"static/{name}")
                     self._send(200, f.read_bytes(), f"{ctype}; charset=utf-8")
                 elif url.path == "/api/status":
                     self._json(200, src.status())
+                elif url.path == "/api/watch":
+                    self._json(200, src.watch())
                 elif url.path in ("/api/candles", "/api/perps"):
                     if market not in MARKETS or tf not in TIMEFRAMES:
                         self._json(400, {"error": "unknown market or timeframe"})

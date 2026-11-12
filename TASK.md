@@ -1,5 +1,8 @@
 # TASK
 
+New work from 2026-11-12 onward is tracked one file per task in [`tasks/`](tasks/README.md).
+This file keeps the earlier history and the "Discovered During Work" list.
+
 ## 2026-11-01: Implement M1 vertical slice from the spec package
 
 - [x] BL-001 Scaffold, uv, ruff/mypy/pytest, `.gitignore`, `.env.example`, `BLOCKERS.md`, `docs/spec/`, ADR stubs

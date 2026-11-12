@@ -24,8 +24,6 @@ All notable changes are recorded here, following
   on hourly candles with maker/taker fees (ADR-028).
 - `trader perps paper run|status` and a `perps` compose service: a forward paper perps
   session that goes long in uptrends and short in downtrends on live prices (ADR-031).
-- Dashboard redesigned as a workspace of widgets you can drag to reorder, resize, hide, and
-  open for detail, on phone and computer; all five coins; road-to-live progress (ADR-030).
 - Gated live spot trading on Kraken (ADR-023): `live` environment, live authorization
   (capital cap and paper prerequisite, UD-22), profile activation (`trader profile activate`).
 - Forward paper and live sessions (`trader session run|status|flatten|reset-breaker`) with

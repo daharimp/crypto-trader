@@ -1,6 +1,6 @@
 ## What and why
 
-<!-- What does this change, and why? Link the task (TASK.md) and any UD/ADR/BL IDs. -->
+<!-- What does this change, and why? Link the task (`tasks/`) and any UD/ADR/BL IDs. -->
 
 ## How it was tested
 
@@ -17,4 +17,5 @@
 - [ ] Tests added or updated (expected, edge, and failure cases).
 - [ ] `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy src`, and
       `uv run pytest` pass.
-- [ ] Docs updated (README, RUNBOOK, CHANGELOG, TASK.md) where behaviour changed.
+- [ ] Docs updated (README, RUNBOOK) where behaviour changed; a note in `changes/` and a
+      task file in `tasks/` (not edits to `CHANGELOG.md` or `TASK.md`).

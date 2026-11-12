@@ -3,8 +3,11 @@
 ### Project awareness
 - Read `PLANNING.md` and `TASK.md` first; the controlling spec is `docs/spec/` (start with
   `code-session-handoff.md` and `execution-plan.md`).
-- Add new tasks to `TASK.md` with the date; mark them done when finished; record discoveries
-  under "Discovered During Work".
+- Add new tasks as a dated file in `tasks/` (one file per piece of work, see
+  `tasks/README.md`); mark them done when finished; record discoveries under "Discovered
+  During Work" in `TASK.md`. Describe each change in its own file in `changes/` (see
+  `changes/README.md`); do not edit `CHANGELOG.md` or add sections to `TASK.md` in a pull
+  request, because shared lines make open pull requests conflict.
 
 ### Non-negotiable safety rules (docs/spec/code-session-handoff.md §0.1, amended by ADR-023 and ADR-025)
 - Paper/simulated by default. Real-money **spot** orders exist only in the gated `live`

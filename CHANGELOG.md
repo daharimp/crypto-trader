@@ -4,6 +4,9 @@ All notable changes are recorded here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow
 [Semantic Versioning](https://semver.org/).
 
+Changes not yet released are described one file per pull request in
+[`changes/`](changes/README.md) and folded in here at release time.
+
 ## Unreleased (2026-11-03): profile builder
 
 - `trader profile build`: one question per risk setting, options from the spec (UD-01..UD-17)

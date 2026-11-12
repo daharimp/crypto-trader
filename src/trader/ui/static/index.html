@@ -5,183 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f1214">
 <title>Trader Desk</title>
-<style>
-/* Layout: one column for a phone; a status strip, a market chart card, then panels. */
-:root {
-  --bg: #f4f6f5; --panel: #ffffff; --line: #dfe4e2; --fg: #15191b; --muted: #5d6a66;
-  --up: #0f8a5f; --down: #c4372f; --accent: #2457d6; --warn: #b26a00;
-  --fast: #2457d6; --slow: #b26a00;
-  --font: "SF Pro Text", -apple-system, "Segoe UI", Roboto, sans-serif;
-  --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #0f1214; --panel: #171b1e; --line: #262c30; --fg: #e8ecea; --muted: #8b9893;
-    --up: #2fbf86; --down: #ef5a50; --accent: #6f95ff; --warn: #e3a23b; --fast: #6f95ff; --slow: #e3a23b; }
-}
-* { box-sizing: border-box; }
-html, body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.4 var(--font); }
-body { padding: env(safe-area-inset-top, 0) max(14px, env(safe-area-inset-right, 0px)) 24px max(14px, env(safe-area-inset-left, 0px)); }
-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-block: 12px 8px; position: sticky; top: 0; background: var(--bg); z-index: 5; }
-h1 { font-size: 17px; margin: 0; letter-spacing: .01em; }
-h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
-.pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
-.ok { color: var(--up); } .bad { color: var(--down); } .warn { color: var(--warn); } .muted { color: var(--muted); }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-top: 12px; }
-.row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.tabs button { font: 600 14px var(--font); padding: 7px 14px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--fg); min-height: 36px; }
-.tabs button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
-.tabs.small button { font-size: 12px; padding: 5px 10px; min-height: 32px; }
-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.quote { display: flex; align-items: baseline; justify-content: space-between; margin: 10px 0 6px; }
-.price { font: 600 26px var(--mono); font-variant-numeric: tabular-nums; }
-#chart { height: 340px; width: 100%; }
-.legend { font-size: 12px; color: var(--muted); display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap; }
-.sw { display: inline-block; width: 10px; height: 2px; vertical-align: middle; margin-right: 4px; }
-.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.stat .k { font-size: 12px; color: var(--muted); } .stat .v { font: 600 17px var(--mono); font-variant-numeric: tabular-nums; }
-.list { display: grid; gap: 8px; } .item { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
-.item span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
-.note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
-.banner { border-left: 3px solid var(--warn); padding: 8px 10px; background: color-mix(in srgb, var(--warn) 10%, transparent); border-radius: 6px; font-size: 13px; }
-code { font-family: var(--mono); font-size: 12px; }
-</style>
+<link rel="stylesheet" href="/app.css">
 </head>
 <body>
 <header>
   <h1>Trader Desk</h1>
-  <span id="ks" class="pill muted">kill switch …</span>
+  <div class="hdr">
+    <span id="ks" class="pill muted">kill switch …</span>
+    <button type="button" class="btn" id="layoutBtn" aria-haspopup="true" aria-expanded="false" aria-controls="layoutMenu">Layout</button>
+    <div class="menu" id="layoutMenu" hidden></div>
+  </div>
 </header>
 
-<section class="card" aria-label="Market chart">
-  <div class="row tabs" id="markets">
-    <button type="button" data-m="SOL" aria-pressed="true">SOL</button>
-    <button type="button" data-m="ETH" aria-pressed="false">ETH</button>
-    <button type="button" data-m="BTC" aria-pressed="false">BTC</button>
-  </div>
-  <div class="quote">
-    <div><div class="muted" style="font-size:12px">Jupiter price</div><div class="price" id="px">—</div></div>
-    <div class="row tabs small" id="tfs">
-      <button type="button" data-t="1h" aria-pressed="false">1h</button>
-      <button type="button" data-t="4h" aria-pressed="true">4h</button>
-      <button type="button" data-t="1d" aria-pressed="false">1d</button>
-    </div>
-  </div>
-  <div id="chart" role="img" aria-label="Candlestick chart with moving averages and bot trades"></div>
-  <div class="legend">
-    <span><i class="sw" style="background:var(--fast)"></i>SMA 20</span>
-    <span><i class="sw" style="background:var(--slow)"></i>SMA 50</span>
-    <span>▲▼ paper perps entries · ✕ liquidation</span>
-  </div>
-  <p class="note" id="chartnote">Candles: Kraken public data. Updated every minute.</p>
-</section>
+<!-- Widgets are built by widgets.js; drag a card's header to move it, tap its title to open it. -->
+<main class="desk" id="desk" aria-label="Dashboard widgets"></main>
+<div class="scrim" id="scrim" hidden></div>
+<p class="sr" id="live" aria-live="polite"></p>
 
-<section class="card" aria-label="Paper perps">
-  <h2>Jupiter perps · paper</h2>
-  <div id="perps"><p class="note">Loading…</p></div>
-</section>
-
-<section class="card" aria-label="Sessions">
-  <h2>Forward sessions</h2>
-  <div id="sessions"><p class="note">Loading…</p></div>
-</section>
-
-<p class="note">Read-only view. It cannot place trades or change settings. Simulated results are not a forecast; profit is not guaranteed.</p>
+<p class="note foot">Read-only view. It cannot place trades or change settings. Simulated results are not a forecast; profit is not guaranteed. Your layout is saved in this browser only.</p>
 
 <!-- TradingView Lightweight Charts 4.2.0 (Apache-2.0), bundled: see vendor/LIGHTWEIGHT-CHARTS-LICENSE.txt -->
 <script src="/vendor/lightweight-charts-4.2.0.js"></script>
-<script>
-(() => {
-  const $ = (id) => document.getElementById(id);
-  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
-  const usd = (x, d = 2) => x == null ? '—' : '$' + Number(x).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
-  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-  let market = 'SOL', tf = '4h';
-
-  const chart = LightweightCharts.createChart($('chart'), {
-    autoSize: true,
-    layout: { background: { color: 'transparent' }, textColor: css('--muted'), fontFamily: css('--font') },
-    grid: { vertLines: { color: css('--line') }, horzLines: { color: css('--line') } },
-    rightPriceScale: { borderColor: css('--line') }, timeScale: { borderColor: css('--line'), timeVisible: true },
-    handleScale: { axisPressedMouseMove: true }, crosshair: { mode: 0 },
-  });
-  const candles = chart.addCandlestickSeries({ upColor: css('--up'), downColor: css('--down'), wickUpColor: css('--up'), wickDownColor: css('--down'), borderVisible: false });
-  const fast = chart.addLineSeries({ color: css('--fast'), lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
-  const slow = chart.addLineSeries({ color: css('--slow'), lineWidth: 2, priceLineVisible: false, lastValueVisible: false });
-  let liqLines = [];
-
-  async function get(path) {
-    const r = await fetch(path, { cache: 'no-store' });
-    const body = await r.json();
-    if (!r.ok) throw new Error(body.error || r.status);
-    return body;
-  }
-
-  function stat(k, v, cls) { const d = el('div', 'stat'); d.append(el('div', 'k', k), el('div', 'v ' + (cls || ''), v)); return d; }
-
-  function drawPerps(p) {
-    const box = $('perps'); box.replaceChildren();
-    liqLines.forEach((l) => candles.removePriceLine(l)); liqLines = [];
-    if (p.blocked) {
-      const b = el('div', 'banner');
-      const names = { 'costs.open_fee_bps': 'opening fee', 'costs.close_fee_bps': 'closing fee', 'costs.borrow_rate_pct_per_hour': 'borrow rate', 'venue_limits.maintenance_bps': 'liquidation threshold', 'venue_limits.venue_max_leverage': 'Jupiter max leverage', 'starting_collateral_usd': 'starting collateral' };
-      b.append(el('div', null, 'Waiting on your approval of: ' + p.blocked.map((k) => names[k] || k.replace(/^risk\./, '').replaceAll('_', ' ')).join(', ') + '.'));
-      box.append(b); candles.setMarkers([]); return;
-    }
-    const pnl = p.end_equity_usd - p.start_equity_usd;
-    const g = el('div', 'stats');
-    g.append(stat('Equity', usd(p.end_equity_usd)), stat('P/L', (pnl >= 0 ? '+' : '') + usd(pnl), pnl >= 0 ? 'ok' : 'bad'),
-             stat('Max drawdown', p.max_drawdown_pct.toFixed(2) + '%'), stat('Trades · liquidations', p.trades + ' · ' + p.liquidations, p.liquidations ? 'bad' : ''),
-             stat('Fees paid', usd(p.fees_paid_usd)), stat('Rejected opens', String(Object.values(p.rejections).reduce((a, b) => a + b, 0))));
-    box.append(g, el('p', 'note', p.disclaimer));
-    const marks = p.markers.map((m) => m.event === 'LIQUIDATED'
-      ? { time: m.time, position: 'aboveBar', color: css('--down'), shape: 'square', text: '✕' }
-      : m.event === 'OPENED'
-        ? { time: m.time, position: m.side === 'long' ? 'belowBar' : 'aboveBar', color: m.side === 'long' ? css('--up') : css('--down'), shape: m.side === 'long' ? 'arrowUp' : 'arrowDown', text: m.side === 'long' ? 'L' : 'S' }
-        : { time: m.time, position: 'inBar', color: css('--muted'), shape: 'circle', text: '' });
-    candles.setMarkers(marks.sort((a, b) => a.time - b.time));
-    const last = [...p.markers].reverse().find((m) => m.event !== 'OPENED' || m.liquidation_price);
-    if (last && last.event === 'OPENED' && last.liquidation_price) {
-      liqLines.push(candles.createPriceLine({ price: last.liquidation_price, color: css('--down'), lineStyle: 2, lineWidth: 1, title: 'liq' }));
-    }
-  }
-
-  function drawSessions(s) {
-    const ks = s.kill_switch;
-    const k = $('ks');
-    k.textContent = ks && ks.state === 'engaged' ? 'kill switch ON' : 'kill switch off';
-    k.className = 'pill ' + (ks && ks.state === 'engaged' ? 'bad' : 'ok');
-    const box = $('sessions'); box.replaceChildren();
-    if (!s.sessions.length) { box.append(el('p', 'note', 'No paper or live session has run on this machine yet.')); return; }
-    s.sessions.forEach((x) => {
-      const c = el('div', 'list');
-      c.append(el('div', null, x.name), (() => { const g = el('div', 'stats'); g.append(stat('Equity', usd(x.equity_usd)), stat('Cash', usd(x.cash_usd)), stat('Breaker', x.breaker_open ? 'OPEN' : 'closed', x.breaker_open ? 'bad' : 'ok'), stat('Stale cycles', String(x.stale_cycles), x.stale_cycles ? 'warn' : '')); return g; })());
-      x.positions.forEach((p) => { const r = el('div', 'item'); r.append(el('span', null, p.instrument + ' ' + p.quantity), el('span', null, '@ ' + usd(p.entry) + (p.stop ? ' · stop ' + usd(p.stop) : ''))); c.append(r); });
-      x.trades.slice(-5).reverse().forEach((t) => { const r = el('div', 'item'); r.append(el('span', null, t.instrument + ' closed'), el('span', t.pnl_usd >= 0 ? 'ok' : 'bad', (t.pnl_usd >= 0 ? '+' : '') + usd(t.pnl_usd))); c.append(r); });
-      box.append(c);
-    });
-  }
-
-  async function refresh() {
-    try {
-      const c = await get(`/api/candles?market=${market}&timeframe=${tf}`);
-      candles.setData(c.candles); fast.setData(c.sma_fast); slow.setData(c.sma_slow);
-      $('chartnote').textContent = 'Candles: Kraken public data. Updated ' + new Date().toLocaleTimeString() + '.';
-    } catch (e) { $('chartnote').textContent = 'Candles unavailable: ' + e.message; }
-    get(`/api/perps?market=${market}&timeframe=${tf}`).then(drawPerps).catch((e) => { $('perps').replaceChildren(el('p', 'note bad', 'Paper replay unavailable: ' + e.message)); });
-    get('/api/prices').then((p) => { $('px').textContent = p[market] != null ? usd(p[market], market === 'SOL' ? 3 : 2) : '—'; }).catch(() => { $('px').textContent = '—'; });
-    get('/api/status').then(drawSessions).catch((e) => { $('sessions').replaceChildren(el('p', 'note bad', 'Status unavailable: ' + e.message)); });
-  }
-
-  function wire(groupId, attr, set) {
-    document.querySelectorAll(`#${groupId} button`).forEach((b) => b.addEventListener('click', () => {
-      document.querySelectorAll(`#${groupId} button`).forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-      set(b.dataset[attr]); chart.timeScale().resetTimeScale(); refresh();
-    }));
-  }
-  wire('markets', 'm', (v) => { market = v; });
-  wire('tfs', 't', (v) => { tf = v; });
-  refresh(); setInterval(refresh, 60000);
-})();
-</script>
+<script src="/desk.js"></script>
+<script src="/widgets.js"></script>
 </body>
 </html>

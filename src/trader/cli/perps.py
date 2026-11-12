@@ -1,11 +1,17 @@
-"""``trader perps validate|prices|backtest``: Jupiter Perps, paper only (ADR-025)."""
+"""``trader perps validate|prices|backtest|paper``: Jupiter Perps, paper only (ADR-025)."""
 
 from __future__ import annotations
 
 import json
+import signal
+import time
+from datetime import UTC, datetime
+from decimal import Decimal
+from pathlib import Path
 
 import typer
 
+from trader.common.paths import data_root
 from trader.data.frames import columns
 from trader.data.store import DatasetStore
 from trader.perps.backtest import Bar, run_perps_backtest
@@ -94,3 +100,103 @@ def backtest(
             indent=2,
         )
     )
+
+
+paper_app = typer.Typer(
+    help="Forward paper perps session on live prices: long and short (ADR-031).",
+    no_args_is_help=True,
+)
+app.add_typer(paper_app, name="paper")
+
+
+def _paper_paths() -> tuple[Path, Path]:
+    root = data_root()
+    return root / "state" / "perps-paper.json", root / "logs" / "perps-paper-events.jsonl"
+
+
+@paper_app.command("run")
+def paper_run(
+    once: bool = typer.Option(False, "--once", help="Process due bars once, then exit."),
+    timeframe: str = typer.Option("4h", "--timeframe", help="Decision timeframe: 1h or 4h."),
+) -> None:
+    """Run the paper perps session until stopped. Paper only: it cannot place a real order.
+
+    Exit 3 if any perps value is unapproved; exit 2 if the saved state does not match.
+    """
+    from trader.perps.session import PerpsSession, SessionStateError
+    from trader.risk.controls import PersistedKillSwitch
+    from trader.session.alerts import Alerter
+    from trader.ui.data import kraken_public_ohlc
+
+    params = _params_or_exit()
+    alerter = Alerter.from_env("[perps paper]")
+    state_path, events_path = _paper_paths()
+    try:
+        session = PerpsSession(
+            params,
+            kraken_public_ohlc,
+            state_path,
+            events_path,
+            notify=alerter.send,
+            halted=PersistedKillSwitch().is_engaged,
+            timeframe=timeframe,
+        )
+    except (SessionStateError, ValueError) as exc:
+        typer.echo(f"perps session not started: {exc}", err=True)
+        raise typer.Exit(EXIT_INVALID) from None
+    resumed = session.acct is not None
+    typer.echo(f"perps paper session {'resumed' if resumed else 'starting'}; state: {state_path}")
+    if once:
+        events = session.cycle(datetime.now(UTC))
+        typer.echo(json.dumps({"events": len(events), **session.meta}, indent=1))
+        return
+    stop = {"flag": False}
+
+    def _stop(signum: int, frame: object) -> None:
+        stop["flag"] = True
+
+    signal.signal(signal.SIGTERM, _stop)
+    signal.signal(signal.SIGINT, _stop)
+    alerter.send(f"session {'resumed' if resumed else 'started'} (simulated money)")
+    failing = False
+    while not stop["flag"]:
+        now = datetime.now(UTC)
+        if session.due(now):
+            try:
+                session.cycle(now)
+                if failing:
+                    alerter.send("price data is back; session continuing")
+                failing = False
+            except Exception as exc:  # noqa: BLE001 - keep the loop alive; retry next tick
+                # Reason: alert once per outage, not every minute.
+                if not failing:
+                    alerter.send(f"cycle failed, will retry: {type(exc).__name__}: {exc}")
+                failing = True
+        time.sleep(60)
+    typer.echo("perps paper session stopped")
+
+
+@paper_app.command("status")
+def paper_status() -> None:
+    """Show the paper perps session: equity, positions, and progress."""
+    from trader.perps.session import read_status
+
+    s = read_status(_paper_paths()[0])
+    if s is None:
+        typer.echo("no perps paper session has run on this machine yet")
+        return
+    start, equity = Decimal(s["start_equity_usd"]), Decimal(s["equity_usd"])
+    typer.echo(
+        f"perps paper ({s['signal']}, {s['timeframe']}): equity ${equity:.2f} "
+        f"({equity - start:+.2f} from ${start:.2f}), largest drop {s['max_drawdown_pct']}%, "
+        f"fees ${Decimal(s['fees_paid_usd']):.2f}, {s['cycles']} bars processed, "
+        f"last bar {s['last_bar']}"
+    )
+    for p in s["positions"]:
+        typer.echo(
+            f"  {p['side']} {p['market']}: ${p['size_usd']} position on "
+            f"${p['collateral_usd']} collateral, entry {p['entry_price']}"
+        )
+    if not s["positions"]:
+        typer.echo("  no open positions")
+    typer.echo("Simulated money. Results are not a forecast; profit is not guaranteed.")

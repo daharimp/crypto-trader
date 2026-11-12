@@ -24,8 +24,9 @@ ADR-022, ADR-023). UD-14 is resolved as "no intraday trading in V1" and stays `T
   which validates the stop-loss order shape.
 - ETH/USD median daily volume on Kraken was $55.7M, just above the $50M Core threshold; in a
   quiet month ETH becomes ineligible and the bot trades BTC only (fail closed, as approved).
-- Docker image build (Docker Hub rate-limited here): the frozen production install was
-  verified; build on the server with `docker compose build`.
+- Docker image build (no Docker daemon here): the first real build on the owner's server
+  (2026-11-12) failed because `LICENSE` was not copied before `uv sync`; fixed, and
+  `tests/safety/test_deploy_config.py` now checks the files package metadata needs.
 
 ## Perps (ADR-025), added 2026-11-02
 
@@ -33,4 +34,5 @@ ADR-022, ADR-023). UD-14 is resolved as "no intraday trading in V1" and stays `T
 |---|---|---|
 | Any `trader perps` backtest or paper run | UD-23 (starting collateral, venue costs and limits, owner risk limits) in `configs/perps/jupiter.yaml` | Exit 3, `PERPS_CONFIG_UNRESOLVED` lists every key |
 | Live Jupiter prices | Network access to `jup.ag` from the environment | `PRICE_UNAVAILABLE`, exit 3 |
+| Forward paper perps session (`trader perps paper run`, ADR-031) | The same approved UD-23 values | Runs on the approved values; exit 3 if any becomes unapproved |
 | Real-money perps | A new ADR and gates; not built | Impossible: `mode` is `Literal["paper"]` |

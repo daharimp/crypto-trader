@@ -174,3 +174,26 @@ def test_adr025_dashboard_is_read_only() -> None:
             assert word not in text, f"{f.name}: {word}"
         # Reason: the builtin open() could write files; urlopen() is a read-only GET here.
         assert not re.search(r"(?<![\w.])open\(", text), f"{f.name}: builtin open("
+
+
+def test_adr030_dashboard_scripts_only_read_from_this_server() -> None:
+    """ADR-030: the page's own scripts make GET requests to /api only, and load nothing remote."""
+    import re
+
+    static = SRC / "trader" / "ui" / "static"
+    scripts = [static / "desk.js", static / "widgets.js"]
+    page = (static / "index.html").read_text()
+    for f in scripts:
+        text = f.read_text()
+        for word in ("method:", "POST", "XMLHttpRequest", "sendBeacon", "WebSocket", "eval("):
+            assert word not in text, f"{f.name}: {word}"
+        urls = set(re.findall(r"https?://[^\s'\"`)]+", text))
+        assert urls <= {"http://www.w3.org/2000/svg"}, f"{f.name}: {urls}"
+    # Every fetch goes through get(), and get() is only ever called with a /api/ path.
+    widgets = (static / "widgets.js").read_text()
+    assert widgets.count("fetch(") == 1
+    assert all(
+        c.startswith(("'/api/", "`/api/"))
+        for c in re.findall(r"(?<!function )\bget\((.{6})", widgets)
+    )
+    assert not re.search(r"(src|href)=\"(https?:)?//", page)

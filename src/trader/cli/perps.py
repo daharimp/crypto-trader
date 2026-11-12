@@ -118,12 +118,18 @@ def _paper_paths() -> tuple[Path, Path]:
 def paper_run(
     once: bool = typer.Option(False, "--once", help="Process due bars once, then exit."),
     timeframe: str = typer.Option("4h", "--timeframe", help="Decision timeframe: 1h or 4h."),
+    signal_name: str = typer.Option(
+        "consensus_sma_tsmom",
+        "--signal",
+        help="sma_stance_20_50, tsmom_30d, or consensus_sma_tsmom (both must agree).",
+    ),
 ) -> None:
     """Run the paper perps session until stopped. Paper only: it cannot place a real order.
 
     Exit 3 if any perps value is unapproved; exit 2 if the saved state does not match.
     """
     from trader.perps.session import PerpsSession, SessionStateError
+    from trader.perps.signals import make_signal
     from trader.risk.controls import PersistedKillSwitch
     from trader.session.alerts import Alerter
     from trader.ui.data import kraken_public_ohlc
@@ -139,6 +145,8 @@ def paper_run(
             events_path,
             notify=alerter.send,
             halted=PersistedKillSwitch().is_engaged,
+            signal=make_signal(signal_name, {"1h": 24, "4h": 6}.get(timeframe, 6)),
+            signal_name=signal_name,
             timeframe=timeframe,
         )
     except (SessionStateError, ValueError) as exc:

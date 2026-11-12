@@ -14,6 +14,22 @@ class CostParams:
     fee_rate_pct: Decimal
     slippage_bps: Decimal
     min_notional_usd: Decimal
+    # Order style for entries and strategy exits: "market" (taker) or "limit" (post-only
+    # maker, one bar, offset below/above the last close). Protective stops stay stop-market.
+    order_style: str = "market"
+    maker_fee_rate_pct: Decimal | None = None
+    limit_offset_bps: Decimal = Decimal(0)
+
+    @property
+    def maker_fee_rate(self) -> Decimal:
+        """
+        Maker fee as a fraction (falls back to the taker fee).
+
+        Returns:
+            Decimal: e.g. 0.0025 for 0.25%.
+        """
+        pct = self.maker_fee_rate_pct if self.maker_fee_rate_pct is not None else self.fee_rate_pct
+        return pct / Decimal(100)
 
     @property
     def fee_rate(self) -> Decimal:
@@ -51,4 +67,11 @@ class CostParams:
             fee_rate_pct=Decimal(scenario["fee_rate_pct"]),
             slippage_bps=Decimal(scenario["slippage_bps"]),
             min_notional_usd=Decimal(scenario["min_notional_usd"]),
+            order_style=scenario.get("order_style", "market"),
+            maker_fee_rate_pct=(
+                Decimal(scenario["maker_fee_rate_pct"])
+                if "maker_fee_rate_pct" in scenario
+                else None
+            ),
+            limit_offset_bps=Decimal(scenario.get("limit_offset_bps", "0")),
         )

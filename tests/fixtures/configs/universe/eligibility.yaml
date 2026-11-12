@@ -1,0 +1,30 @@
+# Eligibility rules (handoff §6.4). All thresholds UNRESOLVED (UD-18 / UD-06). Do not fill in.
+schema_version: "1.0.0"
+kind: EligibilityRules
+version: 1
+criteria:
+  liquidity:
+    metric: median_daily_quote_volume_usd_30d
+    min_by_tier:
+      core: {value: TBD, status: unresolved, ref: UD-18}
+      major: {value: TBD, status: unresolved, ref: UD-18}
+      speculative: {value: TBD, status: unresolved, ref: UD-18}
+  data_history:
+    metric: days_of_continuous_history
+    min_by_tier:
+      core: {value: TBD, status: unresolved, ref: UD-18}
+      major: {value: TBD, status: unresolved, ref: UD-18}
+      speculative: {value: TBD, status: unresolved, ref: UD-18}
+  spread:
+    metric: median_relative_spread_bps
+    max_by_tier:
+      core: {value: TBD, status: unresolved, ref: UD-18}
+      major: {value: TBD, status: unresolved, ref: UD-18}
+      speculative: {value: TBD, status: unresolved, ref: UD-18}
+    when_no_spread_data: {value: TBD, status: unresolved, ref: UD-18}
+  support: {rule: instrument_has_market_mapping_for_active_venue}
+  explicit_exclusion: {rule: not_in_profile_disallowed_assets_and_not_registry_blocked}
+tier_assignment:
+  core: owner_approved_only
+  major: {value: TBD, status: unresolved, ref: UD-06}
+  speculative: {value: TBD, status: unresolved, ref: UD-06}

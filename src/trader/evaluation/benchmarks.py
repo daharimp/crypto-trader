@@ -90,4 +90,12 @@ def compute_benchmarks(
     for name, weights in BENCHMARKS.items():
         if all(i in builder.instruments for i in weights):
             out[name] = buy_and_hold(builder, weights, decision_times, capital, costs, steps)
+    insts = builder.instruments
+    if len(insts) > 2:
+        # Reason: a strategy trading the whole universe must also be compared with simply
+        # holding the whole universe, not only BTC and ETH.
+        w = Decimal(1) / Decimal(len(insts))
+        out["bm_ew_universe"] = buy_and_hold(
+            builder, dict.fromkeys(insts, w), decision_times, capital, costs, steps
+        )
     return out

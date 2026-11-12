@@ -10,7 +10,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from .common import DomainModel, SchemaVersion
+from .common import DomainModel, RiskProfileId, SchemaVersion
 from .params import (
     ChoiceParam,
     CountParam,
@@ -197,7 +197,7 @@ class RiskProfile(DomainModel):
 
     schema_version: SchemaVersion
     kind: Literal["RiskProfile"]
-    risk_profile_id: Literal["conservative", "balanced", "aggressive"]
+    risk_profile_id: RiskProfileId
     version: Annotated[int, Field(ge=1)]
     display_name: Annotated[str, Field(min_length=1)]
     description: str | None = None

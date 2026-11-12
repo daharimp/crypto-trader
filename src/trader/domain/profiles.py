@@ -11,7 +11,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from .common import DomainModel, SchemaVersion
+from .common import DomainModel, RiskProfileId, SchemaVersion
 
 AssetId = Annotated[str, Field(pattern=r"^[A-Z0-9]{2,15}$")]
 InstrumentId = Annotated[str, Field(pattern=r"^[A-Z0-9]{2,15}-[A-Z0-9]{2,10}$")]
@@ -62,11 +62,19 @@ class AggressiveAcknowledgement(DomainModel):
 class RiskSelection(DomainModel):
     """Owner's risk-profile selection (D-08 to D-10)."""
 
-    risk_profile_id: Literal["conservative", "balanced", "aggressive"]
+    risk_profile_id: RiskProfileId
     risk_profile_version: Annotated[int, Field(ge=1)]
     adaptation: Literal["within_selected_profile_bounds"]
     profile_switching: Literal["owner_only"]
     aggressive_acknowledgement: AggressiveAcknowledgement | None = None
+
+
+class TradingSpec(DomainModel):
+    """Session defaults chosen when the owner built the profile (ADR-024)."""
+
+    strategy_id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{2,63}$")]
+    decision_timeframe: Literal["1h", "4h"]
+    built_with: Literal["profile_builder"] = "profile_builder"
 
 
 class AllowlistEntry(DomainModel):
@@ -149,18 +157,41 @@ class Horizon(DomainModel):
 
 
 class Execution(DomainModel):
-    """Execution settings. Every capability flag is a constant false (SAFE-01 to SAFE-03)."""
+    """Execution settings.
 
-    permitted_environments: Annotated[list[Literal["backtest", "paper"]], Field(min_length=1)]
+    Leverage, margin, short selling, withdrawals, and transfers are constant false (SAFE-02,
+    SAFE-03). ``real_money_enabled`` must be true exactly when ``live`` is permitted (ADR-023).
+    """
+
+    permitted_environments: Annotated[
+        list[Literal["backtest", "paper", "live"]], Field(min_length=1)
+    ]
     autonomy_mode: Literal["paper_autonomous", "observe_only"]
     per_trade_approval_required: Literal[False]
     instrument_types: Annotated[list[Literal["spot"]], Field(min_length=1, max_length=1)]
-    real_money_enabled: Literal[False]
+    real_money_enabled: bool
     leverage_allowed: Literal[False]
     margin_allowed: Literal[False]
     short_selling_allowed: Literal[False]
     withdrawals_allowed: Literal[False]
     transfers_allowed: Literal[False]
+
+    @model_validator(mode="after")
+    def _real_money_matches_live(self) -> Self:
+        """
+        Require ``real_money_enabled`` if and only if ``live`` is permitted.
+
+        Returns:
+            Execution: The validated execution settings.
+
+        Raises:
+            ValueError: If the flag and the permitted environments disagree.
+        """
+        if self.real_money_enabled != ("live" in self.permitted_environments):
+            raise ValueError("real_money_enabled must be true exactly when 'live' is permitted")
+        if len(set(self.permitted_environments)) != len(self.permitted_environments):
+            raise ValueError("permitted_environments must be unique")
+        return self
 
 
 class Explanations(DomainModel):
@@ -245,3 +276,4 @@ class TradingProfile(DomainModel):
     execution: Execution
     explanations: Explanations
     data_sources: DataSources
+    trading_spec: TradingSpec | None = None

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field
 
 
 def _require_utc(value: datetime) -> datetime:
@@ -42,3 +42,7 @@ class VersionRef(DomainModel):
 
     id: str
     version: str
+
+
+# Reason: the three spec presets plus owner-built profiles (ADR-024). Lowercase, hyphens.
+RiskProfileId = Annotated[str, Field(pattern=r"^[a-z][a-z0-9-]{2,63}$")]

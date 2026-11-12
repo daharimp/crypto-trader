@@ -66,4 +66,4 @@ def test_run_kill_switch_only_owner_disengages() -> None:
 def test_version_command() -> None:
     """Smoke: ``trader version`` prints the safety statement."""
     out = CliRunner().invoke(app, ["version"]).stdout
-    assert "0.1.0" in out and "Simulated funds only." in out
+    assert "0.1.0" in out and "Paper by default" in out and "No leverage" in out

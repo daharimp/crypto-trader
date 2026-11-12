@@ -628,6 +628,75 @@ Each item gives: why it matters, a small set of options, a clearly labelled reco
 - **Recommendation (UD-21):** A plus C. Avoid absolute return targets, which encourage overfitting and conflict with D-07.
 - **Resolve before:** V1 MVP exit (M2) and UD-08.
 
+### 10.2 Resolution log
+
+**2026-11-01. Owner: Dahari Morgan-Parker.** The owner accepted the recommendation for every
+decision below. Values are recorded in `configs/risk/*.yaml` (version 2),
+`configs/universe/eligibility.yaml` (version 2), and `configs/profiles/balanced-paper.yaml`
+(version 2) with `status: approved`, `approved_by`, and `approved_on`.
+
+| ID | Decision (Conservative / Balanced / Aggressive where applicable) | Recorded in config |
+|---|---|---|
+| UD-01 | Option B: drawdown breaker 10 / 15 / 25% | yes |
+| UD-02 | Option A: daily loss limit 2 / 3 / 5% | yes |
+| UD-03 | Option A: risk per trade 0.5 / 1.0 / 1.5% | yes |
+| UD-04 | Option A: reserve 30–60 / 20–40 / 10–25%; `[floor, defensive ceiling]` interpretation (A-10) confirmed | yes |
+| UD-05 | Option A: internal deterministic simulator fed by public data, no keys | no field (architecture; ADR-022) |
+| UD-06 | Option A: no Major or Speculative assets in V1; revisit (option C with owner review) in V1.5 | yes (`tier_assignment: none_permitted`) |
+| UD-07 | Option A for V1: equal-weight vote with opposition veto (R-01) | no field until P7 |
+| UD-08 | Recommendation A + C with the five listed gates; profile breaker as absolute ceiling | no field until P10 |
+| UD-09 | Option A: single always-on cloud server running Docker Compose (owner confirmed hosting on a cloud server) | `Dockerfile`, `docker-compose.yml` |
+| UD-10 | Console and log alerts in V1; push or chat plus email summary when hosted | no field until P10 |
+| UD-11 | Option B: tiered retention; never delete referenced datasets; no automatic deletion in V1 | no field |
+| UD-12 | Exposure option A 50 / 80 / 90%; positions option A 3 / 5 / 8 | yes |
+| UD-13 | Option A: Conservative 25 / 10 / 2.5 / 5%, Aggressive 45 / 20 / 7.5 / 15% (Core / Major / Speculative / Speculative total). Balanced H-01..H-04 stay hypotheses (D-28) | yes |
+| UD-14 | **Resolved later the same day:** no intraday trading in V1 (sleeve disabled; cap stays `TBD`, so PV-05 and RR-12 refuse it). Revisit after the main bot has a real track record | stays `TBD` by design |
+| UD-15 | Schedule option A (stepwise 1.0 / 0.5 / 0.25); upward bound option A (no upward adaptation; max multiplier 1) | yes |
+| UD-16 | Option A: ATR multiple, n = 14, k = 2.0 (k 1.5 / 3.0 to be tested in EXP-2026-003) | yes |
+| UD-17 | Cooldown option A (2 & 48 h / 3 & 24 h / 4 & 12 h); 3 execution errors; 120 s grace; 3 stale cycles; 5 s clock skew; external tolerance = venue lot size | yes |
+| UD-18 | Option A thresholds with spread handling (i) `not_applicable` on candle-only data; owner confirms (i) is acceptable for D-26 in V1 | yes |
+| UD-19 | Option D: hold positions and stops on engagement; explicit owner flatten command through the execution gate | yes (`hold_with_owner_flatten_command`; command is backlog BL-048) |
+| UD-20 | Option A: **Kraken**, USD-quoted spot (owner in the US). `base` cost scenario (0.40% per side, 10 bps) matches Kraken Pro's entry taker tier as last known; verify against Kraken's schedule | `assets.yaml` v2 (`kraken:*` symbols), `costs/base.yaml` |
+| UD-21 | Option A + C: relative risk-adjusted targets plus consistency targets; no absolute return targets | no field until M2 exit |
+
+**2026-11-01 (later). Owner: Dahari Morgan-Parker.** The owner decided to trade real money
+on Kraken, aiming for Monday 2026-11-02, with a short paper period first. This amends D-02,
+D-03, and SAFE-01 through ADR-023 (gated `live` environment; leverage, margin, shorting,
+withdrawals, and transfers remain impossible). A new unresolved decision UD-22 holds the live
+capital cap and the paper prerequisite.
+
+**2026-11-02. Owner: Dahari Morgan-Parker.** UD-06 changed from option A to **option B**
+(owner-curated list): **SOL and XRP as Major** (H-02 15% per asset), **SUI as Speculative**
+(H-03 5% per asset, H-04 10% total), each still subject to UD-18 eligibility on Kraken
+(30-day median volume on 2026-11-02: SOL $25.7M, XRP $25.5M, SUI $11.4M). UD-22 approved:
+$250 live capital cap, 42 forward paper cycles before live. Configs: `assets.yaml` v3,
+`eligibility.yaml` v3, `balanced-paper.yaml` v4 (paper track record counts restart at v4).
+
+**2026-11-03. Owner: Dahari Morgan-Parker.** The owner wants riskier swing trading on 4h and
+small quick plays on a shorter chart. Choices made in chat:
+
+- **Swing risk:** switch from Balanced to the **Aggressive** risk profile (values already
+  approved on 2026-11-01: 1.5% per trade, 5% daily, 25% breaker, 45/20/7.5/15% caps, 90%
+  exposure, 8 positions). PV-03 still requires the owner's written acknowledgement in the
+  trading profile before the switch takes effect; until then the profile stays on Balanced.
+- **UD-14 revisited:** intraday quick trades on **1h** (not 30m). Cap **10%** (a D-20
+  candidate), chosen by the owner ahead of the full cap test. Sleeve limits **option B**
+  (half of the Aggressive limits): **2.5% daily** and **12.5% drawdown**, on sleeve equity.
+  Recorded in `configs/risk/aggressive.yaml` v3. Intraday stays disabled
+  (`intraday_strategies_enabled: false`) until the owner picks the sleeve's strategy
+  ("test all, then pick"; EXP-2026-004) and the isolated sleeve is built.
+- **Rollout:** everything paper first; swing and intraday go live together later.
+
+### UD-22: Live capital cap and paper prerequisite
+
+- **Why it matters.** Bounds the real money at risk while the strategy has no real-data
+  evidence, and sets how much forward paper trading must precede live trading.
+- **Options:** cap A: $100 / B: $250 / C: $500 / D: full account. Paper prerequisite
+  A: 6 cycles (1 day) / B: 42 cycles (1 week) / C: 168 cycles (4 weeks).
+- **Recommendation (UD-22):** cap A or B for the first weeks; paper B or longer. The owner's
+  Monday target allows at most about option A (6 cycles) for the paper prerequisite.
+- **Resolve before:** any live session (`configs/live/authorization.yaml`; `TBD` = exit 3).
+
 ### 10.1 Resolution procedure
 
 1. The owner chooses an option (or another value) and records it in this section with the date.

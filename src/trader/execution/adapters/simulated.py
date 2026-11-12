@@ -152,7 +152,7 @@ class SimulatedExecutionAdapter:
             o
             for o in self._orders.values()
             if o.report.status in _OPEN
-            and o.intent.order_type == OrderType.MARKET
+            and o.intent.order_type in (OrderType.MARKET, OrderType.LIMIT)
             and o.intent.decision_time_utc <= open_time
         ]
         # Reason: exits release cash before entries use it; ties break by instrument and ID.
@@ -173,12 +173,44 @@ class SimulatedExecutionAdapter:
                     o.report.submitted_at_utc,
                     reason=ReasonCode.INTENT_EXPIRED,
                 )
+            elif o.intent.order_type == OrderType.LIMIT:
+                o.report = self._fill_limit(o, bar)
             else:
                 slip = self.costs.slippage
                 raw = bar.open * (1 + slip) if o.intent.side == Side.BUY else bar.open * (1 - slip)
                 o.report = self._fill(o.intent, o.report, self._clamp(raw, bar), bar)
             out.append((o.intent, o.report))
         return out
+
+    def _fill_limit(self, o: _Order, bar: Candle) -> ExecutionReport:
+        """
+        Pessimistic post-only limit model for one bar.
+
+        A buy limit fills only if the bar trades strictly below it; if the bar opens at or
+        below the limit, a post-only order would have crossed, so it is treated as not
+        filled (Kraken rejects crossing post-only orders). Sells mirror this. Fills happen at
+        the limit price with the maker fee and no slippage.
+
+        Args:
+            o (_Order): Order.
+            bar (Candle): The bar after the decision.
+
+        Returns:
+            ExecutionReport: ``filled`` or ``expired`` (``LIMIT_NOT_FILLED``).
+        """
+        lim = o.intent.limit_price
+        assert lim is not None
+        buy = o.intent.side == Side.BUY
+        crossed = bar.open <= lim if buy else bar.open >= lim
+        traded = bar.low < lim if buy else bar.high > lim
+        if crossed or not traded:
+            return self._report(
+                o.intent,
+                ExecutionStatus.EXPIRED,
+                o.report.submitted_at_utc,
+                reason=ReasonCode.LIMIT_NOT_FILLED,
+            )
+        return self._fill(o.intent, o.report, lim, bar, fee_rate=self.costs.maker_fee_rate)
 
     def trigger_stops(
         self, bars: dict[str, Candle | None]
@@ -225,7 +257,12 @@ class SimulatedExecutionAdapter:
         return min(max(price, bar.low), bar.high)
 
     def _fill(
-        self, intent: OrderIntent, prev: ExecutionReport, price: Decimal, bar: Candle
+        self,
+        intent: OrderIntent,
+        prev: ExecutionReport,
+        price: Decimal,
+        bar: Candle,
+        fee_rate: Decimal | None = None,
     ) -> ExecutionReport:
         """
         Apply a fill to simulator balances, enforcing spot constraints.
@@ -235,13 +272,14 @@ class SimulatedExecutionAdapter:
             prev (ExecutionReport): Previous report.
             price (Decimal): Fill price.
             bar (Candle): Fill bar.
+            fee_rate (Decimal | None): Fee fraction override (maker fee for limit fills).
 
         Returns:
             ExecutionReport: ``filled`` or ``rejected``.
         """
         qty = intent.quantity
         notional = qty * price
-        fee = notional * self.costs.fee_rate
+        fee = notional * (self.costs.fee_rate if fee_rate is None else fee_rate)
         held = self.holdings.get(intent.instrument_id, Decimal(0))
         if (intent.side == Side.BUY and notional + fee > self.cash) or (
             intent.side == Side.SELL and qty > held
@@ -300,6 +338,7 @@ class SimulatedExecutionAdapter:
             if intent.order_type == OrderType.STOP_MARKET and intent.stop_price is not None
             else (bar.open if bar else intent.reference_price)
         )
+        limit = intent.order_type == OrderType.LIMIT
         return ExecutionReport(
             schema_version="1.0.0",
             execution_report_id=self._ids.next("exr"),
@@ -314,11 +353,58 @@ class SimulatedExecutionAdapter:
             average_fill_price=price,
             expected_price=expected,
             fees_usd=fee,
-            fee_rate_pct=self.costs.fee_rate_pct,
+            fee_rate_pct=(self.costs.maker_fee_rate * 100 if limit else self.costs.fee_rate_pct),
             slippage_bps_assumed=self.costs.slippage_bps,
-            slippage_usd=abs(price - bar.open) * qty if price is not None and bar else Decimal(0),
+            # Reason: a limit fills at its own price by construction, so it has no slippage.
+            slippage_usd=(
+                abs(price - bar.open) * qty
+                if price is not None and bar and not limit
+                else Decimal(0)
+            ),
             submitted_at_utc=submitted,
             filled_at_utc=bar.open_time_utc if bar and status == ExecutionStatus.FILLED else None,
             fill_bar_open_time_utc=bar.open_time_utc if bar else None,
             latency_ms=0,
         )
+
+    # --- persistence across restarts (forward paper sessions) ---------------------------
+    def export_state(self) -> dict[str, object]:
+        """
+        Serializable simulator state.
+
+        Returns:
+            dict[str, object]: State.
+        """
+        return {
+            "cash": str(self.cash),
+            "holdings": {k: str(v) for k, v in self.holdings.items()},
+            "orders": {
+                k: {
+                    "intent": o.intent.model_dump(mode="json"),
+                    "report": o.report.model_dump(mode="json"),
+                }
+                for k, o in self._orders.items()
+            },
+            "ids": dict(self._ids._counters),
+        }
+
+    def load_state(self, data: dict[str, object]) -> None:
+        """
+        Restore state saved by :meth:`export_state`.
+
+        Args:
+            data (dict[str, object]): State.
+        """
+        self.cash = Decimal(str(data["cash"]))
+        holdings = data.get("holdings", {})
+        assert isinstance(holdings, dict)
+        self.holdings = {k: Decimal(str(v)) for k, v in holdings.items()}
+        orders = data.get("orders", {})
+        assert isinstance(orders, dict)
+        for k, v in orders.items():
+            self._orders[k] = _Order(
+                OrderIntent.model_validate(v["intent"]), ExecutionReport.model_validate(v["report"])
+            )
+        ids = data.get("ids", {})
+        assert isinstance(ids, dict)
+        self._ids._counters.update(ids)

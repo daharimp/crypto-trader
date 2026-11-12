@@ -23,9 +23,72 @@
 - [x] BL-019 Persisted kill switch and CLI (T-30, T-45)
 - [x] BL-020 Safety/neutrality tests, README, demo script, DoD check (T-46, T-47)
 
+## 2026-11-01: Apply owner decisions UD-01..UD-21 (all recommendations accepted)
+
+- [x] Approve values in `configs/risk/{conservative,balanced,aggressive}.yaml` (v2), `configs/universe/eligibility.yaml` (v2), `configs/profiles/balanced-paper.yaml` (v2)
+- [x] Record decisions in `docs/spec/product-requirements.md` §10.2 and ADR-022
+- [x] Freeze the all-TBD M1 configs as test fixtures (`tests/fixtures/configs/`, `TRADER_CONFIGS_DIR`)
+- [x] Tests for the approved state (`test_owner_decisions.py`, `test_shipped_configs.py`); demo updated
+- [x] UD-20: Kraken (2026-11-01)
+- [x] BL-048: owner flatten command through the execution gate (UD-19 option D)
+
+## 2026-11-01: Live trading on Kraken (owner goal: live by Monday 2026-11-02)
+
+- [x] UD-14 resolved (no intraday in V1); UD-20 Kraken; UD-09 cloud server; ADR-023 boundary
+- [x] BL-028 profile activation (`trader profile activate`, activation records)
+- [x] Live authorization file with UD-22 cap and paper prerequisite (fail closed)
+- [x] BL-027 forward session runner (paper and live), persisted state, restart recovery
+- [x] Kraken public data (4h signals, 1d eligibility) and Kraken live adapter (ccxt)
+- [x] BL-048 owner flatten; breaker reset requests; webhook alerts; preflight
+- [x] Dockerfile, docker-compose.yml, `.env.example`, `docs/operations/RUNBOOK.md`
+- [x] UD-22 set by owner 2026-11-02: $250 cap, 42 paper cycles
+- [x] Universe: SOL, XRP (Major) and SUI (Speculative) added (UD-06 option B, 2026-11-02)
+- [x] Real Kraken public data verified; real paper cycles run here for all five coins
+- [ ] Owner: write the live acknowledgement; create API key; run preflight on the server
+
+## 2026-11-02: GitHub repository setup
+
+- [x] README rewrite (overview, how it works, safety controls, commands, configuration, status)
+- [x] LICENSE (proprietary, all rights reserved), CONTRIBUTING, SECURITY, CODE_OF_CONDUCT,
+      SUPPORT, CHANGELOG, `.editorconfig`
+- [x] `.github/`: CI workflow, Dependabot (uv + actions), CODEOWNERS, PR and issue templates
+- [x] Runbook: deploy key for the private repository; updating the code
+- [ ] Owner: make the repository private; set the repo description and topics on GitHub;
+      enable private vulnerability reporting and branch protection for `main`
+
+## 2026-11-02: EXP-2026-002 real-data test (owner approved option 1 only)
+
+- [x] Daily eligibility datasets in backtests; universe benchmark; proxy-aware data fetch
+- [x] Fetched 120 days of real 4h Kraken data (5 coins) and ran the cost x capital grid
+- [x] Report: `docs/experiments/EXP-2026-002-kraken-120d.md`. Verdict: no edge shown
+- [ ] (Not approved yet) server deployment walkthrough; comparison strategies (BL-022);
+      merge PR #1; full Kraken history and walk-forward (BL-025/BL-029); maker orders
+
+## 2026-11-03: Owner approved all four next steps
+
+- [x] Comparison strategies (BL-022) with a random-entry control
+- [x] Lower costs: post-only limit orders in the simulator; fee tier in preflight
+- [x] Full-history tooling: `trader data import-kraken`, `trader research compare`
+- [x] EXP-2026-003 on the 120 days available: `docs/experiments/EXP-2026-003-*`
+- [ ] Owner: upload Kraken OHLCVT files (XBT/ETH/SOL/XRP/SUI USD, 240 and 1440) for the
+      full-history rerun
+- [ ] Owner: set up the server and start paper (RUNBOOK steps 1-2)
+- [ ] Live limit orders (post-only on Kraken, fill polling, prompt stops), if approved
+
 ## Discovered During Work
 
-- [ ] Re-evaluate journal `synchronous=FULL` for the paper environment before BL-027 (ADR-019).
+- [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).
+- [ ] Real-data evaluation: Kraken OHLC gives only 720 candles; long 4h backtests need Kraken's downloadable history (CSV import).
+- [ ] Verify Kraken's current fee tier for the account and update `costs/base.yaml` if different.
 - [ ] DQ-12 cross-timeframe consistency is optional in M1 and not implemented (needs 1h + 4h datasets).
-- [ ] Owner decisions UD-01..UD-21 (`BLOCKERS.md`, `docs/spec/product-requirements.md` §10).
+- [x] Owner decisions UD-01..UD-21 resolved 2026-11-01 except UD-14 (deferred) and UD-20 (venue).
 - [ ] Next milestone M2: BL-021..BL-030 (`docs/spec/execution-plan.md` §5).
+
+## 2026-11-03: Riskier swing + 1h quick trades (owner request)
+
+- [x] Generalize `trader research compare` to 1h (`--timeframe`, `--reference`); EXP-2026-004 part 1 (1h screen, 30 days of API data).
+- [x] Record owner decisions: Aggressive swing profile chosen; UD-14 revisit: 1h, 10% cap, sleeve limits 2.5% / 12.5% (`aggressive.yaml` v3).
+- [ ] Owner: write the Aggressive acknowledgement (PV-03) so the profile can switch to Aggressive.
+- [ ] Owner: pick the 1h sleeve strategy (EXP-2026-004 part 1 is inconclusive; full history needs `*_60.csv` uploads).
+- [ ] Build the isolated 1h intraday sleeve (separate ledger, sleeve loss limits, 1h session cycle), paper first.
+- [x] Profile builder (2026-11-03): `trader profile build` interview + `--answers`, `trader profile questions`, web form, named risk profiles, ADR-024.

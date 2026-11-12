@@ -1,0 +1,15 @@
+# Asset registry (handoff §6.4). Core = BTC and ETH (D-26).
+schema_version: "1.0.0"
+kind: AssetRegistry
+version: 1
+assets:
+  - {asset_id: BTC, name: Bitcoin, tier: core, tier_status: approved, aliases: [XBT], blocked: false}
+  - {asset_id: ETH, name: Ether, tier: core, tier_status: approved, aliases: [], blocked: false}
+instruments:
+  - {instrument_id: BTC-USD, base: BTC, quote: USD, type: spot, quantity_step: "0.00000001"}
+  - {instrument_id: ETH-USD, base: ETH, quote: USD, type: spot, quantity_step: "0.00000001"}
+market_symbol_map:
+  - {market_id: "sim:BTC-USD", venue_id: sim, venue_symbol: BTC-USD, instrument_id: BTC-USD}
+  - {market_id: "sim:ETH-USD", venue_id: sim, venue_symbol: ETH-USD, instrument_id: ETH-USD}
+  - {market_id: "csv:BTC-USD", venue_id: csv, venue_symbol: BTC-USD, instrument_id: BTC-USD}
+  - {market_id: "csv:ETH-USD", venue_id: csv, venue_symbol: ETH-USD, instrument_id: ETH-USD}

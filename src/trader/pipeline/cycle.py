@@ -15,6 +15,7 @@ from trader.domain.enums import (
     EventType,
     ExecutionStatus,
     OrderPurpose,
+    ReasonCode,
     RiskStatus,
 )
 from trader.domain.execution import ExecutionReport
@@ -77,6 +78,8 @@ def _j(
     """
     try:
         state.journal.append(et, t, payload, cycle, corr, ptype)
+        if state.on_event is not None:
+            state.on_event(et, payload)
         if et in _LOGGED:
             log.info(
                 et.value, extra={"event_type": et.value, "cycle_id": cycle, "correlation_id": corr}
@@ -99,7 +102,7 @@ def _drain(state: RunState, t: datetime, cycle: str | None = None) -> None:
         _j(state, et, t, payload, cycle, ptype="ControlEvent")
 
 
-def _engage(state: RunState, t: datetime, reason: str, trigger: str) -> None:
+def engage(state: RunState, t: datetime, reason: str, trigger: str) -> None:
     """
     Auto-engage the run kill switch (automation can only engage).
 
@@ -117,6 +120,8 @@ def _engage(state: RunState, t: datetime, reason: str, trigger: str) -> None:
             {"reason": reason, "trigger": trigger},
             ptype="KillSwitchEvent",
         )
+        if state.on_kill_switch is not None:
+            state.on_kill_switch(reason, trigger)
 
 
 def _gate_ctx(state: RunState, now: datetime) -> GateContext:
@@ -137,6 +142,7 @@ def _gate_ctx(state: RunState, now: datetime) -> GateContext:
         adapter_id=state.adapter.adapter_id,
         used_idempotency_keys=state.used_keys,
         filled_entry_ids=state.filled_entries,
+        owner_flatten_decision_ids=state.owner_flatten_decision_ids,
     )
 
 
@@ -164,6 +170,11 @@ def submit_intent(
     if rejected:
         for r in rejected:
             state.rejections[r] += 1
+        if ReasonCode.EXCHANGE_ERROR.value in rejected:
+            state.controls.consecutive_errors += 1
+            limit = state.params.max_consecutive_errors if state.params else 1
+            if state.controls.consecutive_errors >= limit:
+                engage(state, now, "repeated execution errors", "repeated_execution_errors")
         _j(
             state,
             EventType.ORDER_REJECTED,
@@ -394,7 +405,7 @@ def _handle_reports(
             _j(state, EventType.EXECUTION_ERROR, t, rep, intent.cycle_id, intent.correlation_id)
             limit = state.params.max_consecutive_errors if state.params else 1
             if state.controls.consecutive_errors >= limit:
-                _engage(state, t, "repeated execution errors", "repeated_execution_errors")
+                engage(state, t, "repeated execution errors", "repeated_execution_errors")
     if reports:
         reconcile(state, t)
 
@@ -410,11 +421,16 @@ def reconcile(state: RunState, t: datetime) -> bool:
     Returns:
         bool: True if reconciled.
     """
-    diffs = state.ledger.reconcile(state.adapter.get_balances())
+    balances = state.adapter.get_balances()
+    diffs = (
+        state.reconcile_fn(state.ledger, balances)
+        if state.reconcile_fn is not None
+        else state.ledger.reconcile(balances)
+    )
     if not diffs:
         return True
     _j(state, EventType.RECONCILIATION_FAILED, t, {"differences": diffs}, ptype="Reconciliation")
-    _engage(state, t, "reconciliation mismatch", "reconciliation_mismatch")
+    engage(state, t, "reconciliation mismatch", "reconciliation_mismatch")
     return False
 
 

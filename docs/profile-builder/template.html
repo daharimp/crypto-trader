@@ -1,0 +1,293 @@
+<title>Trading Profile Builder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one working column of question groups (style, universe, risk, quick trades, safety,
+   sign-off) with a sticky status bar; the answers file appears at the end, ready to copy. */
+:root {
+  --bg: #f3f5f4; --surface: #ffffff; --ink: #17201d; --muted: #5c6a65; --line: #d5dcd9;
+  --accent: #0f6e5c; --accent-soft: #dcefe9; --warn: #9a5b00; --warn-soft: #fbefd9;
+  --bad: #a3271f; --bad-soft: #f8e1de;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111816; --surface: #18211e; --ink: #e4ebe8; --muted: #9aa9a3; --line: #2c3934;
+  --accent: #4fc2a6; --accent-soft: #173a31; --warn: #e5a54a; --warn-soft: #3a2c14;
+  --bad: #f08a80; --bad-soft: #3e1f1c; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111816; --surface: #18211e; --ink: #e4ebe8; --muted: #9aa9a3; --line: #2c3934;
+  --accent: #4fc2a6; --accent-soft: #173a31; --warn: #e5a54a; --warn-soft: #3a2c14;
+  --bad: #f08a80; --bad-soft: #3e1f1c; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 860px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; display: grid; gap: 28px; }
+header h1 { font: 700 clamp(26px, 5vw, 36px)/1.1 var(--display); margin: 0 0 8px; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 65ch; }
+.note { background: var(--warn-soft); color: var(--ink); border-left: 3px solid var(--warn); padding: 10px 14px; border-radius: 4px; font-size: 14px; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 13px; }
+.bar b { font-family: var(--mono); font-weight: 500; }
+.pill { font: 500 12px/1 var(--mono); padding: 5px 8px; border-radius: 99px; background: var(--accent-soft); color: var(--accent); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+section.group { display: grid; gap: 14px; }
+section.group > h2 { font: 600 13px/1 var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 8px 0 0; }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.q.err { border-color: var(--bad); }
+.q h3 { margin: 0; font: 600 16px/1.35 var(--body); text-wrap: balance; }
+.q .why { margin: 0; color: var(--muted); font-size: 14px; }
+.ref { font: 400 11px/1 var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 3px 5px; margin-left: 6px; vertical-align: 2px; white-space: nowrap; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt { position: relative; }
+.opt input { position: absolute; opacity: 0; inset: 0; pointer-events: none; }
+.q { scroll-margin-top: calc(72px + env(safe-area-inset-top, 0px)); }
+.opt label { display: grid; gap: 2px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; min-width: 92px; background: var(--bg); }
+.opt label .v { font: 500 15px/1.2 var(--mono); }
+.opt label .p { font-size: 12px; color: var(--muted); max-width: 30ch; }
+.opt label .r { font-size: 11px; color: var(--accent); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.opt input:checked + label { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.opt input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.custom { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+input[type="text"], input[type="number"], textarea, select { font: 15px/1.4 var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+input[type="number"] { width: 9em; font-family: var(--mono); }
+input[type="text"], textarea { width: 100%; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.msg { font-size: 13px; color: var(--bad); margin: 0; }
+.checks { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.checks li::before { content: "✓ "; color: var(--accent); font-weight: 700; }
+.checks li.no::before { content: "✗ "; color: var(--bad); }
+.out { display: grid; gap: 10px; }
+.out pre { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; overflow-x: auto; font: 12.5px/1.5 var(--mono); max-height: 420px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+button { font: 600 14px/1 var(--body); padding: 10px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--surface); cursor: pointer; }
+button.ghost { background: transparent; color: var(--accent); }
+code { font-family: var(--mono); font-size: 0.92em; }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+@media (prefers-reduced-motion: no-preference) { .opt label { transition: border-color .15s, background .15s; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Trading Profile Builder</h1>
+    <p>Answer one question per setting. Options come from the spec for the preset you start from; you can type your own value inside the spec's range. Every value is recorded as your approval when the bot builds the profile.</p>
+  </header>
+  <p class="note">Results are not guaranteed and real money can be lost. Recommended options are pre-selected so you can see a complete profile; change anything you disagree with. Your name and sign-off are always yours to write.</p>
+  <div class="bar" id="bar"><span>Profile <b id="bar-id">unnamed</b></span><span>Preset <b id="bar-preset">balanced</b></span><span id="bar-state" class="pill">checking</span></div>
+  <main id="form"></main>
+  <section class="group" aria-labelledby="chk-h">
+    <h2 id="chk-h">Consistency checks</h2>
+    <ul class="checks" id="checks"></ul>
+  </section>
+  <section class="out" aria-labelledby="out-h">
+    <h2 id="out-h" style="font:600 13px/1 var(--body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:8px 0 0">Your answers file</h2>
+    <ol class="steps">
+      <li>Copy the answers below and save them on the server as <code>answers.json</code>.</li>
+      <li>Check them: <code>trader profile build --answers answers.json --dry-run</code></li>
+      <li>Build: <code>trader profile build --answers answers.json</code> (writes the profile, the risk file, and a spec sheet).</li>
+    </ol>
+    <div class="row"><button id="copy" type="button">Copy answers</button><button id="reset" class="ghost" type="button">Reset to recommended</button><span id="copied" class="msg" style="color:var(--accent)"></span></div>
+    <pre id="json" tabindex="0"></pre>
+  </section>
+</div>
+
+<script id="bank" type="application/json">/*BANK*/null/*END*/</script>
+<script>
+(() => {
+  const bank = JSON.parse(document.getElementById("bank").textContent);
+  const SECTIONS = { owner: "You", style: "Style", universe: "Coins", capital: "Capital", risk: "Risk limits", intraday: "Quick-trade slice", safety: "Safety switches", "sign-off": "Sign-off" };
+  const state = { preset: "balanced", answers: {} };
+  const form = document.getElementById("form");
+  const fmt = v => Array.isArray(v) ? v.join("–") : String(v);
+
+  function recommended(q) {
+    const r = q.options.find(o => o.recommended);
+    if (q.kind === "multi") return q.options.map(o => o.value);
+    if (q.id === "strategy_id") return (q.options.find(o => o.value === "sma_trend") || q.options[0] || {}).value;
+    return r ? r.value : "";
+  }
+  function questions() { return [...bank.header, ...bank.presets[state.preset]]; }
+  function strategyOk(o) {
+    const tf = state.answers.decision_timeframe;
+    return !tf || (o.pros || "").includes(tf);
+  }
+  function seed(keep) {
+    for (const q of questions()) {
+      if (keep && q.id in state.answers) continue;
+      if (q.kind === "text") { if (!(q.id in state.answers)) state.answers[q.id] = ""; continue; }
+      state.answers[q.id] = recommended(q);
+    }
+  }
+  function err(q, v) {
+    if (q.kind === "text") {
+      if (q.min_length && v.trim().length < q.min_length) return `Needs at least ${q.min_length} characters.`;
+      if (q.pattern && !new RegExp(q.pattern.replace(/^\^?/, "^").replace(/\$?$/, "$")).test(v.trim())) return "Use lowercase letters, digits, and hyphens; start with a letter.";
+      if (q.id === "profile_id" && ["conservative", "balanced", "aggressive", "balanced-paper"].includes(v.trim())) return "That name is reserved; choose another.";
+      return "";
+    }
+    if (q.kind === "multi") return v.length ? "" : "Choose at least one coin.";
+    if (q.kind === "range") {
+      const [lo, hi] = v.map(Number);
+      if (!(lo < hi)) return "The floor must be below the ceiling.";
+      if (lo < q.custom_min || hi > q.custom_max) return `Keep both between ${q.custom_min} and ${q.custom_max}.`;
+      return "";
+    }
+    if (q.allows_custom) {
+      const n = Number(v);
+      if (v === "" || Number.isNaN(n)) return "Enter a number.";
+      if (n < q.custom_min || n > q.custom_max) return `The spec's range is ${q.custom_min} to ${q.custom_max}.`;
+      if (q.integer && !Number.isInteger(n)) return "Use a whole number.";
+    }
+    return "";
+  }
+
+  function optionEl(q, o, i, checked, type) {
+    const id = `${q.id}-${i}`;
+    const wrap = document.createElement("div");
+    wrap.className = "opt";
+    wrap.innerHTML = `<input type="${type}" id="${id}" name="${q.id}"><label for="${id}"><span class="v"></span>${o.recommended ? '<span class="r">Recommended</span>' : ""}<span class="p"></span></label>`;
+    wrap.querySelector(".v").textContent = o.label;
+    wrap.querySelector(".p").textContent = [o.pros && "+ " + o.pros, o.cons && "− " + o.cons].filter(Boolean).join(" · ");
+    const inp = wrap.querySelector("input");
+    inp.checked = checked;
+    inp.addEventListener("change", () => {
+      if (type === "checkbox") {
+        const set = new Set(state.answers[q.id]);
+        inp.checked ? set.add(o.value) : set.delete(o.value);
+        state.answers[q.id] = q.options.map(x => x.value).filter(x => set.has(x));
+      } else {
+        state.answers[q.id] = o.value;
+      }
+      if (q.id === "preset") { state.preset = o.value; seed(false); state.answers.preset = o.value; }
+      if (q.id === "decision_timeframe") {
+        const sq = bank.presets[state.preset].find(x => x.id === "strategy_id");
+        const ok = sq.options.filter(strategyOk);
+        if (!ok.some(x => x.value === state.answers.strategy_id)) state.answers.strategy_id = (ok[0] || {}).value;
+      }
+      render();
+    });
+    return wrap;
+  }
+
+  function render() {
+    const focusId = document.activeElement && document.activeElement.id;
+    form.innerHTML = "";
+    let section = null, box = null;
+    for (const q of questions()) {
+      if (q.id === "intraday_limits" && Number(state.answers.intraday_cap_pct) === 0) continue;
+      if (q.section !== section) {
+        section = q.section;
+        box = document.createElement("section");
+        box.className = "group";
+        box.innerHTML = `<h2></h2>`;
+        box.querySelector("h2").textContent = SECTIONS[section] || section;
+        form.appendChild(box);
+      }
+      const v = state.answers[q.id];
+      const e = err(q, v);
+      const card = document.createElement("div");
+      card.className = "q" + (e ? " err" : "");
+      card.innerHTML = `<h3></h3>${q.why ? '<p class="why"></p>' : ""}`;
+      card.querySelector("h3").textContent = q.prompt;
+      if (q.ref) { const r = document.createElement("span"); r.className = "ref"; r.textContent = q.ref; card.querySelector("h3").appendChild(r); }
+      if (q.why) card.querySelector(".why").textContent = q.why;
+      if (q.kind === "text") {
+        const el = document.createElement(q.id === "acknowledgement" ? "textarea" : "input");
+        if (el.tagName === "INPUT") el.type = "text";
+        el.id = `in-${q.id}`; el.value = v; el.rows = 3;
+        el.placeholder = q.id === "owner" ? "Your full name" : q.id === "profile_id" ? "e.g. swing-aggressive" : "Write this in your own words";
+        el.addEventListener("input", () => { state.answers[q.id] = el.value; refresh(); });
+        el.addEventListener("change", render);
+        card.appendChild(el);
+      } else {
+        const opts = document.createElement("div");
+        opts.className = "opts";
+        const list = q.id === "strategy_id" ? q.options.filter(strategyOk) : q.options;
+        list.forEach((o, i) => {
+          const checked = q.kind === "multi" ? v.includes(o.value) : fmt(o.value) === fmt(v);
+          opts.appendChild(optionEl(q, o, i, checked, q.kind === "multi" ? "checkbox" : "radio"));
+        });
+        card.appendChild(opts);
+        if (q.allows_custom) {
+          const c = document.createElement("div");
+          c.className = "custom";
+          if (q.kind === "range") {
+            c.innerHTML = `<span>Or your own floor–ceiling (${q.custom_min}–${q.custom_max}%):</span><input type="number" id="lo-${q.id}" step="any" aria-label="Floor"><span>to</span><input type="number" id="hi-${q.id}" step="any" aria-label="Ceiling">`;
+            const [lo, hi] = c.querySelectorAll("input");
+            lo.value = v[0]; hi.value = v[1];
+            const upd = () => { state.answers[q.id] = [Number(lo.value), Number(hi.value)]; render(); };
+            lo.addEventListener("change", upd); hi.addEventListener("change", upd);
+          } else {
+            c.innerHTML = `<span>Or your own value (${q.custom_min}–${q.custom_max}):</span><input type="number" id="cu-${q.id}" step="${q.integer ? 1 : "any"}">`;
+            const inp = c.querySelector("input");
+            inp.value = v;
+            inp.addEventListener("change", () => { state.answers[q.id] = inp.value === "" ? "" : Number(inp.value); render(); });
+          }
+          card.appendChild(c);
+        }
+      }
+      if (e) { const m = document.createElement("p"); m.className = "msg"; m.textContent = e; card.appendChild(m); }
+      box.appendChild(card);
+    }
+    refresh();
+    if (focusId) { const f = document.getElementById(focusId); if (f) f.focus(); }
+  }
+
+  function crossChecks() {
+    const a = state.answers, n = k => Number(a[k]);
+    const floor = Array.isArray(a.reserve_pct_range) ? Number(a.reserve_pct_range[0]) : NaN;
+    return [
+      [n("risk_per_trade_pct") < n("daily_loss_pct"), `Risk per trade (${a.risk_per_trade_pct}%) is below the daily loss limit (${a.daily_loss_pct}%)`],
+      [n("daily_loss_pct") < n("breaker_pct"), `Daily loss limit (${a.daily_loss_pct}%) is below the drawdown breaker (${a.breaker_pct}%)`],
+      [n("exposure_pct") + floor <= 100, `Exposure cap + reserve floor = ${n("exposure_pct") + floor}% (must be 100% or less)`],
+      [n("spec_cap_pct") <= n("spec_total_pct"), `One Speculative coin (${a.spec_cap_pct}%) fits inside the Speculative total (${a.spec_total_pct}%)`],
+      [n("core_cap_pct") <= n("exposure_pct"), `Core per-coin cap (${a.core_cap_pct}%) fits inside total exposure (${a.exposure_pct}%)`],
+    ];
+  }
+
+  function refresh() {
+    const qs = questions().filter(q => !(q.id === "intraday_limits" && Number(state.answers.intraday_cap_pct) === 0));
+    const missing = qs.filter(q => err(q, state.answers[q.id])).length;
+    const cc = crossChecks();
+    const ul = document.getElementById("checks");
+    ul.innerHTML = "";
+    for (const [ok, text] of cc) { const li = document.createElement("li"); li.textContent = text; if (!ok) li.className = "no"; ul.appendChild(li); }
+    const bad = cc.filter(c => !c[0]).length;
+    const pill = document.getElementById("bar-state");
+    pill.className = "pill" + (missing || bad ? " bad" : "");
+    pill.textContent = missing || bad ? `${missing} to answer · ${bad} check${bad === 1 ? "" : "s"} failing` : "ready to build";
+    document.getElementById("bar-id").textContent = state.answers.profile_id || "unnamed";
+    document.getElementById("bar-preset").textContent = state.preset;
+    const out = {};
+    for (const q of questions()) out[q.id] = state.answers[q.id];
+    if (Number(out.intraday_cap_pct) === 0) out.intraday_limits = "B";
+    document.getElementById("json").textContent = JSON.stringify({ bank_version: bank.bank_version, answers: out }, null, 2);
+    try { localStorage.setItem("profile-builder-draft", JSON.stringify(state)); } catch (_) {}
+  }
+
+  document.getElementById("copy").addEventListener("click", () => {
+    const text = document.getElementById("json").textContent;
+    const done = msg => { document.getElementById("copied").textContent = msg; };
+    try {
+      navigator.clipboard.writeText(text).then(() => done("Copied."), () => selectJson(done));
+    } catch (_) { selectJson(done); }
+  });
+  function selectJson(done) {
+    const r = document.createRange(); r.selectNodeContents(document.getElementById("json"));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+    done("Selected. Press Ctrl+C or Cmd+C to copy.");
+  }
+  document.getElementById("reset").addEventListener("click", () => {
+    const keep = { owner: state.answers.owner, profile_id: state.answers.profile_id, acknowledgement: state.answers.acknowledgement };
+    state.answers = keep; seed(true); render();
+  });
+
+  try {
+    const saved = JSON.parse(localStorage.getItem("profile-builder-draft") || "null");
+    if (saved && bank.presets[saved.preset]) { state.preset = saved.preset; state.answers = saved.answers || {}; }
+  } catch (_) {}
+  state.answers.preset = state.preset;
+  seed(true);
+  render();
+})();
+</script>

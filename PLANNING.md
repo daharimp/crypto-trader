@@ -8,8 +8,9 @@ objective is to "balance strong returns with consistent performance and controll
 
 ## Current milestone
 
-**M1: V1 vertical slice** (BL-001..BL-020, tests T-01..T-48), done. Next: **M2 / V1 MVP**
-(`docs/spec/execution-plan.md` §2, §5: BL-021 onward).
+**M1: V1 vertical slice**, done. **Owner decisions** UD-01..UD-21 resolved (2026-11-01).
+**Live trading on Kraken** (ADR-023): forward paper/live sessions, activation, live
+authorization, Kraken adapter, deployment. Next: real-data evaluation and the rest of M2.
 
 ## Architecture (see `docs/spec/architecture.md`)
 
@@ -19,8 +20,8 @@ execution -> journal. M1 implements every stage; regime and ensemble are pass-th
 
 Principles that constrain every change:
 
-1. Simulated funds only. No real-money, leverage, margin, shorting, withdrawal, or transfer
-   code paths, flags, or adapters (D-02, D-03; T-46 enforces it).
+1. Paper by default; real-money spot trading only through the gated live environment
+   (ADR-023). No leverage, margin, shorting, withdrawal, or transfer code paths (T-46).
 2. Deterministic risk code has final authority. Strategies never size; every order comes from
    an approved `RiskDecision` and passes the execution gate.
 3. Never invent risk values. `TBD` means fail closed (exit 3); experiment values only in

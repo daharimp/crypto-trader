@@ -1,0 +1,16 @@
+# Cost scenario base_maker (RECOMMENDATION; research and paper only, refused for live).
+# Entries and strategy exits are post-only limit orders at the last close offset by
+# limit_offset_bps (maker fee 0.25% as last known for Kraken's entry tier; verify with
+# `trader live preflight`). Protective stops stay stop-market at the taker fee 0.40%.
+schema_version: "1.0.0"
+kind: CostScenario
+scenario_id: base_maker
+fee_rate_pct: "0.40"
+maker_fee_rate_pct: "0.25"
+slippage_bps: "10"
+order_style: limit
+limit_offset_bps: "5"
+execution_delay: next_bar_open
+min_notional_usd: "10"
+status: recommendation
+ref: R-10

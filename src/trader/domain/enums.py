@@ -6,10 +6,16 @@ from enum import StrEnum
 
 
 class Environment(StrEnum):
-    """Execution environments. No live environment exists (D-02)."""
+    """Execution environments.
+
+    ``live`` sends real orders to an exchange. It exists only behind the gates in ADR-023:
+    an active profile with ``real_money_enabled``, an owner-signed live authorization with a
+    capital cap, a live activation record, and the Kraken adapter. Spot only.
+    """
 
     BACKTEST = "backtest"
     PAPER = "paper"
+    LIVE = "live"
 
 
 class Side(StrEnum):
@@ -39,6 +45,7 @@ class OrderType(StrEnum):
 
     MARKET = "market"
     STOP_MARKET = "stop_market"
+    LIMIT = "limit"  # post-only limit (maker); simulator and paper only so far
 
 
 class EnsembleAction(StrEnum):
@@ -175,6 +182,8 @@ class ReasonCode(StrEnum):
     RISK_DECISION_MISMATCH = "RISK_DECISION_MISMATCH"
     ADAPTER_NOT_ALLOWED = "ADAPTER_NOT_ALLOWED"
     INTENT_EXPIRED = "INTENT_EXPIRED"
+    EXCHANGE_ERROR = "EXCHANGE_ERROR"
+    LIMIT_NOT_FILLED = "LIMIT_NOT_FILLED"
 
 
 class ValidationErrorCode(StrEnum):
@@ -197,6 +206,8 @@ class ValidationErrorCode(StrEnum):
     RISK_CONFIG_UNRESOLVED = "RISK_CONFIG_UNRESOLVED"
     DATASET_INTEGRITY_FAILED = "DATASET_INTEGRITY_FAILED"
     JOURNAL_INTEGRITY_FAILED = "JOURNAL_INTEGRITY_FAILED"
+    LIVE_NOT_AUTHORIZED = "LIVE_NOT_AUTHORIZED"
+    LIVE_NOT_ACKNOWLEDGED = "LIVE_NOT_ACKNOWLEDGED"
 
 
 class EventType(StrEnum):

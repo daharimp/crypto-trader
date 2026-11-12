@@ -11,7 +11,12 @@ import pytest
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-PROFILE = ROOT / "configs" / "profiles" / "balanced-paper.yaml"
+# Reason: mechanism tests run against the frozen all-TBD M1 baseline (tests/fixtures/configs),
+# never against the owner-approved shipped configs, so approvals cannot change what they prove.
+FIXTURE_CONFIGS = ROOT / "tests" / "fixtures" / "configs"
+SHIPPED_CONFIGS = ROOT / "configs"
+PROFILE = FIXTURE_CONFIGS / "profiles" / "balanced-paper.yaml"
+SHIPPED_PROFILE = SHIPPED_CONFIGS / "profiles" / "balanced-paper.yaml"
 EXP_2026_001 = ROOT / "experiments" / "EXP-2026-001-vertical-slice.yaml"
 EXP_FIXTURE = ROOT / "tests" / "fixtures" / "experiments" / "EXP-0000-001-e2e.yaml"
 
@@ -22,6 +27,7 @@ def _isolated_data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     data = tmp_path / "data"
     monkeypatch.setenv("TRADER_DATA_DIR", str(data))
     monkeypatch.setenv("TRADER_CODE_REVISION", "test-revision")
+    monkeypatch.setenv("TRADER_CONFIGS_DIR", str(FIXTURE_CONFIGS))
     monkeypatch.chdir(ROOT)
     return data
 
@@ -48,7 +54,7 @@ def profile_data() -> dict[str, Any]:
 def configs_copy(tmp_path: Path) -> Path:
     """A writable copy of ``configs/`` for tests that need modified risk files."""
     dst = tmp_path / "configs"
-    shutil.copytree(ROOT / "configs", dst)
+    shutil.copytree(FIXTURE_CONFIGS, dst)
     return dst
 
 
@@ -72,8 +78,21 @@ def fixture_experiment(tmp_path: Path):
     return make
 
 
-def make_datasets(days: int = 120, start: str = "2024-01-01T00:00:00Z") -> list[str]:
-    """Create BTC (seed 42) and ETH (seed 43) synthetic 4h datasets; return their IDs."""
+SHIPPED_UNIVERSE = (
+    ("BTC-USD", 42, "30000"),
+    ("ETH-USD", 43, "2000"),
+    ("SOL-USD", 44, "90"),
+    ("XRP-USD", 45, "1.2"),
+    ("SUI-USD", 46, "0.9"),
+)
+
+
+def make_datasets(
+    days: int = 120,
+    start: str = "2024-01-01T00:00:00Z",
+    universe: tuple[tuple[str, int, str], ...] = SHIPPED_UNIVERSE[:2],
+) -> list[str]:
+    """Create synthetic 4h datasets (default BTC seed 42, ETH seed 43); return their IDs."""
     from datetime import timedelta
     from decimal import Decimal
 
@@ -84,7 +103,7 @@ def make_datasets(days: int = 120, start: str = "2024-01-01T00:00:00Z") -> list[
 
     s = parse_utc(start)
     ids = []
-    for inst, seed, px in (("BTC-USD", 42, "30000"), ("ETH-USD", 43, "2000")):
+    for inst, seed, px in universe:
         prov = SyntheticCandleProvider(seed, Decimal(px))
         candles = prov.fetch_candles(inst, "4h", s, s + timedelta(days=days))
         src = SourceRef(provider_id="synthetic", venue_id="sim", retrieved_at_utc=None)

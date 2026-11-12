@@ -25,6 +25,15 @@ required:
   - explanations
   - data_sources
 properties:
+  trading_spec:
+    type: object
+    additionalProperties: false
+    required: [strategy_id, decision_timeframe]
+    description: Session defaults recorded by the profile builder (ADR-024). Optional.
+    properties:
+      strategy_id: {type: string, pattern: "^[a-z][a-z0-9_]{2,63}$"}
+      decision_timeframe: {enum: ["1h", "4h"]}
+      built_with: {const: profile_builder}
   schema_version:
     const: "1.0.0"
     description: Version of this schema. Readers reject unknown major versions.
@@ -93,8 +102,11 @@ properties:
     required: [risk_profile_id, risk_profile_version, adaptation, profile_switching]
     properties:
       risk_profile_id:
-        enum: [conservative, balanced, aggressive]
-        description: APPROVED D-08, D-09. The owner selects the overall profile, initially balanced.
+        type: string
+        pattern: "^[a-z][a-z0-9-]{2,63}$"
+        description: >-
+          APPROVED D-08, D-09. The owner selects the overall profile, initially balanced. Owner-built
+          risk profiles (ADR-024) always require explicit selection and an acknowledgement.
       risk_profile_version:
         type: integer
         minimum: 1
@@ -245,14 +257,30 @@ properties:
       - short_selling_allowed
       - withdrawals_allowed
       - transfers_allowed
+    allOf:
+      - if:
+          properties:
+            permitted_environments:
+              contains:
+                const: live
+        then:
+          properties:
+            real_money_enabled:
+              const: true
+        else:
+          properties:
+            real_money_enabled:
+              const: false
     properties:
       permitted_environments:
         type: array
         minItems: 1
         uniqueItems: true
         items:
-          enum: [backtest, paper]
+          enum: [backtest, paper, live]
         description: >-
+          live = real orders on the owner's exchange account, spot only, behind the gates in
+          ADR-023 (amendment of 2026-11-01).
           backtest = historical replay with simulated fills (research environment).
           paper = forward-time simulated execution; also covers dry-run and sandbox adapters
           (assumption A-04). No other environment exists (D-02).
@@ -274,8 +302,9 @@ properties:
           const: spot
         description: Spot only (v0.1 section 2.1; A-03).
       real_money_enabled:
-        const: false
-        description: SAFE-01 (D-02, D-03).
+        type: boolean
+        description: >-
+          True exactly when live is permitted (ADR-023, amending SAFE-01 on 2026-11-01).
       leverage_allowed:
         const: false
         description: SAFE-02 (D-03).

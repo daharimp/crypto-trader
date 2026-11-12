@@ -80,9 +80,10 @@ def _run_backtest(
     cost_scenario: str | None,
     start_utc: datetime | None,
     end_utc: datetime | None,
-    configs_root: Path = Path("configs"),
+    configs_root: Path | None = None,
     command: str = "",
     journal_factory: Any = JournalStore,
+    eligibility_datasets: list[str] | None = None,
 ) -> RunResult:
     """
     Run one backtest end to end and write the report (implementation).
@@ -96,9 +97,13 @@ def _run_backtest(
         cost_scenario (str | None): Cost scenario override.
         start_utc (datetime | None): First decision time (warm-up uses earlier candles).
         end_utc (datetime | None): Last decision time.
-        configs_root (Path): Config root.
+        configs_root (Path | None): Config root.
+            Defaults to ``TRADER_CONFIGS_DIR`` or ``configs``.
         command (str): Command line for the reproduction record.
         journal_factory (Any): Journal constructor (tests inject failing journals).
+        eligibility_datasets (list[str] | None): Optional daily (``1d``) datasets used for
+            eligibility history and liquidity, as live sessions do (Kraken serves only 720
+            candles per timeframe). Defaults to the decision-timeframe datasets.
 
     Returns:
         RunResult: Exit code (0, 1, 2, 3, or 4), run ID, report path, and message.
@@ -178,7 +183,7 @@ def _run_backtest(
     if missing:
         return fail(2, f"no dataset for in-scope instruments: {missing}")
     try:
-        strat = build_strategy(strategy, configs_root)
+        strat = build_strategy(strategy, configs_root, timeframe)
     except (StrategyNotFoundError, ValueError) as exc:
         return fail(2, f"strategy unavailable: {exc}")
 
@@ -187,14 +192,29 @@ def _run_backtest(
     capital = prof.capital.paper_capital_usd
     adapter = build_adapter("simulated", capital, costs)
     delta = timeframe_delta(timeframe)
-    elig = EligibilityEvaluator(
-        compiled,
-        prof,
-        registry,
-        {i: builder.history(i, datetime.max.replace(tzinfo=UTC)) for i in builder.instruments},
-        {i: builder.manifest(i).source.venue_id for i in builder.instruments},
-        delta,
-    )
+    elig_hist = {
+        i: builder.history(i, datetime.max.replace(tzinfo=UTC)) for i in builder.instruments
+    }
+    elig_venue = {i: builder.manifest(i).source.venue_id for i in builder.instruments}
+    elig_delta = delta
+    if eligibility_datasets:
+        elig_hist, elig_venue = {}, {}
+        elig_delta = timeframe_delta("1d")
+        for ds in eligibility_datasets:
+            try:
+                em, edf = store.load(ds)
+            except DatasetIntegrityError as exc:
+                return fail(4, str(exc))
+            except DatasetNotFoundError:
+                return fail(2, f"eligibility dataset not found: {ds}")
+            if em.timeframe != "1d":
+                return fail(2, f"eligibility dataset {ds} must be 1d, not {em.timeframe}")
+            from trader.data.frames import frame_to_candles
+
+            elig_hist[em.instrument_id] = frame_to_candles(edf, "1d")
+            elig_venue[em.instrument_id] = em.source.venue_id
+            journal.append(EventType.DATASET_VALIDATED, t_now, em)
+    elig = EligibilityEvaluator(compiled, prof, registry, elig_hist, elig_venue, elig_delta)
     state = RunState(
         compiled=compiled,
         profile=prof,
@@ -242,9 +262,10 @@ def run_backtest(
     cost_scenario: str | None,
     start_utc: datetime | None,
     end_utc: datetime | None,
-    configs_root: Path = Path("configs"),
+    configs_root: Path | None = None,
     command: str = "",
     journal_factory: Any = JournalStore,
+    eligibility_datasets: list[str] | None = None,
 ) -> RunResult:
     """
     Run one backtest end to end and write the report (handoff §7.13 signature).
@@ -258,9 +279,13 @@ def run_backtest(
         cost_scenario (str | None): Cost scenario override.
         start_utc (datetime | None): First decision time (warm-up uses earlier candles).
         end_utc (datetime | None): Last decision time.
-        configs_root (Path): Config root.
+        configs_root (Path | None): Config root.
+            Defaults to ``TRADER_CONFIGS_DIR`` or ``configs``.
         command (str): Command line for the reproduction record.
         journal_factory (Any): Journal constructor (tests inject failing journals).
+        eligibility_datasets (list[str] | None): Optional daily (``1d``) datasets used for
+            eligibility history and liquidity, as live sessions do (Kraken serves only 720
+            candles per timeframe). Defaults to the decision-timeframe datasets.
 
     Returns:
         RunResult: Exit code (0, 1, 2, 3, or 4), run ID, report path, and message.
@@ -285,6 +310,7 @@ def run_backtest(
             configs_root,
             command,
             factory,
+            eligibility_datasets,
         )
     finally:
         for j in opened:

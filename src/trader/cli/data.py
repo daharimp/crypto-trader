@@ -92,6 +92,37 @@ def import_csv(
     typer.echo(m.dataset_id)
 
 
+@app.command("import-kraken")
+def import_kraken(
+    file: Path = typer.Option(
+        ..., "--file", exists=True, dir_okay=False, help="Kraken OHLCVT file, e.g. XBTUSD_240.csv"
+    ),
+    instrument: str = typer.Option(..., "--instrument", help="e.g. BTC-USD"),
+) -> None:
+    """Create a dataset from Kraken's downloadable history; the interval comes from the name."""
+    from trader.data.providers.kraken_csv import (
+        KrakenCsvError,
+        read_kraken_ohlcvt,
+        timeframe_from_name,
+    )
+
+    try:
+        timeframe = timeframe_from_name(file)
+        frame = read_kraken_ohlcvt(file)
+    except KrakenCsvError as exc:
+        typer.echo(f"DATA_QUALITY_FAILED: {exc}", err=True)
+        raise typer.Exit(EXIT_INVALID) from None
+    src = SourceRef(provider_id="kraken_ohlcvt", venue_id="kraken", retrieved_at_utc=None)
+    try:
+        m = DatasetStore().create_from_frame(
+            frame, instrument, timeframe, src, f"kraken-ohlcvt:{file.name}"
+        )
+    except DataQualityError as exc:
+        _quality_fail(exc)
+        return
+    typer.echo(m.dataset_id)
+
+
 @app.command("fetch")
 def fetch(
     exchange: str = typer.Option(..., "--exchange", help="ccxt exchange ID (explicit, UD-20)."),

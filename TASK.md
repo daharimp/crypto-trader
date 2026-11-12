@@ -121,13 +121,7 @@
 
 - [x] Pre-registered plan committed before results (`research/EXP-2026-013-plan.md`)
 - [x] 8 published-rule trials x BTC/ETH/SOL (5-10 years) at approved perps costs and a no-borrow bound (`research/EXP-2026-013-results.txt`)
-- [x] Replace the borrow assumption with real historical perps funding rates and re-run the same trials
-
-## 2026-11-12: EXP-2026-014 the same trials with real funding (ADR-033)
-
-- [x] Plan committed before results (`research/EXP-2026-014-plan.md`); hourly funding from Deribit (decides), Hyperliquid and Kraken Futures
-- [x] Result (`research/EXP-2026-014-results.txt`): no rule passes; real funding cost about $90 to $370 a year on $2,500 (not the assumed $1,100+); long+short made money on BTC and ETH but is not shown to beat long-only
-- [ ] Owner: choose the next pre-registered test (EXP-2026-015 options A to C in the results file)
+- [ ] Replace the borrow assumption with real historical perps funding rates and re-run the same trials
 
 ## Discovered During Work
 

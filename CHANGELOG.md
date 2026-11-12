@@ -20,8 +20,6 @@ All notable changes are recorded here, following
 ## [Unreleased]
 
 ### Added
-- EXP-2026-014: research replays can charge measured perps funding
-  (`scripts/fetch_funding_history.py`, `trader.research.funding`, ADR-033).
 - Gated live spot trading on Kraken (ADR-023): `live` environment, live authorization
   (capital cap and paper prerequisite, UD-22), profile activation (`trader profile activate`).
 - Forward paper and live sessions (`trader session run|status|flatten|reset-breaker`) with

@@ -34,4 +34,5 @@ ADR-022, ADR-023). UD-14 is resolved as "no intraday trading in V1" and stays `T
 |---|---|---|
 | Any `trader perps` backtest or paper run | UD-23 (starting collateral, venue costs and limits, owner risk limits) in `configs/perps/jupiter.yaml` | Exit 3, `PERPS_CONFIG_UNRESOLVED` lists every key |
 | Live Jupiter prices | Network access to `jup.ag` from the environment | `PRICE_UNAVAILABLE`, exit 3 |
+| Forward paper perps session (`trader perps paper run`, ADR-031) | The same approved UD-23 values | Runs on the approved values; exit 3 if any becomes unapproved |
 | Real-money perps | A new ADR and gates; not built | Impossible: `mode` is `Literal["paper"]` |

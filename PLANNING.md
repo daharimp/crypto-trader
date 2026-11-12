@@ -12,6 +12,10 @@ objective is to "balance strong returns with consistent performance and controll
 **Live trading on Kraken** (ADR-023): forward paper/live sessions, activation, live
 authorization, Kraken adapter, deployment. Next: real-data evaluation and the rest of M2.
 
+**Owner direction UD-24 (2026-11-12):** the bot's focus is margin and perps (long and short
+with leverage). This runs in paper first (`trader perps paper run`, ADR-031); real-money
+margin or perps needs its own ADR, gates, and a venue the owner may legally use.
+
 ## Architecture (see `docs/spec/architecture.md`)
 
 Nine-stage pipeline (D-29): data -> regime -> eligible strategies -> candidate signals ->

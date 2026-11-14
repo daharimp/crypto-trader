@@ -33,11 +33,15 @@ git clone git@github.com:daharimp/crypto-trader.git && cd crypto-trader
 git checkout crypto-trader   # until it is merged to main
 cp .env.example .env && chmod 600 .env
 mkdir -p data && sudo chown 1000:1000 data
-docker compose build
+docker compose build                 # one image, crypto-trader:local, for every service
 docker compose run --rm cli version
 ```
 
 Check: `version` prints the safety statement.
+
+All services (paper, perps, dashboard, live, cli, builder) run the same image, and
+`docker compose build` is the only command that refreshes it (ADR-036). If a command answers
+`No such image: crypto-trader:local`, run `docker compose build` first.
 
 Optional alerts: put `ALERT_WEBHOOK_URL=https://ntfy.sh/<your-topic>` in `.env`.
 
@@ -126,6 +130,9 @@ docker compose up -d perps
 docker compose run --rm cli perps paper status
 docker compose logs --tail 20 perps
 ```
+
+If `status` answers `No such command 'paper'`, the image is older than the code: run the
+update in section 8a.
 
 Check: `status` shows equity, any open long or short positions, and `bars processed` rising
 by one every 4 hours. Opens, closes, and liquidations arrive as phone alerts starting with
@@ -231,11 +238,34 @@ re-run `profile activate` for the environment, disengage the kill switch, restar
 ```bash
 docker compose run --rm cli killswitch engage --reason "update"   # positions and stops stay
 git pull
-docker compose build
-docker compose up -d paper            # or: docker compose --profile live up -d live
+docker compose build                  # rebuilds the one image every service uses
+docker compose up -d paper perps dashboard
+#   when live: docker compose --profile live up -d live perps dashboard
+docker compose ps --format '{{.Service}} {{.Image}}'   # every line ends in crypto-trader:local
 docker compose run --rm cli session status
 docker compose run --rm cli killswitch disengage --reason "update done"
 ```
+
+`docker compose build` builds one image, `crypto-trader:local`, and every service runs it,
+including `cli`, `builder`, and `live`, which sit behind profiles (ADR-036). So these steps
+cannot leave one of them on old code. `up -d` restarts each running service on the new image;
+a service you do not name keeps running the old code until you restart it.
+
+**Once, after the update that brought ADR-036 (2026-11-14):** the old layout gave each
+service its own image (`crypto-trader-paper`, `crypto-trader-cli`, ...). After the steps
+above, remove them to free disk space:
+
+```bash
+docker image ls 'crypto-trader-*'
+docker image rm crypto-trader-paper crypto-trader-perps crypto-trader-dashboard \
+  crypto-trader-cli crypto-trader-builder crypto-trader-live
+```
+
+`No such image` for a name you never built is fine. `image is being used by ... container`
+means a container still points at it: `docker ps -a --filter ancestor=<image>` shows which.
+If it is running, restart that service on the new image first (`up -d <service>`, with
+`--profile live` for live); if it is stopped, `docker rm <container id>`, then remove the
+image again. Leaving old images in place is harmless; they only use disk.
 
 If the update changed a profile, risk, eligibility, or authorization file, re-run
 `profile activate` first (section 8). Read `CHANGELOG.md` before updating a live bot.

@@ -1,5 +1,5 @@
 # Usage (see docs/operations/RUNBOOK.md):
-#   docker compose build
+#   docker compose build                             # builds the one shared image (ADR-036)
 #   docker compose up -d paper                       # forward paper session
 #   docker compose --profile live up -d live         # real money (only after the runbook gates)
 #   docker compose run --rm cli session status       # any trader command
@@ -7,8 +7,13 @@
 #   docker compose up -d perps                       # paper leverage practice (ADR-031)
 # Project name keeps these containers separate from other stacks on the same server (n8n).
 name: crypto-trader
+# Reason: every service runs the same image, crypto-trader:local (ADR-036). Only `paper`
+# builds it, so a plain `docker compose build` refreshes the code for every service, including
+# the profile-gated cli, builder and live services that a plain build skips. pull_policy never
+# stops Compose from ever looking for this name on Docker Hub.
 x-trader: &trader
-  build: .
+  image: crypto-trader:local
+  pull_policy: never
   env_file: .env
   volumes:
     - ./data:/app/data
@@ -22,6 +27,7 @@ x-trader: &trader
 services:
   paper:
     <<: *trader
+    build: .  # the only build in this file: never move it to a profile-gated service
     command: ["session", "run", "--profile", "${TRADER_PROFILE:-configs/profiles/balanced-paper.yaml}",
               "--environment", "paper"]
 

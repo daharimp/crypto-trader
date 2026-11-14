@@ -132,8 +132,9 @@ by one every 4 hours. Opens, closes, and liquidations arrive as phone alerts sta
 `[perps paper]`. The emergency stop (`trader killswitch engage`) blocks new paper positions
 here too.
 
-The session trades only when two trend rules agree (`consensus_sma_tsmom`, ADR-035). To run a
-different rule add `--signal sma_stance_20_50` or `--signal tsmom_30d` to the `perps` command
+The session follows the 1-month trend rule (`tsmom_30d`: long if the price is above its level
+30 days ago, short if below; ADR-035). To run a different rule add
+`--signal consensus_sma_tsmom` or `--signal sma_stance_20_50` to the `perps` command
 in `docker-compose.yml`. A saved account will not continue under a different rule, so when you
 switch, keep the old record and start a new account:
 

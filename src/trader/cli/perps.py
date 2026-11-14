@@ -22,6 +22,7 @@ from trader.perps.params import (
     load_perps_params,
 )
 from trader.perps.prices import PriceUnavailableError, fetch_prices
+from trader.perps.signals import DEFAULT_SIGNAL
 
 from .common import EXIT_BLOCKED, EXIT_INVALID
 
@@ -119,9 +120,9 @@ def paper_run(
     once: bool = typer.Option(False, "--once", help="Process due bars once, then exit."),
     timeframe: str = typer.Option("4h", "--timeframe", help="Decision timeframe: 1h or 4h."),
     signal_name: str = typer.Option(
-        "consensus_sma_tsmom",
+        DEFAULT_SIGNAL,
         "--signal",
-        help="sma_stance_20_50, tsmom_30d, or consensus_sma_tsmom (both must agree).",
+        help="tsmom_30d (1-month trend), sma_stance_20_50, or consensus_sma_tsmom (both agree).",
     ),
 ) -> None:
     """Run the paper perps session until stopped. Paper only: it cannot place a real order.

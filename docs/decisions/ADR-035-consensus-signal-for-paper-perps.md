@@ -26,3 +26,11 @@
 - **Consequences:** The historical replay on the dashboard still shows the moving-average
   signal. The consensus trades about twice as often as either rule, because it steps out
   and back in when they disagree.
+- **Amendment, owner decision UD-30 (2026-11-14):** EXP-2026-016 (pre-registered) found the
+  consensus is not shown to make more money than either rule alone: it made less than the
+  1-month rule on BTC, ETH and SOL (the BTC gap of about $812 a year on $2,500 is outside its
+  90% range; the other two could be luck), while having the smallest worst drop on 6 of 8
+  coins and the fewest liquidations on 7 of 8. Offered the consensus, the 1-month rule alone,
+  or both side by side, the owner chose **the 1-month trend rule alone**. The default signal
+  is now `tsmom_30d`; the consensus and the moving-average rule stay selectable with
+  `--signal`. Expect larger drops and more liquidations than the consensus would give.

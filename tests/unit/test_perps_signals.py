@@ -55,6 +55,6 @@ def test_timeframe_sets_the_month_length_and_unknown_names_fail() -> None:
     closes = _series((300, 1.001))
     assert make_signal("tsmom_30d", 6)(closes) == PerpSide.LONG  # 180 bars back
     assert make_signal("tsmom_30d", 24)(closes) is None  # 720 bars back: not enough history
-    assert DEFAULT_SIGNAL in SIGNAL_NAMES
+    assert DEFAULT_SIGNAL == "tsmom_30d" and DEFAULT_SIGNAL in SIGNAL_NAMES
     with pytest.raises(ValueError, match="unknown signal"):
         make_signal("nope", 6)

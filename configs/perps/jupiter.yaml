@@ -1,11 +1,11 @@
 # Jupiter Perps, PAPER ONLY (ADR-025). No wallet, no keys, no transactions.
 # UD-23: the owner approved starting collateral and every risk limit on 2026-11-02 (v2).
-# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3); borrow set to the cautious assumption (v4); 10% of equity per position (v5); trades open at 12x (UD-25, v6); each opening leverage is assessed from volatility, up to 12x (UD-26, v7); ceiling raised to 25x with a 3.5% minimum liquidation distance (UD-27, v8).
+# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3); borrow set to the cautious assumption (v4); 10% of equity per position (v5); trades open at 12x (UD-25, v6); each opening leverage is assessed from volatility, up to 12x (UD-26, v7); ceiling raised to 25x with a 3.5% minimum liquidation distance (UD-27, v8); borrow fee set to the rate in Jupiter's documented example (UD-28, v9).
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:
 # https://dev.jup.ag and https://station.jup.ag/guides/perpetual-exchange
 schema_version: "1.0.0"
 kind: PerpsConfig
-version: 8
+version: 9
 venue: jupiter_perps
 mode: paper
 starting_collateral_usd: {value: 2500, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
@@ -17,7 +17,7 @@ markets:
 costs:
   open_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
   close_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
-  borrow_rate_pct_per_hour: {value: 0.01, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "owner chose cautious (about 6x the 0.0016%/h, near past busy periods); $12/day on a $5,000 position"}
+  borrow_rate_pct_per_hour: {value: 0.0016, status: approved, ref: UD-28, approved_by: owner, approved_on: "2026-11-12", note: "the rate in Jupiter's documented worked example (docs.jup.ag fees, read 2026-11-12; about 14% of position size a year; the real rate changes with pool utilization). Replaces the cautious 0.01%/h after EXP-2026-014 measured 6-14% a year on other venues; $1.92/day on a $5,000 position"}
 venue_limits:
   maintenance_bps: {value: 20, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "liquidation at size/500 (docs.jup.ag liquidation, 2026-11-10)"}
   venue_max_leverage: {value: 250, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "trading maximum (docs.jup.ag positions, 2026-11-10)"}

@@ -132,6 +132,17 @@ by one every 4 hours. Opens, closes, and liquidations arrive as phone alerts sta
 `[perps paper]`. The emergency stop (`trader killswitch engage`) blocks new paper positions
 here too.
 
+The session trades only when two trend rules agree (`consensus_sma_tsmom`, ADR-035). To run a
+different rule add `--signal sma_stance_20_50` or `--signal tsmom_30d` to the `perps` command
+in `docker-compose.yml`. A saved account will not continue under a different rule, so when you
+switch, keep the old record and start a new account:
+
+```bash
+docker compose stop perps
+mv data/state/perps-paper.json data/state/perps-paper-$(date +%Y%m%d).json
+docker compose up -d perps
+```
+
 ## 3. Create the Kraken API key (owner, on kraken.com)
 
 Kraken Pro → Settings → API → Create key. Grant **only**:

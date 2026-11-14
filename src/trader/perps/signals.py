@@ -19,7 +19,7 @@ from .math import PerpSide
 
 Signal = Callable[[list[Decimal]], PerpSide | None]
 MOMENTUM_DAYS = 30
-DEFAULT_SIGNAL = "consensus_sma_tsmom"
+DEFAULT_SIGNAL = "tsmom_30d"
 
 
 def tsmom(closes: list[Decimal], lookback_bars: int) -> PerpSide | None:

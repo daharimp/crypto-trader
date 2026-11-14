@@ -46,6 +46,9 @@ class PaperPerpsAccount:
     fees_paid_usd: Decimal = Decimal(0)
     halted: bool = False
     events: list[dict[str, Any]] = field(default_factory=list)
+    # Typical daily move per market, set by the caller before signals are applied; used
+    # only when leverage is assessed from volatility (ADR-032).
+    daily_moves: dict[str, Decimal] = field(default_factory=dict)
 
     @classmethod
     def start(cls, params: PerpsParams, now: datetime) -> PaperPerpsAccount:
@@ -171,7 +174,9 @@ class PaperPerpsAccount:
         """
         view = self.view(marks)
         decision = check_open(
-            self.params, view, size_open(self.params, view, market, side, marks[market])
+            self.params,
+            view,
+            size_open(self.params, view, market, side, marks[market], self.daily_moves.get(market)),
         )
         if not decision.approved or decision.proposal is None:
             self._log(
@@ -194,6 +199,7 @@ class PaperPerpsAccount:
             size_usd=str(pr.size_usd),
             collateral_usd=str(pr.collateral_usd),
             entry=str(pr.entry_price),
+            leverage=str(pr.leverage),
             liquidation_price=str(pr.liquidation_price.quantize(CENT)),
             fee_usd=str(open_fee),
         )

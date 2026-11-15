@@ -43,6 +43,14 @@ All services (paper, perps, dashboard, live, cli, builder) run the same image, a
 `docker compose build` is the only command that refreshes it (ADR-036). If a command answers
 `No such image: crypto-trader:local`, run `docker compose build` first.
 
+Run every `docker compose` command from inside the project folder (`cd ~/crypto-trader`).
+If Docker answers:
+
+- `no configuration file provided`: you are not in `~/crypto-trader`.
+- `unknown flag: --rm` (or `--tail`): Docker did not see the word `compose`. Retype the
+  command by hand (copying from a phone or chat app can swap the space for an invisible
+  character) and check that `docker compose version` prints a version.
+
 Optional alerts: put `ALERT_WEBHOOK_URL=https://ntfy.sh/<your-topic>` in `.env`.
 
 ## 1a. Build your own profile (optional)
@@ -114,10 +122,27 @@ curl -s http://127.0.0.1:8787/api/status          # JSON means it is running
 curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up                                  # log in with the same account as your phone
 sudo tailscale serve --bg 8787                     # prints https://<server>.<tailnet>.ts.net
+tailscale serve status                             # shows that address again any time
 ```
 
-Install Tailscale on the phone, sign in with the same account, and open the printed address.
-To stop sharing: `sudo tailscale serve reset`.
+1. If `serve` answers **"Serve is not enabled on your tailnet"** with a link: open the link,
+   log in, click **Enable** (also turn on **HTTPS certificates** and **MagicDNS** if offered),
+   then run `sudo tailscale serve --bg 8787` again.
+2. On **every device** that should see the dashboard (phone, laptop): install Tailscale, sign
+   in with the same account, and keep it switched on. `tailscale status` on the server lists
+   each connected device.
+3. Open the printed `https://<server>.<tailnet>.ts.net` address: `https`, no port number. The
+   first load can take a minute while Tailscale issues the certificate. The server's own
+   Tailscale IP with `:8787` does not work: the dashboard listens on the server only.
+
+If the browser says the site **can't be reached** (`DNS_PROBE_FINISHED_NXDOMAIN`), that device
+is not connected to your Tailscale account, or Chrome's secure DNS is skipping Tailscale's
+names: turn off Chrome → Settings → Privacy and security → Security → **Use secure DNS**, or
+try Safari. `--bg` keeps the setting across restarts. To stop sharing:
+`sudo tailscale serve reset`.
+
+The page refreshes itself every 60 seconds and is never cached. Prices move every minute;
+equity, positions, and trades change when the bots run, every 4 hours.
 
 ## 2c. Leverage practice: paper perps, long and short (ADR-031)
 
@@ -254,7 +279,8 @@ git pull
 docker compose build                  # rebuilds the one image every service uses
 docker compose up -d paper perps dashboard
 #   when live: docker compose --profile live up -d live perps dashboard
-docker compose ps --format '{{.Service}} {{.Image}}'   # every line ends in crypto-trader:local
+docker compose ps --format '{{.Service}} {{.Image}}'   # every line shows the same image ID
+docker image inspect crypto-trader:local --format '{{.Id}}'   # that same ID
 docker compose run --rm cli session status
 docker compose run --rm cli killswitch disengage --reason "update done"
 ```

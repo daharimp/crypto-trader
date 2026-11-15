@@ -8,4 +8,4 @@ files per pull request).
 - [x] `trader perps paper run --signal`; a saved account refuses a different signal
 - [x] Read-only `/api/perps-paper` and the "Leverage practice · paper account" card
 - [x] Tests: signals, session CLI, dashboard route (not started, served, read-only, 502)
-- [ ] Owner: merge, then restart `perps` with a fresh account and `dashboard` (RUNBOOK 2c)
+- [x] Owner: merge, then restart `perps` with a fresh account and `dashboard` (RUNBOOK 2c) (status shows `tsmom_30d`, 2026-11-15)

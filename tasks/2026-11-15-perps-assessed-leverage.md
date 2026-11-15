@@ -7,4 +7,4 @@ here as one pull request at the owner's request (at most 15 files per pull reque
 - [x] Ceiling 25x, minimum liquidation distance 3.5% (UD-27)
 - [x] Borrow fee 0.0016%/h, Jupiter's documented example (UD-28)
 - [x] perps config v9 with approval fields; tests for params, risk, simulator, session
-- [ ] Owner: merge, then restart `perps` with a fresh account (RUNBOOK 2c)
+- [x] Owner: merge, then restart `perps` with a fresh account (RUNBOOK 2c) (fresh account started 2026-11-15)

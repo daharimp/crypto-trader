@@ -206,31 +206,6 @@ def test_describe_is_plain_language() -> None:
     assert text == "closed long BTC at 75000: $12.50 before $3.10 fees"
 
 
-def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    import trader.ui.data as ui_data
-
-    monkeypatch.setenv("TRADER_DATA_DIR", str(tmp_path))
-    r = CliRunner().invoke(app, ["perps", "paper", "status"])
-    assert r.exit_code == 0 and "no perps paper session" in r.output
-    # Reason: 30 days of 4h candles (181 closes); the shipped perps settings need that much.
-    long_down = [100 * 0.995**i for i in range(200)]
-    monkeypatch.setattr(ui_data, "kraken_public_ohlc", lambda symbol, tf: _rows(long_down))
-    # The test fixture config leaves every perps value TBD: the session must fail closed.
-    r = CliRunner().invoke(app, ["perps", "paper", "run", "--once"])
-    assert r.exit_code == 3 and "PERPS_CONFIG_UNRESOLVED" in r.output
-    assert not (tmp_path / "state" / "perps-paper.json").exists()
-    monkeypatch.setenv("TRADER_CONFIGS_DIR", str(SHIPPED_CONFIGS))
-    r = CliRunner().invoke(app, ["perps", "paper", "run", "--once"])
-    assert r.exit_code == 0, r.output
-    state = json.loads((tmp_path / "state" / "perps-paper.json").read_text())
-    assert state["meta"]["markets"] == ["BTC", "ETH", "SOL"]
-    r = CliRunner().invoke(app, ["perps", "paper", "status"])
-    assert "perps paper (sma_stance_20_50, 4h)" in r.output and "short" in r.output
-    assert "not guaranteed" in r.output
-    r = CliRunner().invoke(app, ["perps", "paper", "run", "--once", "--timeframe", "5m"])
-    assert r.exit_code == 2
-
-
 def test_assessed_leverage_follows_each_markets_volatility(tmp_path: Path) -> None:
     # 200 falling bars with small alternating noise: enough history, and a downtrend.
     closes = [100 * 0.997**i * (1.004 if i % 2 else 0.996) for i in range(200)]
@@ -259,3 +234,28 @@ def test_assessed_leverage_follows_each_markets_volatility(tmp_path: Path) -> No
     events = s2.cycle(short.now())
     assert {e["event"] for e in events} == {"ACCOUNT_STARTED", "OPEN_REJECTED"}
     assert events[-1]["reasons"] == ["PERP_VOLATILITY_UNAVAILABLE"]
+
+
+def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import trader.ui.data as ui_data
+
+    monkeypatch.setenv("TRADER_DATA_DIR", str(tmp_path))
+    r = CliRunner().invoke(app, ["perps", "paper", "status"])
+    assert r.exit_code == 0 and "no perps paper session" in r.output
+    # Reason: 30 days of 4h candles (181 closes); the shipped perps settings need that much.
+    long_down = [100 * 0.995**i for i in range(200)]
+    monkeypatch.setattr(ui_data, "kraken_public_ohlc", lambda symbol, tf: _rows(long_down))
+    # The test fixture config leaves every perps value TBD: the session must fail closed.
+    r = CliRunner().invoke(app, ["perps", "paper", "run", "--once"])
+    assert r.exit_code == 3 and "PERPS_CONFIG_UNRESOLVED" in r.output
+    assert not (tmp_path / "state" / "perps-paper.json").exists()
+    monkeypatch.setenv("TRADER_CONFIGS_DIR", str(SHIPPED_CONFIGS))
+    r = CliRunner().invoke(app, ["perps", "paper", "run", "--once"])
+    assert r.exit_code == 0, r.output
+    state = json.loads((tmp_path / "state" / "perps-paper.json").read_text())
+    assert state["meta"]["markets"] == ["BTC", "ETH", "SOL"]
+    r = CliRunner().invoke(app, ["perps", "paper", "status"])
+    assert "perps paper (sma_stance_20_50, 4h)" in r.output and "short" in r.output
+    assert "not guaranteed" in r.output
+    r = CliRunner().invoke(app, ["perps", "paper", "run", "--once", "--timeframe", "5m"])
+    assert r.exit_code == 2

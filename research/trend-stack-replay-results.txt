@@ -1,0 +1,81 @@
+=== Data files (rows, first, last, sha256) ===
+  data/m15/sol_usd_15m.csv: 70031 rows, 2024-11-15T17:45:00Z to 2026-11-15T17:30:00Z, 100a859f4f9183a8
+  data/funding/deribit_sol.csv: 40929 rows, 2022-03-16T08:00:00+00:00 to 2026-11-15T16:00:00+00:00, c81be80fcb0e3850
+  data/m15/btc_usd_15m.csv: 70032 rows, 2024-11-15T17:45:00Z to 2026-11-15T17:30:00Z, 128fdc7aa3e51a0b
+  data/funding/deribit_btc.csv: 66151 rows, 2019-04-30T09:00:00+00:00 to 2026-11-15T17:00:00+00:00, 4e367ea17a725333
+  data/m15/eth_usd_15m.csv: 70030 rows, 2024-11-15T17:45:00Z to 2026-11-15T17:30:00Z, 5612d9cf6fa47b5f
+  data/funding/deribit_eth.csv: 66151 rows, 2019-04-30T09:00:00+00:00 to 2026-11-15T17:00:00+00:00, 5d8f42b3e7c75158
+
+=== SOL from 2024-12-30 (65783 15M bars) ===
+                           weeks    total $   avg wk   median  win wks  best wk worst wk  trades  liqs    in mkt    lev
+STACK all                     99     -4,074      -41      -91      33%      837     -591     843     0      nan%   17.0
+STACK last 26 wks             26        556       21       -3      50%      837     -410
+    6 of 7: 780 trades, won 27%, avg $-4, total $-2,946, avg lev 16.5x
+    7 of 7: 63 trades, won 21%, avg $-18, total $-1,128, avg lev 23.7x
+    exits: {'trail': 670, 'stop': 173}
+FLAT20 all                    99     -3,677      -37      -84      33%      837     -576     843     0      nan%   16.4
+FLAT20 last 26 wks            26        745       29       -3      50%      837     -380
+BASELINE all                  99        645        7      -10      48%      642     -582     145     0      100%    7.6
+BASELINE last 26 wks          26      1,294       50      -22      42%      642     -431
+
+=== BTC from 2024-12-30 (65783 15M bars) ===
+                           weeks    total $   avg wk   median  win wks  best wk worst wk  trades  liqs    in mkt    lev
+STACK all                     99     -3,698      -37      -78      31%      794     -472     872     0      nan%   22.0
+STACK last 26 wks             26       -213       -8      -51      35%      502     -403
+    6 of 7: 801 trades, won 24%, avg $-4, total $-3,424, avg lev 21.8x
+    7 of 7: 71 trades, won 25%, avg $-4, total $-273, avg lev 24.6x
+    exits: {'trail': 691, 'stop': 181}
+FLAT20 all                    99     -3,472      -35      -75      31%      794     -406     872     0      nan%   21.9
+FLAT20 last 26 wks            26       -241       -9      -51      35%      502     -403
+BASELINE all                  99      1,340       14        5      51%      591     -402     155     1      100%   11.6
+BASELINE last 26 wks          26      1,544       59       55      62%      591     -164
+
+=== ETH from 2024-12-30 (65781 15M bars) ===
+                           weeks    total $   avg wk   median  win wks  best wk worst wk  trades  liqs    in mkt    lev
+STACK all                     99      1,440       15      -50      43%    1,080     -421     829     0      nan%   19.0
+STACK last 26 wks             26        611       23      -24      46%    1,080     -276
+    6 of 7: 768 trades, won 27%, avg $2, total $1,283, avg lev 18.6x
+    7 of 7: 61 trades, won 18%, avg $3, total $158, avg lev 24.2x
+    exits: {'trail': 649, 'stop': 180}
+FLAT20 all                    99      1,846       19      -47      44%    1,081     -421     829     0      nan%   18.5
+FLAT20 last 26 wks            26        682       26      -15      50%    1,081     -266
+BASELINE all                  99      4,478       45        8      56%      945     -588     123     0      100%    8.2
+BASELINE last 26 wks          26      2,080       80       53      69%      945     -496
+
+=== Whole account: SOL + BTC + ETH together, $250 collateral each per trade ===
+                           weeks    total $   avg wk   median  win wks  best wk worst wk
+STACK all                     99     -6,331      -64     -225      32%    2,419   -1,243
+STACK last 26 wks             26        953       37     -230      38%    2,419     -721
+FLAT20 all                    99     -5,303      -54     -217      35%    2,420   -1,228
+FLAT20 last 26 wks            26      1,186       46     -218      38%    2,420     -721
+BASELINE all                  99      6,462       65       -2      49%    1,690   -1,436
+BASELINE last 26 wks          26      4,919      189        5      50%    1,690   -1,024
+
+whole account, last 8 weeks (week starting Monday):
+             STACK  FLAT20  BASELINE
+2026-09-27  -468.0  -468.0     -83.0
+2026-10-04  -467.0  -467.0   -1024.0
+2026-10-11  -279.0  -382.0    -316.0
+2026-10-18  -226.0  -220.0     212.0
+2026-10-25  -721.0  -721.0     403.0
+2026-11-01   596.0   596.0     212.0
+2026-11-08  1172.0  1172.0    1399.0
+2026-11-15   896.0   896.0    -150.0
+
+Exploratory replay on past prices; not pre-registered and not a forecast.
+
+=== Notes added after the run (the script above was not changed) ===
+Fee drag, STACK, all 99 weeks (diagnostic from the same trade list; fees = 2 x 7 bps x size):
+  SOL: net -4,074 = before fees +943 minus fees 5,017
+  BTC: net -3,698 = before fees +3,029 minus fees 6,727
+  ETH: net +1,440 = before fees +6,953 minus fees 5,513
+  Whole account: before fees about +10,900; fees about 17,300 (about 8.5 trades per coin
+  per week at about 20x, so each round trip costs about 2.8% of the $250 collateral).
+Win rate 21-27%: stops lose about $50 each; trailing exits average +$6 to +$17.
+The 7-of-7 setups did not win more often than 6-of-7 (18-25% vs 24-27%); sizing them up
+to 50% at risk added nothing (STACK vs FLAT20).
+Week labels: weeks are binned Sunday to Saturday (pandas W-SUN, left label), not Monday as
+the printed heading says; the 2026-11-15 row holds only part of one day. The degen replay
+uses the same binning.
+After every exit the script waits one extra 15M bar before it can enter again (its comment
+says the exit bar's close); this is slightly conservative, not optimistic.

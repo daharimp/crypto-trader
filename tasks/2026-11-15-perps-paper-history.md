@@ -8,4 +8,4 @@ First step of the Trader Desk redesign: the data the new screens need. No page c
       `opened_at` per open position
 - [x] Tests: paired trades, liquidation, missing log, torn line, unmatched close, unmatched
       open position
-- [ ] Next pull request: the swipe dashboard that shows this data
+- [x] Next pull request: the swipe dashboard that shows this data (`tasks/2026-11-15-ui-swipe-desk.md`)

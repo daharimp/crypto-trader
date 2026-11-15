@@ -177,11 +177,11 @@ def test_adr025_dashboard_is_read_only() -> None:
 
 
 def test_adr030_dashboard_scripts_only_read_from_this_server() -> None:
-    """ADR-030: the page's own scripts make GET requests to /api only, and load nothing remote."""
+    """ADR-030/037: the page's scripts make GET requests to /api only; nothing remote loads."""
     import re
 
     static = SRC / "trader" / "ui" / "static"
-    scripts = [static / "desk.js", static / "widgets.js"]
+    scripts = [static / n for n in ("theme.js", "desk.js", "views.js", "markets.js")]
     page = (static / "index.html").read_text()
     for f in scripts:
         text = f.read_text()
@@ -190,10 +190,10 @@ def test_adr030_dashboard_scripts_only_read_from_this_server() -> None:
         urls = set(re.findall(r"https?://[^\s'\"`)]+", text))
         assert urls <= {"http://www.w3.org/2000/svg"}, f"{f.name}: {urls}"
     # Every fetch goes through get(), and get() is only ever called with a /api/ path.
-    widgets = (static / "widgets.js").read_text()
-    assert widgets.count("fetch(") == 1
-    assert all(
-        c.startswith(("'/api/", "`/api/"))
-        for c in re.findall(r"(?<!function )\bget\((.{6})", widgets)
-    )
+    code = "".join(f.read_text() for f in scripts)
+    assert code.count("fetch(") == 1
+    calls = re.findall(r"(?<!function )\bget\((.{6})", code)
+    assert len(calls) >= 5 and all(c.startswith(("'/api/", "`/api/")) for c in calls)
     assert not re.search(r"(src|href)=\"(https?:)?//", page)
+    # The stylesheet loads its fonts from this server, never from another host.
+    assert not re.search(r"https?://|url\(\s*[\"']?//", (static / "app.css").read_text())

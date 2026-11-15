@@ -11,6 +11,8 @@ the running paper perps account. Not a copy of Longatron.
 - [x] Owner's Longatron answers and one worked example (SOL short, 2026-04-06) received
 - [x] Degen v2 replay (one shared account, follow the volume, TP ladder), committed before
       any result (`5fd0fc6`), run and recorded
+- [x] Bigger-bets replay on the running rule, 12-hour blocks (`e2f6edb`, committed before results)
+- [x] Candle replay, a decision at every 4h close (committed before results)
 - [ ] Owner: any further Longatron rules (indicator settings, confidence scoring, SL/TP/leverage
       rules, DEGEN MODE) and any past trade records
 - [ ] Owner decides whether any variant deserves a separate paper account (needs

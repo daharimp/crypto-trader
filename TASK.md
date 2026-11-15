@@ -92,3 +92,9 @@
 - [ ] Owner: pick the 1h sleeve strategy (EXP-2026-004 part 1 is inconclusive; full history needs `*_60.csv` uploads).
 - [ ] Build the isolated 1h intraday sleeve (separate ledger, sleeve loss limits, 1h session cycle), paper first.
 - [x] Profile builder (2026-11-03): `trader profile build` interview + `--answers`, `trader profile questions`, web form, named risk profiles, ADR-024.
+
+## 2026-11-15: Design system for the profile builder
+
+- [x] Sync a claude.ai design system from `docs/profile-builder/template.html` (main@b63213d): tokens, type, spacing, radii, 10 static component cards. See `docs/design-system.md`.
+- [ ] Owner: decide whether to darken `--line` (about 1.4:1 border contrast, below 3:1 for controls).
+- [ ] Re-sync the design system when the template's variables, fonts or component classes change.

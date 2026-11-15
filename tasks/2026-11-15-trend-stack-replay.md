@@ -8,7 +8,10 @@ the running paper perps account. Not a copy of Longatron.
 - [x] Trend-stack replay coded and committed before any result (`bc3d47f`)
 - [x] Data re-downloaded (15m 730 days; 4h; Deribit funding), replay run, results saved
 - [x] Fee drag measured: about +$10.9k before fees, about $17.3k fees, whole account 99 weeks
-- [ ] Owner: send Longatron's answers (indicator settings, confidence scoring, SL/TP/leverage
+- [x] Owner's Longatron answers and one worked example (SOL short, 2026-04-06) received
+- [x] Degen v2 replay (one shared account, follow the volume, TP ladder), committed before
+      any result (`5fd0fc6`), run and recorded
+- [ ] Owner: any further Longatron rules (indicator settings, confidence scoring, SL/TP/leverage
       rules, DEGEN MODE) and any past trade records
 - [ ] Owner decides whether any variant deserves a separate paper account (needs
       owner-approved values; not started)

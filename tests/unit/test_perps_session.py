@@ -212,7 +212,9 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("TRADER_DATA_DIR", str(tmp_path))
     r = CliRunner().invoke(app, ["perps", "paper", "status"])
     assert r.exit_code == 0 and "no perps paper session" in r.output
-    monkeypatch.setattr(ui_data, "kraken_public_ohlc", lambda symbol, tf: _rows(DOWN))
+    # Reason: the default 1-month trend rule needs 30 days of 4h candles (181 closes).
+    long_down = [100 * 0.995**i for i in range(200)]
+    monkeypatch.setattr(ui_data, "kraken_public_ohlc", lambda symbol, tf: _rows(long_down))
     # The test fixture config leaves every perps value TBD: the session must fail closed.
     r = CliRunner().invoke(app, ["perps", "paper", "run", "--once"])
     assert r.exit_code == 3 and "PERPS_CONFIG_UNRESOLVED" in r.output
@@ -223,7 +225,16 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     state = json.loads((tmp_path / "state" / "perps-paper.json").read_text())
     assert state["meta"]["markets"] == ["BTC", "ETH", "SOL"]
     r = CliRunner().invoke(app, ["perps", "paper", "status"])
-    assert "perps paper (sma_stance_20_50, 4h)" in r.output and "short" in r.output
+    assert "perps paper (tsmom_30d, 4h)" in r.output and "short" in r.output
     assert "not guaranteed" in r.output
     r = CliRunner().invoke(app, ["perps", "paper", "run", "--once", "--timeframe", "5m"])
     assert r.exit_code == 2
+    # A saved session cannot silently continue under a different signal, and an unknown
+    # signal name is refused.
+    r = CliRunner().invoke(
+        app, ["perps", "paper", "run", "--once", "--signal", "consensus_sma_tsmom"]
+    )
+    assert r.exit_code == 2 and "different signal" in r.output
+    r = CliRunner().invoke(app, ["perps", "paper", "run", "--once", "--signal", "nope"])
+    assert r.exit_code == 2 and "unknown signal" in r.output
+

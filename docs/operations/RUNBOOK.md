@@ -135,9 +135,22 @@ If `status` answers `No such command 'paper'`, the image is older than the code:
 update in section 8a.
 
 Check: `status` shows equity, any open long or short positions, and `bars processed` rising
-by one every 4 hours. Opens, closes, and liquidations arrive as phone alerts starting with
+by one every 4 hours. The dashboard's **Leverage practice · paper account** card shows the same
+account: equity, open longs and shorts with their leverage, and gain or loss since start. Opens, closes, and liquidations arrive as phone alerts starting with
 `[perps paper]`. The emergency stop (`trader killswitch engage`) blocks new paper positions
 here too.
+
+The session follows the 1-month trend rule (`tsmom_30d`: long if the price is above its level
+30 days ago, short if below; ADR-035). To run a different rule add
+`--signal consensus_sma_tsmom` or `--signal sma_stance_20_50` to the `perps` command
+in `docker-compose.yml`. A saved account will not continue under a different rule, so when you
+switch, keep the old record and start a new account:
+
+```bash
+docker compose stop perps
+mv data/state/perps-paper.json data/state/perps-paper-$(date +%Y%m%d).json
+docker compose up -d perps
+```
 
 ## 3. Create the Kraken API key (owner, on kraken.com)
 

@@ -34,7 +34,7 @@
     return body;
   }
 
-  const D = { status: null, watch: [], perps: null, errors: {} };
+  const D = { status: null, watch: [], perps: null, perpsPaper: null, errors: {} };
   const W = {};
   const add = (def) => (W[def.id] = Desk.add(def));
   let market = 'BTC', tf = '4h', sessionName = null;
@@ -231,6 +231,46 @@
     el('p', 'note', 'Showing the most recent 50 closed trades, after fees.'));
   } });
 
+  // ---- Paper perps account (forward session, long and short) ----
+  const signalText = { tsmom_30d: '1-month trend', sma_stance_20_50: 'moving-average trend', consensus_sma_tsmom: 'both trend rules agree' };
+  add({ id: 'perpsPaper', title: 'Leverage practice · paper account', size: 6, render(open) {
+    const a = D.perpsPaper, body = this.body, more = this.more;
+    body.replaceChildren(); more.replaceChildren();
+    if (!a) { body.append(el('p', 'empty', D.errors.perpsPaper || 'Loading…')); return; }
+    if (!a.running) { body.append(el('p', 'empty', 'The paper perps account has not started. On the server: docker compose up -d perps')); return; }
+    const eq = Number(a.equity_usd), start = Number(a.start_equity_usd), pnl = eq - start;
+    body.append(el('div', 'k', `Equity · paper (simulated) · ${signalText[a.signal] || a.signal}, ${a.timeframe}`), el('div', 'hero', usd(eq)),
+      el('div', `delta ${tone(pnl)}`, `${arrow(pnl)}${signed(pnl)} since start (${pct(start ? (pnl / start) * 100 : null)})`));
+    const rows = a.positions.map((p) => {
+      const size = Number(p.size_usd), coll = Number(p.collateral_usd), entry = Number(p.entry_price), price = priceOf(p.market);
+      // Reason: an estimate at the latest Kraken price, before closing fees and borrow; the account itself marks at completed candles.
+      const move = price == null ? null : (p.side === 'long' ? price / entry - 1 : 1 - price / entry);
+      return { ...p, size, coll, entry, price, lev: coll ? size / coll : null, pnl: move == null ? null : move * size };
+    });
+    if (!rows.length) body.append(el('p', 'empty', 'No open positions right now.'));
+    else {
+      const list = el('div', 'list');
+      rows.forEach((p) => {
+        const r = el('div', 'item');
+        r.append(el('span', null, `${p.side === 'long' ? '▲ Long' : '▼ Short'} ${p.market} · ${p.lev == null ? '?' : p.lev.toFixed(1)}x`),
+          el('span', `num ${tone(p.pnl)}`, `${arrow(p.pnl)}${signed(p.pnl)}`),
+          el('span', 'sub', `${usd(p.size, 0)} position on ${usd(p.coll)} · entry ${usd(p.entry, digits(p.market))}`));
+        list.append(r);
+      });
+      body.append(list);
+    }
+    if (!open) return;
+    const g = el('div', 'stats');
+    g.append(stat('Started with', usd(start)), stat('Largest drop', `${Number(a.max_drawdown_pct).toFixed(2)}%`), stat('Fees paid', usd(Number(a.fees_paid_usd))),
+      stat('Candles processed', String(a.cycles)), stat('Started', when(a.started_at)), stat('Last check', when(a.last_cycle_utc)));
+    more.append(g);
+    if (rows.length) {
+      more.append(table([['Side'], ['Coin'], ['Leverage', 1], ['Position', 1], ['Collateral', 1], ['Entry', 1], ['Price now', 1], ['Gain or loss', 1]],
+        rows.map((p) => [p.side, p.market, p.lev == null ? '—' : `${p.lev.toFixed(1)}x`, usd(p.size, 0), usd(p.coll), usd(p.entry, digits(p.market)), usd(p.price, digits(p.market)), signed(p.pnl)])));
+    }
+    more.append(el('p', 'note', 'Simulated money; it cannot place a real order. Equity is marked at the last completed candle; gain or loss per position uses the latest Kraken price and is before closing fees and borrow. Results are not a forecast; profit is not guaranteed.'));
+  } });
+
   // ---- Paper perps replay ----
   let liqLines = [];
   const perps = add({ id: 'perps', title: 'Leverage practice · history replay', size: 4, render(open) { drawPerps(open); } });
@@ -272,7 +312,7 @@
     const ks = D.status?.kill_switch, pill = document.getElementById('ks'), on = ks?.state === 'engaged';
     pill.textContent = D.status ? `kill switch ${on ? 'ON' : 'off'}` : 'status unavailable';
     pill.className = `pill ${D.status ? (on ? 'bad' : 'ok') : 'warn'}`;
-    ['account', 'bot', 'markets', 'positions', 'trades'].forEach((id) => renderOne(id));
+    ['account', 'bot', 'perpsPaper', 'markets', 'positions', 'trades'].forEach((id) => renderOne(id));
     drawPrice();
   }
   function renderOne(id) { W[id].render(Desk.isOpen(id)); }
@@ -287,7 +327,9 @@
     drawPerps();
   }
   async function refresh() {
-    const [status, watch] = await Promise.allSettled([get('/api/status'), get('/api/watch')]);
+    const [status, watch, paper] = await Promise.allSettled([get('/api/status'), get('/api/watch'), get('/api/perps-paper')]);
+    D.perpsPaper = paper.status === 'fulfilled' ? paper.value : null;
+    D.errors.perpsPaper = paper.status === 'rejected' ? `Paper perps account unavailable: ${paper.reason.message}` : null;
     D.status = status.status === 'fulfilled' ? status.value : null;
     D.errors.status = status.status === 'rejected' ? `Status unavailable: ${status.reason.message}` : null;
     if (watch.status === 'fulfilled') D.watch = watch.value;

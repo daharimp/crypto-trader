@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import timedelta
 from decimal import Decimal as D
 
+import pytest
+
 from tests.perps_support import T0, fixture_params
 from trader.perps.math import PerpSide
 from trader.perps.risk import AccountView, check_open, size_open
@@ -115,3 +117,45 @@ def test_rejected_open_changes_nothing() -> None:
     a.halted = True
     assert not a.open("SOL", PerpSide.LONG, M, T0).approved
     assert a.cash_usd == D(1000) and not a.positions
+
+
+def test_typical_daily_move_needs_thirty_days_and_scales_to_a_day() -> None:
+    from trader.perps.math import typical_daily_move
+
+    # Alternating +1% / -1% bars, 6 bars a day: per-bar deviation ~1%, daily ~ sqrt(6) x 1%.
+    closes = [D(100)]
+    for i in range(181):
+        closes.append(closes[-1] * (D("1.01") if i % 2 == 0 else D("0.99")))
+    move = typical_daily_move(closes, 6)
+    assert move is not None and D("0.024") < move < D("0.025")
+    assert typical_daily_move(closes[:180], 6) is None  # under 30 days of bars
+    assert typical_daily_move([D(100)] * 200, 6) is None  # prices did not move
+
+
+@pytest.mark.parametrize(
+    ("daily_move", "expected"),
+    [("0.024", "10.1"), ("0.010", "12"), ("0.300", "1")],
+)
+def test_leverage_for_buffer_shrinks_as_the_market_gets_wilder(
+    daily_move: str, expected: str
+) -> None:
+    from trader.perps.math import leverage_for_buffer
+
+    got = leverage_for_buffer(D(daily_move), D(4), D(7), D(20), D(12))
+    assert got == D(expected)
+
+
+def test_assessed_leverage_sizes_the_position_and_is_journaled() -> None:
+    p = fixture_params(liquidation_buffer_daily_moves="4", min_liquidation_distance_pct="5")
+    a = PaperPerpsAccount.start(p, T0)
+    a.daily_moves = {"SOL": D("0.02")}  # 1 / (8% + 0.26%) = 12.1x, above the 3x ceiling
+    assert a.open("SOL", PerpSide.LONG, M, T0).approved
+    assert a.positions["SOL"].size_usd == a.positions["SOL"].collateral_usd * 3
+    a.daily_moves = {"ETH": D("0.10")}  # 1 / (40% + 0.26%) = 2.4x
+    assert a.open("ETH", PerpSide.SHORT, M, T0).approved
+    assert a.positions["ETH"].size_usd == a.positions["ETH"].collateral_usd * D("2.4")
+    assert [e["leverage"] for e in a.events if e["event"] == "OPENED"] == ["3", "2.4"]
+    a.daily_moves = {}
+    a.close("SOL", M, T0, "TEST")
+    d = a.open("SOL", PerpSide.LONG, M, T0)
+    assert not d.approved and d.reasons == ["PERP_VOLATILITY_UNAVAILABLE"]

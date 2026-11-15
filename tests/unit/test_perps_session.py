@@ -212,7 +212,9 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("TRADER_DATA_DIR", str(tmp_path))
     r = CliRunner().invoke(app, ["perps", "paper", "status"])
     assert r.exit_code == 0 and "no perps paper session" in r.output
-    monkeypatch.setattr(ui_data, "kraken_public_ohlc", lambda symbol, tf: _rows(DOWN))
+    # Reason: the shipped config assesses leverage from 30 days of candles (181 closes).
+    long_down = [100 * 0.995**i for i in range(200)]
+    monkeypatch.setattr(ui_data, "kraken_public_ohlc", lambda symbol, tf: _rows(long_down))
     # The test fixture config leaves every perps value TBD: the session must fail closed.
     r = CliRunner().invoke(app, ["perps", "paper", "run", "--once"])
     assert r.exit_code == 3 and "PERPS_CONFIG_UNRESOLVED" in r.output
@@ -227,3 +229,33 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert "not guaranteed" in r.output
     r = CliRunner().invoke(app, ["perps", "paper", "run", "--once", "--timeframe", "5m"])
     assert r.exit_code == 2
+
+
+def test_assessed_leverage_follows_each_markets_volatility(tmp_path: Path) -> None:
+    # 200 falling bars with small alternating noise: enough history, and a downtrend.
+    closes = [100 * 0.997**i * (1.004 if i % 2 else 0.996) for i in range(200)]
+    feed = Feed(closes)
+    sent: list[str] = []
+    s = PerpsSession(
+        fixture_params(liquidation_buffer_daily_moves="4", min_liquidation_distance_pct="5"),
+        feed,
+        tmp_path / "state.json",
+        tmp_path / "events.jsonl",
+        notify=sent.append,
+    )
+    opened = [e for e in s.cycle(feed.now()) if e["event"] == "OPENED"]
+    assert len(opened) == 2
+    lev = Decimal(opened[0]["leverage"])
+    assert Decimal(1) <= lev <= Decimal(3)  # never above the fixture's target leverage
+    assert f"at {lev}x" in sent[0]
+    # With too little history the session refuses to open rather than guess.
+    short = Feed(DOWN)
+    s2 = PerpsSession(
+        fixture_params(liquidation_buffer_daily_moves="4"),
+        short,
+        tmp_path / "s2.json",
+        tmp_path / "e2.jsonl",
+    )
+    events = s2.cycle(short.now())
+    assert {e["event"] for e in events} == {"ACCOUNT_STARTED", "OPEN_REJECTED"}
+    assert events[-1]["reasons"] == ["PERP_VOLATILITY_UNAVAILABLE"]

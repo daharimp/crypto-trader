@@ -15,7 +15,7 @@ from typing import Any
 
 from trader.features.pipeline import sma
 
-from .math import PerpSide
+from .math import PerpSide, typical_daily_move
 from .params import PerpsParams
 from .simulator import PaperPerpsAccount
 
@@ -97,6 +97,7 @@ def run_perps_backtest(
     start = acct.cash_usd
     peak, max_dd = start, Decimal(0)
     pending: dict[str, PerpSide | None] = {}
+    bars_per_day = max(1, round(86_400 / (times[1] - times[0]).total_seconds()))
     for t in times:
         row = {m: by_time[m][t] for m in bars}
         opens = {m: b.open for m, b in row.items()}
@@ -117,6 +118,11 @@ def run_perps_backtest(
             closes[m].append(b.close)
             side = sma_stance(closes[m], fast, slow)
             pending[m] = None if side == PerpSide.SHORT and not allow_shorts else side
+            move = typical_daily_move(closes[m], bars_per_day)
+            if move is None:
+                acct.daily_moves.pop(m, None)
+            else:
+                acct.daily_moves[m] = move
     final = {m: by_time[m][times[-1]].close for m in bars}
     for m in list(acct.positions):
         acct.close(m, final, times[-1], reason="END_OF_BACKTEST")

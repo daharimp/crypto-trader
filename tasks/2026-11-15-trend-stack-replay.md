@@ -13,6 +13,9 @@ the running paper perps account. Not a copy of Longatron.
       any result (`5fd0fc6`), run and recorded
 - [x] Bigger-bets replay on the running rule, 12-hour blocks (`e2f6edb`, committed before results)
 - [x] Candle replay, a decision at every 4h close (committed before results)
+- [x] Guarded replay of the owner's plan (`9525990`, committed before results); confidence
+      measure found flawed (never above 50%), disclosed in the results
+- [ ] Owner: choose a better confidence measure, then pre-register and rerun
 - [ ] Owner: any further Longatron rules (indicator settings, confidence scoring, SL/TP/leverage
       rules, DEGEN MODE) and any past trade records
 - [ ] Owner decides whether any variant deserves a separate paper account (needs

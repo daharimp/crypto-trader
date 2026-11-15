@@ -8,4 +8,6 @@
   `research/degen2-replay-results.txt`. `research/bigger_bets_replay.py` (running rule at 4, 3, 2 daily moves and a volume tilt) and
   `research/candle_replay.py` (a decision at every 4h close), both in 12-hour blocks, results
   in `research/bigger-bets-replay-results.txt` and `research/candle-replay-results.txt`.
+  `research/guarded_replay.py` (owner's plan: buffer 3, bad-day stop, 5-15% by confidence,
+  30% stop) with `research/guarded-replay-results.txt`.
   `scripts/fetch_coinbase_history.py` gains a `15m` option.

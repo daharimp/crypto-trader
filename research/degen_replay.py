@@ -138,7 +138,7 @@ def main() -> None:
         # Reason: start both where degen has its 30 daily closes and 30 days of 4h volatility
         # and funding exists, so every week compared is the same week.
         start = max(df.index[0] + pd.Timedelta(days=62), hourly.index[0])
-        start = start.ceil("D") + pd.Timedelta(days=(7 - start.ceil("D").dayofweek) % 7)
+        start = start.ceil("D") + pd.Timedelta(days=(7 - start.ceil("D").day_of_week) % 7)
         a1, a4 = int(df.index.searchsorted(start)), int(df4.index.searchsorted(start))
         print(f"\n=== {c.upper()} from {start.date()} (1h bars {len(df) - 1 - a1}) ===")
         print(HEAD)

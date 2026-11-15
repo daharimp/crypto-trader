@@ -18,5 +18,5 @@ api_key_env: {key: KRAKEN_API_KEY, secret: KRAKEN_API_SECRET}
 acknowledgement:
   acknowledged_by: Dahari Morgan-Parker
   acknowledged_at_utc: "2026-11-15T20:07:28Z"
-  statement: "crypto chapter 3. We finally got to version 4. This is my acknowledgement statement. Blah, blah, blah, blah, blah."
+  statement: "We finally got to version 4, or maybe it's version 3. This is my acknowledgement statement, just acknowledging that real money can possibly be lost here. Thank you."
 

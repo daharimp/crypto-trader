@@ -1,0 +1,36 @@
+# Jupiter Perps "degen" account, PAPER ONLY (ADR-025, ADR-038). No wallet, no keys, no
+# transactions. A second, separate paper account next to configs/perps/jupiter.yaml, with its
+# own state file (data/state/perps-degen.json) and event log.
+# v1 (2026-11-15): owner decision UD-29: buffer 3 daily moves, 5% of equity per position, a
+# stop at 30% of collateral lost, and the 15% bad-day stop with a phone alert. Every other
+# value is copied unchanged from jupiter.yaml v9 with its original approval.
+# Every value here is adjustable: edit it, raise `version`, update the approval fields, and
+# restart the account (RUNBOOK 2d). A value set to TBD stops the account (exit 3).
+schema_version: "1.0.0"
+kind: PerpsConfig
+version: 1
+venue: jupiter_perps
+mode: paper
+starting_collateral_usd: {value: 2500, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "same paper starting balance as the main account"}
+markets:
+  # Token mints used only to read public USD prices (verify against Jupiter's token list).
+  - {market: SOL, price_mint: So11111111111111111111111111111111111111112}
+  - {market: ETH, price_mint: 7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs}
+  - {market: BTC, price_mint: 3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh}
+costs:
+  open_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
+  close_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
+  borrow_rate_pct_per_hour: {value: 0.0016, status: approved, ref: UD-28, approved_by: owner, approved_on: "2026-11-12", note: "the rate in Jupiter's documented worked example (docs.jup.ag fees, read 2026-11-12)"}
+venue_limits:
+  maintenance_bps: {value: 20, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "liquidation at size/500 (docs.jup.ag liquidation, 2026-11-10)"}
+  venue_max_leverage: {value: 250, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "trading maximum (docs.jup.ag positions, 2026-11-10)"}
+risk:
+  max_leverage: {value: 25, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
+  target_leverage: {value: 25, status: approved, ref: UD-27, approved_by: owner, approved_on: "2026-11-12", note: "ceiling for the assessed opening leverage"}
+  liquidation_buffer_daily_moves: {value: 3, status: approved, ref: UD-29, approved_by: owner, approved_on: "2026-11-15", note: "owner: '3 is the floor'; about 1.3x the main account's leverage (research/bigger-bets-replay-results.txt)"}
+  max_collateral_per_position_pct: {value: 5, status: approved, ref: UD-29, approved_by: owner, approved_on: "2026-11-15", note: "% of equity posted per position; the guarded replay's 5% (research/confidence-replay-results.txt)"}
+  stop_loss_pct_of_collateral: {value: 30, status: approved, ref: UD-29, approved_by: owner, approved_on: "2026-11-15", note: "owner: a stop so no trade loses more than 30% of what is at risk; fees included; after a stop that market waits for the next UTC day"}
+  max_total_size_pct_of_equity: {value: 400, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "sum of open position sizes as % of equity"}
+  min_liquidation_distance_pct: {value: 3.5, status: approved, ref: UD-27, approved_by: owner, approved_on: "2026-11-12", note: "refuse opens whose liquidation price is closer than this"}
+  max_open_positions: {value: 3, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
+  daily_loss_limit_pct: {value: 15, status: approved, ref: UD-29, approved_by: owner, approved_on: "2026-11-15", note: "owner: if performance is bad that day, alert and stop for the rest of the UTC day; same 15% as UD-23"}

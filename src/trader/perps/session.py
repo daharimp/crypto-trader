@@ -31,7 +31,7 @@ from .simulator import PaperPerpsAccount, PerpPosition
 
 STATE_VERSION = 1
 TIMEFRAMES = {"1h": timedelta(hours=1), "4h": timedelta(hours=4)}
-NOTIFY = {"OPENED", "CLOSED", "LIQUIDATED"}
+NOTIFY = {"OPENED", "CLOSED", "LIQUIDATED", "DAY_HALTED"}
 
 # (symbol, timeframe) -> [[open_time_ms, open, high, low, close, volume], ...] oldest first;
 # the last row is the still-forming candle.
@@ -60,6 +60,8 @@ def _dump_account(acct: PaperPerpsAccount) -> dict[str, Any]:
         "day": acct.day,
         "realized_pnl_usd": str(acct.realized_pnl_usd),
         "fees_paid_usd": str(acct.fees_paid_usd),
+        "stopped_today": sorted(acct.stopped_today),
+        "day_halted": acct.day_halted,
         "positions": {
             m: {
                 "side": p.side.value,
@@ -81,6 +83,9 @@ def _load_account(params: PerpsParams, d: dict[str, Any]) -> PaperPerpsAccount:
     )
     acct.realized_pnl_usd = Decimal(d["realized_pnl_usd"])
     acct.fees_paid_usd = Decimal(d["fees_paid_usd"])
+    # Reason: state files written before ADR-038 have neither key.
+    acct.stopped_today = set(d.get("stopped_today", []))
+    acct.day_halted = bool(d.get("day_halted", False))
     for m, p in d["positions"].items():
         acct.positions[m] = PerpPosition(
             m,
@@ -116,6 +121,12 @@ def describe(event: dict[str, Any]) -> str:
         return (
             f"closed {side} {m} at {event['exit']}: "
             f"${event['pnl_usd']} before ${event['fees_usd']} fees"
+        )
+    if kind == "DAY_HALTED":
+        return (
+            f"BAD DAY: down ${event['loss_usd']} ({event['loss_pct']}%) since the start of the "
+            f"UTC day, past the {event['limit_pct']}% limit. No new positions until 00:00 UTC; "
+            "stop and analyze for the rest of the day"
         )
     if kind == "LIQUIDATED":
         return (
@@ -276,7 +287,11 @@ class PerpsSession:
                     m: (row[m].low if p.side == PerpSide.LONG else row[m].high)
                     for m, p in acct.positions.items()
                 }
-                acct.mark({**{m: b.close for m, b in row.items()}, **adverse}, closes_at)
+                acct.mark(
+                    {**{m: b.close for m, b in row.items()}, **adverse},
+                    closes_at,
+                    opens={m: b.open for m, b in row.items()},
+                )
             newest = t == done[-1]
             # Reason: a decision at this bar's close fills at the next bar's open; for the
             # newest bar that next bar is still forming, so its latest price is the fill.
@@ -296,6 +311,7 @@ class PerpsSession:
                     else:
                         acct.daily_moves[m] = move
                     acct.apply_signal(m, self.signal(closes), fills, now if newest else closes_at)
+                acct.check_day_loss(fills, now if newest else closes_at)
                 equity = acct.equity(fills)
                 peak = max(Decimal(self.meta["peak_equity_usd"]), equity)
                 drop = (peak - equity) / peak * 100 if peak > 0 else Decimal(0)

@@ -28,11 +28,41 @@ from .common import EXIT_BLOCKED, EXIT_INVALID
 
 app = typer.Typer(help="Jupiter Perps research, paper only (ADR-025).", no_args_is_help=True)
 
+# Separate paper accounts (ADR-038): name -> (config file under configs/perps/, file stem
+# for data/state/<stem>.json and data/logs/<stem>-events.jsonl, alert prefix).
+ACCOUNTS = {
+    "main": ("jupiter.yaml", "perps-paper", "[perps paper]"),
+    "degen": ("jupiter-degen.yaml", "perps-degen", "[perps degen]"),
+}
+ACCOUNT_HELP = "Paper account: main (the running one) or degen (ADR-038)."
 
-def _params_or_exit() -> PerpsParams:
-    """Load perps parameters or exit 3 (unresolved) / 2 (invalid)."""
+
+def account_paths(root: Path, account: str) -> tuple[Path, Path]:
+    """
+    State file and event log of a paper perps account.
+
+    Args:
+        root (Path): Data directory.
+        account (str): Account name from ``ACCOUNTS``.
+
+    Returns:
+        tuple[Path, Path]: ``(state, events)``.
+    """
+    stem = ACCOUNTS[account][1]
+    return root / "state" / f"{stem}.json", root / "logs" / f"{stem}-events.jsonl"
+
+
+def _account_or_exit(account: str) -> str:
+    if account not in ACCOUNTS:
+        typer.echo(f"unknown account {account!r}; choose one of {sorted(ACCOUNTS)}", err=True)
+        raise typer.Exit(EXIT_INVALID)
+    return account
+
+
+def _params_or_exit(account: str = "main") -> PerpsParams:
+    """Load an account's perps parameters or exit 3 (unresolved) / 2 (invalid)."""
     try:
-        return load_perps_params()
+        return load_perps_params(file_name=ACCOUNTS[_account_or_exit(account)][0])
     except PerpsConfigUnresolvedError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(EXIT_BLOCKED) from None
@@ -42,10 +72,17 @@ def _params_or_exit() -> PerpsParams:
 
 
 @app.command("validate")
-def validate() -> None:
-    """Check configs/perps/jupiter.yaml. Exit 3 lists every unresolved value."""
-    params = _params_or_exit()
-    typer.echo(f"perps config v{params.version}: all values approved (paper only)")
+def validate(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)) -> None:
+    """Check an account's perps config. Exit 3 lists every unresolved value."""
+    params = _params_or_exit(account)
+    stop = params.stop_loss_pct_of_collateral
+    typer.echo(
+        f"perps config {ACCOUNTS[account][0]} v{params.version}: all values approved "
+        f"(paper only); {params.max_collateral_per_position_pct}% collateral per position, "
+        f"buffer {params.liquidation_buffer_daily_moves or 'off'} daily moves, "
+        f"stop {f'{stop}% of collateral' if stop else 'off'}, "
+        f"daily loss limit {params.daily_loss_limit_pct}%"
+    )
 
 
 @app.command("prices")
@@ -110,11 +147,6 @@ paper_app = typer.Typer(
 app.add_typer(paper_app, name="paper")
 
 
-def _paper_paths() -> tuple[Path, Path]:
-    root = data_root()
-    return root / "state" / "perps-paper.json", root / "logs" / "perps-paper-events.jsonl"
-
-
 @paper_app.command("run")
 def paper_run(
     once: bool = typer.Option(False, "--once", help="Process due bars once, then exit."),
@@ -124,6 +156,7 @@ def paper_run(
         "--signal",
         help="tsmom_30d (1-month trend), sma_stance_20_50, or consensus_sma_tsmom (both agree).",
     ),
+    account: str = typer.Option("main", "--account", help=ACCOUNT_HELP),
 ) -> None:
     """Run the paper perps session until stopped. Paper only: it cannot place a real order.
 
@@ -135,9 +168,9 @@ def paper_run(
     from trader.session.alerts import Alerter
     from trader.ui.data import kraken_public_ohlc
 
-    params = _params_or_exit()
-    alerter = Alerter.from_env("[perps paper]")
-    state_path, events_path = _paper_paths()
+    params = _params_or_exit(account)
+    alerter = Alerter.from_env(ACCOUNTS[account][2])
+    state_path, events_path = account_paths(data_root(), account)
     try:
         session = PerpsSession(
             params,
@@ -186,17 +219,19 @@ def paper_run(
 
 
 @paper_app.command("status")
-def paper_status() -> None:
-    """Show the paper perps session: equity, positions, and progress."""
+def paper_status(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)) -> None:
+    """Show a paper perps session: equity, positions, and progress."""
     from trader.perps.session import read_status
 
-    s = read_status(_paper_paths()[0])
+    s = read_status(account_paths(data_root(), _account_or_exit(account))[0])
+    # Reason: the main account's wording is unchanged; only other accounts are named.
+    label = "" if account == "main" else f" {account}"
     if s is None:
-        typer.echo("no perps paper session has run on this machine yet")
+        typer.echo(f"no perps paper{label} session has run on this machine yet")
         return
     start, equity = Decimal(s["start_equity_usd"]), Decimal(s["equity_usd"])
     typer.echo(
-        f"perps paper ({s['signal']}, {s['timeframe']}): equity ${equity:.2f} "
+        f"perps paper{label} ({s['signal']}, {s['timeframe']}): equity ${equity:.2f} "
         f"({equity - start:+.2f} from ${start:.2f}), largest drop {s['max_drawdown_pct']}%, "
         f"fees ${Decimal(s['fees_paid_usd']):.2f}, {s['cycles']} bars processed, "
         f"last bar {s['last_bar']}"

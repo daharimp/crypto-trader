@@ -101,9 +101,14 @@ class PerpsParams:
     # Optional (ADR-032): when set, each new position's leverage is assessed from the
     # market's recent volatility, with ``target_leverage`` as the ceiling.
     liquidation_buffer_daily_moves: Decimal | None = None
+    # Optional (ADR-038): when set, a position closes once it has lost this share of its
+    # collateral (fees included), and that market opens nothing more until the next UTC day.
+    stop_loss_pct_of_collateral: Decimal | None = None
 
 
 BUFFER_KEY = "liquidation_buffer_daily_moves"
+STOP_KEY = "stop_loss_pct_of_collateral"
+DEFAULT_FILE = "jupiter.yaml"
 
 
 class PerpsConfigUnresolvedError(Exception):
@@ -121,19 +126,25 @@ class PerpsConfigUnresolvedError(Exception):
         self.keys, self.refs = keys, refs
 
 
-def load_perps_file(configs_root: Path | None = None) -> PerpsConfigFile:
+def load_perps_file(
+    configs_root: Path | None = None, file_name: str = DEFAULT_FILE
+) -> PerpsConfigFile:
     """
-    Load and validate the perps configuration file.
+    Load and validate a perps configuration file.
 
     Args:
         configs_root (Path | None): Config root. Defaults to ``TRADER_CONFIGS_DIR``/``configs``.
+        file_name (str): File under ``perps/``; each paper account has its own (ADR-038).
 
     Returns:
         PerpsConfigFile: Validated file.
+
+    Raises:
+        ValueError: If ``file_name`` is not a plain YAML file name.
     """
-    raw: dict[str, Any] = load_yaml(
-        (configs_root or default_configs_root()) / "perps" / "jupiter.yaml"
-    )
+    if "/" in file_name or "\\" in file_name or not file_name.endswith(".yaml"):
+        raise ValueError(f"perps config must be a plain .yaml file name, got {file_name!r}")
+    raw: dict[str, Any] = load_yaml((configs_root or default_configs_root()) / "perps" / file_name)
     return PerpsConfigFile.model_validate(raw)
 
 
@@ -166,15 +177,17 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
                 refs.add(pv.ref if pv else "UD-23")
             else:
                 values[k] = Decimal(pv.value)
-    buffer = cfg.risk.get(BUFFER_KEY)
-    if buffer is not None:
-        if buffer.value == "TBD":
-            missing.append(f"risk.{BUFFER_KEY}")
-            refs.add(buffer.ref)
-        elif Decimal(buffer.value) <= 0:
-            raise ValueError(f"risk.{BUFFER_KEY} must be positive")
+    for key, top in ((BUFFER_KEY, None), (STOP_KEY, Decimal(100))):
+        opt = cfg.risk.get(key)
+        if opt is None:
+            continue
+        if opt.value == "TBD":
+            missing.append(f"risk.{key}")
+            refs.add(opt.ref)
+        elif Decimal(opt.value) <= 0 or (top is not None and Decimal(opt.value) >= top):
+            raise ValueError(f"risk.{key} must be positive" + (f" and below {top}" if top else ""))
         else:
-            values[BUFFER_KEY] = Decimal(buffer.value)
+            values[key] = Decimal(opt.value)
     start = cfg.starting_collateral_usd
     if start.value == "TBD":
         missing.append("starting_collateral_usd")
@@ -194,12 +207,15 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
     )
 
 
-def load_perps_params(configs_root: Path | None = None) -> PerpsParams:
+def load_perps_params(
+    configs_root: Path | None = None, file_name: str = DEFAULT_FILE
+) -> PerpsParams:
     """
-    Load, validate, and resolve the perps configuration.
+    Load, validate, and resolve a perps configuration.
 
     Args:
         configs_root (Path | None): Config root.
+        file_name (str): File under ``perps/`` (ADR-038).
 
     Returns:
         PerpsParams: Parameters.
@@ -207,4 +223,26 @@ def load_perps_params(configs_root: Path | None = None) -> PerpsParams:
     Raises:
         PerpsConfigUnresolvedError: If any value is unresolved.
     """
-    return resolve(load_perps_file(configs_root))
+    return resolve(load_perps_file(configs_root, file_name))
+
+
+def settings_summary(p: PerpsParams) -> dict[str, Any]:
+    """
+    The adjustable account settings, as text, for the read-only dashboard (ADR-038).
+
+    Args:
+        p (PerpsParams): Resolved parameters.
+
+    Returns:
+        dict[str, Any]: Version, collateral %, buffer, leverage cap, stop %, daily limit;
+        an optional setting that is off is None.
+    """
+    opt = (p.liquidation_buffer_daily_moves, p.stop_loss_pct_of_collateral)
+    return {
+        "config_version": p.version,
+        "collateral_pct": str(p.max_collateral_per_position_pct),
+        "buffer_daily_moves": None if opt[0] is None else str(opt[0]),
+        "max_leverage": str(p.target_leverage),
+        "stop_pct_of_collateral": None if opt[1] is None else str(opt[1]),
+        "daily_loss_limit_pct": str(p.daily_loss_limit_pct),
+    }

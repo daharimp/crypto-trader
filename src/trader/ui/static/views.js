@@ -1,9 +1,9 @@
 /* Trader Desk account views (ADR-037): Overview, Positions and Trades for the leverage
-   paper account and the spot account. Read-only: every request is a GET to /api. */
+   paper accounts (main and degen, ADR-038) and the spot account. Read-only: every request is a GET to /api. */
 (() => {
   'use strict';
   const { $, el, svg, usd, signed, pct, arrow, tone, digits, span, when, stat, meter, get, openSheet } = Desk;
-  const D = { status: null, watch: [], paper: null, errors: {} };
+  const D = { status: null, watch: [], paper: null, degen: null, errors: {} };
   const SIGNALS = { tsmom_30d: '1-month trend', sma_stance_20_50: 'moving-average trend', consensus_sma_tsmom: 'both trend rules agree' };
   const NEAR = 15; // Reason: display only; a position inside 15% of liquidation is drawn amber.
   let account = 'perps';
@@ -13,10 +13,23 @@
   const heading = (text, right) => { const r = el('div', 'row'); r.append(el('h2', 'label', text)); if (right) r.append(right); return r; };
 
   // ---- one shape for both accounts ----
-  function perpsModel() {
-    const a = D.paper;
-    if (!a) return { error: D.errors.paper || 'Loading…' };
-    if (!a.running) return { error: 'The leverage paper account has not started. On the server: docker compose up -d perps' };
+  // Reason: the degen account (ADR-038) has the same shape as the main leverage account.
+  const PERPS = {
+    perps: { key: 'paper', name: 'leverage paper account', service: 'perps' },
+    degen: { key: 'degen', name: 'degen paper account', service: 'perps-degen' },
+  };
+  function settingsRows(st) {
+    if (!st) return [];
+    const off = (v, f) => (v == null ? 'off' : f(v));
+    return [['Collateral per trade', `${st.collateral_pct}% of the account`],
+      ['Liquidation buffer', off(st.buffer_daily_moves, (v) => `${v} typical daily moves`)],
+      ['Stop', off(st.stop_pct_of_collateral, (v) => `at ${v}% of collateral lost`)],
+      ['Bad-day stop', `after a ${st.daily_loss_limit_pct}% loss`], ['Leverage cap', `${st.max_leverage}x`], ['Settings version', `v${st.config_version}`]];
+  }
+  function perpsModel(which) {
+    const cfg = PERPS[which], a = D[cfg.key];
+    if (!a) return { error: D.errors[cfg.key] || 'Loading…' };
+    if (!a.running) return { error: `The ${cfg.name} has not started. On the server: docker compose up -d ${cfg.service}` };
     const equity = num(a.equity_usd), start = num(a.start_equity_usd);
     const positions = a.positions.map((p) => {
       const size = num(p.size_usd), coll = num(p.collateral_usd), entry = num(p.entry_price), now = priceOf(p.market), liq = num(p.liquidation_price);
@@ -38,7 +51,8 @@
       today: dayStart == null || equity == null ? null : equity - dayStart,
       stats: [['Largest drop so far', `${num(a.max_drawdown_pct)?.toFixed(2) ?? '—'}%`], ['Fees and borrow paid', usd(num(a.fees_paid_usd))]],
       health: [['Rule', SIGNALS[a.signal] || a.signal], ['Candles', a.timeframe], ['Candles processed', String(a.cycles)],
-        ['Last check', a.last_cycle_utc ? `${span(Date.now() - Date.parse(a.last_cycle_utc))} ago` : '—'], ['Started', when(a.started_at)]],
+        ['Last check', a.last_cycle_utc ? `${span(Date.now() - Date.parse(a.last_cycle_utc))} ago` : '—'], ['Started', when(a.started_at)],
+        ...(which === 'degen' ? settingsRows(a.settings) : [])],
       note: 'Simulated money; it cannot place a real order. Account value is marked at the last completed candle; gain or loss per position uses the latest Kraken price, before closing fees and borrow. The liquidation price is the one recorded when the position opened. Results are not a forecast; profit is not guaranteed.',
     };
   }
@@ -67,7 +81,7 @@
       note: 'Account value is cash plus open positions at the price of the last completed 4-hour candle. Gain or loss per position uses the latest Kraken price and is before selling fees. Results are not a forecast; profit is not guaranteed.',
     };
   }
-  const model = () => (account === 'perps' ? perpsModel() : spotModel());
+  const model = () => (account in PERPS ? perpsModel(account) : spotModel());
 
   // ---- account value over time ----
   function valueChart(points, start) {
@@ -200,9 +214,11 @@
     drawOverview(m); drawPositions(m); drawTrades(m);
   }
   async function refresh() {
-    const [status, watch, paper] = await Promise.allSettled([get('/api/status'), get('/api/watch'), get('/api/perps-paper')]);
+    const [status, watch, paper, degen] = await Promise.allSettled([get('/api/status'), get('/api/watch'), get('/api/perps-paper'), get('/api/perps-degen')]);
     D.paper = paper.status === 'fulfilled' ? paper.value : null;
     D.errors.paper = paper.status === 'rejected' ? `Leverage paper account unavailable: ${paper.reason.message}` : null;
+    D.degen = degen.status === 'fulfilled' ? degen.value : null;
+    D.errors.degen = degen.status === 'rejected' ? `Degen paper account unavailable: ${degen.reason.message}` : null;
     D.status = status.status === 'fulfilled' ? status.value : null;
     D.errors.status = status.status === 'rejected' ? `Status unavailable: ${status.reason.message}` : null;
     if (watch.status === 'fulfilled') D.watch = watch.value;

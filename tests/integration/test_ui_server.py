@@ -7,6 +7,7 @@ import threading
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 
@@ -128,3 +129,39 @@ def test_default_bind_is_localhost() -> None:
     import inspect
 
     assert inspect.signature(serve).parameters["host"].default == "127.0.0.1"
+
+
+def _serve(src: Sources) -> tuple[str, Any]:
+    httpd = serve(src, "127.0.0.1", 0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return f"http://127.0.0.1:{httpd.server_address[1]}", httpd
+
+
+def test_perps_paper_says_not_started_when_no_session(base: str) -> None:
+    assert json.loads(_get(base + "/api/perps-paper")[1]) == {"running": False}
+    assert b"/api/perps-paper" in _get(base + "/widgets.js")[1]
+
+
+def test_perps_paper_serves_the_forward_account() -> None:
+    acct = {
+        "signal": "tsmom_30d",
+        "equity_usd": "2516.56",
+        "positions": [{"market": "BTC", "side": "short", "size_usd": "2989.92"}],
+    }
+    base, httpd = _serve(Sources(lambda: {}, lambda s, t: [], fixture_params, dict, lambda: acct))
+    assert json.loads(_get(base + "/api/perps-paper")[1]) == {"running": True, **acct}
+    req = urllib.request.Request(base + "/api/perps-paper", data=b"{}", method="POST")
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(req, timeout=10)
+    assert exc.value.code == 405  # read-only
+    httpd.shutdown()
+
+
+def test_unreadable_perps_paper_state_is_502_not_crash() -> None:
+    def broken() -> dict[str, Any]:
+        raise ValueError("corrupt state file")
+
+    base, httpd = _serve(Sources(lambda: {}, lambda s, t: [], fixture_params, dict, broken))
+    assert _get(base + "/api/perps-paper")[0] == 502
+    assert _get(base + "/api/status")[0] == 200  # still alive
+    httpd.shutdown()

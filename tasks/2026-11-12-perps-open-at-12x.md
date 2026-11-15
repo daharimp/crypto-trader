@@ -2,4 +2,4 @@
 
 - [x] `configs/perps/jupiter.yaml` v6: `target_leverage` 12, approved by the owner 2026-11-12
 - [x] Test that 12x clears the 8% liquidation-distance rule and the total-size cap
-- [ ] Owner: on the server, `git pull`, then `docker compose up -d perps` (restart) to use v6
+- [x] Owner: on the server, `git pull`, then `docker compose up -d perps` (restart) to use v6 (ran at 12x; superseded by v9 on 2026-11-15)

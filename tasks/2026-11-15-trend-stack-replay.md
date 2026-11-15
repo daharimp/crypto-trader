@@ -1,0 +1,17 @@
+# 2026-11-15: Trend-stack replay (Longatron-inspired ideas, paper research only)
+
+Owner request: borrow ideas from the owner's old Longatron GPT (1D direction, 1H structure,
+15M trigger, confidence threshold, stop on every trade) and judge on recent weeks against
+the running paper perps account. Not a copy of Longatron.
+
+- [x] Degen replay (1h/4h/1d alignment, 2 daily moves) and results
+- [x] Trend-stack replay coded and committed before any result (`bc3d47f`)
+- [x] Data re-downloaded (15m 730 days; 4h; Deribit funding), replay run, results saved
+- [x] Fee drag measured: about +$10.9k before fees, about $17.3k fees, whole account 99 weeks
+- [ ] Owner: send Longatron's answers (indicator settings, confidence scoring, SL/TP/leverage
+      rules, DEGEN MODE) and any past trade records
+- [ ] Owner decides whether any variant deserves a separate paper account (needs
+      owner-approved values; not started)
+
+Test inputs only (20% / 50% of collateral at risk, 25x cap, $250, 7 bps fee); none is an
+approved risk value.

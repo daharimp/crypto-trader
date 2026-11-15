@@ -22,6 +22,7 @@ from trader.perps.params import (
     load_perps_params,
 )
 from trader.perps.prices import PriceUnavailableError, fetch_prices
+from trader.perps.signals import DEFAULT_SIGNAL
 
 from .common import EXIT_BLOCKED, EXIT_INVALID
 
@@ -118,12 +119,18 @@ def _paper_paths() -> tuple[Path, Path]:
 def paper_run(
     once: bool = typer.Option(False, "--once", help="Process due bars once, then exit."),
     timeframe: str = typer.Option("4h", "--timeframe", help="Decision timeframe: 1h or 4h."),
+    signal_name: str = typer.Option(
+        DEFAULT_SIGNAL,
+        "--signal",
+        help="tsmom_30d (1-month trend), sma_stance_20_50, or consensus_sma_tsmom (both agree).",
+    ),
 ) -> None:
     """Run the paper perps session until stopped. Paper only: it cannot place a real order.
 
     Exit 3 if any perps value is unapproved; exit 2 if the saved state does not match.
     """
     from trader.perps.session import PerpsSession, SessionStateError
+    from trader.perps.signals import make_signal
     from trader.risk.controls import PersistedKillSwitch
     from trader.session.alerts import Alerter
     from trader.ui.data import kraken_public_ohlc
@@ -139,6 +146,8 @@ def paper_run(
             events_path,
             notify=alerter.send,
             halted=PersistedKillSwitch().is_engaged,
+            signal=make_signal(signal_name, {"1h": 24, "4h": 6}.get(timeframe, 6)),
+            signal_name=signal_name,
             timeframe=timeframe,
         )
     except (SessionStateError, ValueError) as exc:

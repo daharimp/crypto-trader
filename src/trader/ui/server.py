@@ -51,6 +51,7 @@ class Sources:
         fetch: Fetcher,
         perps_params: Callable[[], Any],
         prices: Callable[[], dict[str, Any]],
+        perps_paper: Callable[[], dict[str, Any] | None] = lambda: None,
     ) -> None:
         """
         Store the readers.
@@ -60,6 +61,8 @@ class Sources:
             fetch (Fetcher): Public candle fetcher.
             perps_params (Callable): Loads approved perps parameters (may raise).
             prices (Callable): Returns live Jupiter prices.
+            perps_paper (Callable): Returns the forward paper perps account summary, or None
+                when that session has not run yet.
         """
         self.status, self.fetch, self.perps_params, self.prices = (
             status,
@@ -67,6 +70,7 @@ class Sources:
             perps_params,
             prices,
         )
+        self.perps_paper = perps_paper
         self._cache: dict[tuple[str, str], tuple[float, list[list[float]]]] = {}
 
     def rows(self, symbol: str, timeframe: str) -> list[list[float]]:
@@ -152,6 +156,11 @@ def make_handler(src: Sources) -> type[BaseHTTPRequestHandler]:
                         self._json(200, perps_payload(src.perps_params, market, bars))
                 elif url.path == "/api/prices":
                     self._json(200, src.prices())
+                elif url.path == "/api/perps-paper":
+                    acct = src.perps_paper()
+                    self._json(
+                        200, {"running": False} if acct is None else {"running": True, **acct}
+                    )
                 else:
                     self._json(404, {"error": "not found"})
             except Exception as exc:  # noqa: BLE001 - shown on the page, never crashes the server

@@ -8,6 +8,7 @@ from typing import Any
 import typer
 
 from trader.common.paths import configs_root, data_root
+from trader.perps.history import with_history
 from trader.perps.params import load_perps_file, load_perps_params
 from trader.perps.prices import fetch_prices
 from trader.perps.session import read_status
@@ -63,8 +64,12 @@ def serve_cmd(
         kraken_public_ohlc,
         load_perps_params,
         prices,
-        # Reason: the same state file `trader perps paper run` writes (cli/perps.py); read only.
-        lambda: read_status(data_root() / "state" / "perps-paper.json"),
+        # Reason: the same state file and event log `trader perps paper run` writes
+        # (cli/perps.py); read only.
+        lambda: with_history(
+            read_status(data_root() / "state" / "perps-paper.json"),
+            data_root() / "logs" / "perps-paper-events.jsonl",
+        ),
     )
     # Reason: in Docker the server binds 0.0.0.0 inside the container, while compose
     # publishes it on the host's 127.0.0.1 only (docker-compose.yml, ADR-026).

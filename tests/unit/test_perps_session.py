@@ -212,7 +212,7 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("TRADER_DATA_DIR", str(tmp_path))
     r = CliRunner().invoke(app, ["perps", "paper", "status"])
     assert r.exit_code == 0 and "no perps paper session" in r.output
-    # Reason: the default 1-month trend rule needs 30 days of 4h candles (181 closes).
+    # Reason: 30 days of 4h candles (181 closes); the shipped perps settings need that much.
     long_down = [100 * 0.995**i for i in range(200)]
     monkeypatch.setattr(ui_data, "kraken_public_ohlc", lambda symbol, tf: _rows(long_down))
     # The test fixture config leaves every perps value TBD: the session must fail closed.
@@ -237,4 +237,3 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert r.exit_code == 2 and "different signal" in r.output
     r = CliRunner().invoke(app, ["perps", "paper", "run", "--once", "--signal", "nope"])
     assert r.exit_code == 2 and "unknown signal" in r.output
-

@@ -94,7 +94,7 @@ def fetch_hyperliquid(coin: str) -> dict[datetime, str]:
     Hourly funding for a Hyperliquid perpetual, from its first record to now.
 
     Args:
-        coin (str): BTC, ETH, or SOL.
+        coin (str): Hyperliquid coin name, e.g. BTC or DOGE.
 
     Returns:
         dict[datetime, str]: hour start -> rate for that hour.
@@ -142,7 +142,11 @@ SOURCES = {"deribit": fetch_deribit, "hyperliquid": fetch_hyperliquid, "kraken":
 
 def main(argv: list[str]) -> int:
     """Fetch one source and coin and write the CSV."""
-    if len(argv) != 4 or argv[1] not in SOURCES or argv[2] not in DERIBIT:
+    # Reason: Hyperliquid lists many coins; Deribit and Kraken symbols are mapped above.
+    known = len(argv) == 4 and (
+        argv[2] in DERIBIT or (argv[1] == "hyperliquid" and argv[2].isalnum())
+    )
+    if not known or argv[1] not in SOURCES:
         print(__doc__)
         return 2
     rates = SOURCES[argv[1]](argv[2])

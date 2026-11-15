@@ -61,9 +61,11 @@ def test_page_and_vendor_library_served(base: str) -> None:
 @pytest.mark.parametrize(
     ("path", "ctype", "marker"),
     [
-        ("/app.css", "text/css", b".desk"),
+        ("/app.css", "text/css", b".pager"),
+        ("/theme.js", "text/javascript", b"window.Look"),
         ("/desk.js", "text/javascript", b"window.Desk"),
-        ("/widgets.js", "text/javascript", b"/api/watch"),
+        ("/views.js", "text/javascript", b"/api/watch"),
+        ("/markets.js", "text/javascript", b"/api/candles"),
     ],
 )
 def test_workspace_assets_served_by_exact_name(
@@ -139,7 +141,18 @@ def _serve(src: Sources) -> tuple[str, Any]:
 
 def test_perps_paper_says_not_started_when_no_session(base: str) -> None:
     assert json.loads(_get(base + "/api/perps-paper")[1]) == {"running": False}
-    assert b"/api/perps-paper" in _get(base + "/widgets.js")[1]
+    assert b"/api/perps-paper" in _get(base + "/views.js")[1]
+
+
+@pytest.mark.parametrize("name", ["bricolage-grotesque", "instrument-sans", "jetbrains-mono"])
+def test_bundled_fonts_are_served_from_this_server(base: str, name: str) -> None:
+    path = f"/fonts/{name}-latin-wght-normal.woff2"
+    with urllib.request.urlopen(base + path, timeout=10) as r:
+        assert r.status == 200 and r.headers["Content-Type"] == "font/woff2"
+        assert r.read(4) == b"wOF2"
+    assert path.encode() in _get(base + "/app.css")[1]
+    assert b"SIL Open Font License" in _get(base + "/fonts/FONT-LICENSES.txt")[1]
+    assert _get(base + f"/fonts/{name}.woff2")[0] == 404  # exact names only
 
 
 def test_perps_paper_serves_the_forward_account() -> None:

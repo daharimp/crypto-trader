@@ -160,8 +160,9 @@ If `status` answers `No such command 'paper'`, the image is older than the code:
 update in section 8a.
 
 Check: `status` shows equity, any open long or short positions, and `bars processed` rising
-by one every 4 hours. The dashboard's **Leverage practice · paper account** card shows the same
-account: equity, open longs and shorts with their leverage, and gain or loss since start. Opens, closes, and liquidations arrive as phone alerts starting with
+by one every 4 hours. The dashboard opens on the same account (**Leverage · paper**): slide between
+Overview, Positions, Trades and Markets to see its value, each open long or short with its
+leverage and liquidation price, and every closed trade with dollars won or lost (ADR-037). Opens, closes, and liquidations arrive as phone alerts starting with
 `[perps paper]`. The emergency stop (`trader killswitch engage`) blocks new paper positions
 here too.
 

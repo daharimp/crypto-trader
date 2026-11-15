@@ -27,8 +27,18 @@ STATIC = {
     "/": ("index.html", "text/html"),
     "/index.html": ("index.html", "text/html"),
     "/app.css": ("app.css", "text/css"),
+    "/theme.js": ("theme.js", "text/javascript"),
     "/desk.js": ("desk.js", "text/javascript"),
-    "/widgets.js": ("widgets.js", "text/javascript"),
+    "/views.js": ("views.js", "text/javascript"),
+    "/markets.js": ("markets.js", "text/javascript"),
+    **{
+        f"/fonts/{name}-latin-wght-normal.woff2": (
+            f"fonts/{name}-latin-wght-normal.woff2",
+            "font/woff2",
+        )
+        for name in ("bricolage-grotesque", "instrument-sans", "jetbrains-mono")
+    },
+    "/fonts/FONT-LICENSES.txt": ("fonts/FONT-LICENSES.txt", "text/plain"),
     "/vendor/lightweight-charts-4.2.0.js": (
         "vendor/lightweight-charts-4.2.0.js",
         "text/javascript",
@@ -140,7 +150,9 @@ def make_handler(src: Sources) -> type[BaseHTTPRequestHandler]:
                 if url.path in STATIC:
                     name, ctype = STATIC[url.path]
                     f = resources.files("trader.ui").joinpath(f"static/{name}")
-                    self._send(200, f.read_bytes(), f"{ctype}; charset=utf-8")
+                    # Reason: a charset belongs on text types only, not on a font file.
+                    text = not ctype.startswith("font/")
+                    self._send(200, f.read_bytes(), f"{ctype}; charset=utf-8" if text else ctype)
                 elif url.path == "/api/status":
                     self._json(200, src.status())
                 elif url.path == "/api/watch":

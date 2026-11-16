@@ -150,7 +150,11 @@ app.add_typer(paper_app, name="paper")
 @paper_app.command("run")
 def paper_run(
     once: bool = typer.Option(False, "--once", help="Process due bars once, then exit."),
-    timeframe: str = typer.Option("4h", "--timeframe", help="Decision timeframe: 1h or 4h."),
+    timeframe: str = typer.Option(
+        "4h",
+        "--timeframe",
+        help="How often to check: 4h, or 1h (the trend still comes from 4h candles).",
+    ),
     signal_name: str = typer.Option(
         DEFAULT_SIGNAL,
         "--signal",
@@ -179,9 +183,11 @@ def paper_run(
             events_path,
             notify=alerter.send,
             halted=PersistedKillSwitch().is_engaged,
-            signal=make_signal(signal_name, {"1h": 24, "4h": 6}.get(timeframe, 6)),
+            # Reason: an hourly sweep reads its 30-day trend from 4h candles (ADR-040).
+            signal=make_signal(signal_name, 6),
             signal_name=signal_name,
             timeframe=timeframe,
+            trend_timeframe="4h" if timeframe == "1h" else None,
         )
     except (SessionStateError, ValueError) as exc:
         typer.echo(f"perps session not started: {exc}", err=True)

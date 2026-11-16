@@ -1,0 +1,16 @@
+# AI review assistant (ADR-039). These are assistant settings, not risk values: the assistant
+# can only write reports and suggest changes; it never edits a settings file or places an order.
+# The API key is read from ANTHROPIC_API_KEY in the server's .env (never put it here).
+schema_version: "1.0.0"
+kind: ReviewAssistant
+model: claude-opus-5-5
+max_tokens: 16000
+# Reasoning effort per role: low, medium, high, xhigh or max (higher costs more).
+effort:
+  default: medium
+  strategy_researcher: high
+  skeptic: high
+  lead_editor: high
+# Review automatically when an account journals a bad day (DAY_HALTED).
+review_on_bad_day: true
+accounts: [main, degen]

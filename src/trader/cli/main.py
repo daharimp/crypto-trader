@@ -17,6 +17,7 @@ from . import (
     profile,
     report,
     research,
+    review,
     session,
     ui,
 )
@@ -39,6 +40,7 @@ app.add_typer(live.app, name="live")
 app.add_typer(research.app, name="research")
 app.add_typer(perps.app, name="perps")
 app.add_typer(ui.app, name="ui")
+app.add_typer(review.app, name="review")
 
 
 @app.command("version")

@@ -299,6 +299,40 @@ a protective stop disappears, the clock drifts more than 5 s from Kraken's, mark
 for 3 bars, 3 consecutive exchange errors, the configuration changes while running, or any
 unexpected error. Investigate, fix, then disengage the kill switch.
 
+## 7a. AI review assistant for the paper accounts (ADR-039)
+
+When a paper perps account has a bad day (it lost the daily limit and stopped for the rest of
+the UTC day), the review assistant reads that account's record, settings and the market, and
+six AI reviewers each do one job: market analyst, trade reviewer and risk officer (each on its
+own, from the same measured facts), then a strategy researcher proposes at most three setting
+changes, a skeptic challenges each, and a lead editor writes you a plain-language report.
+Every proposed value is checked by code against the account's config rules. **It cannot change
+anything**: you decide, and you edit the settings file yourself (RUNBOOK 2d for the degen
+account, section 8 for others).
+
+One-time setup: create an API key at console.anthropic.com and add one line to `.env` on the
+server (never in the repository, a config file, or chat):
+
+```bash
+nano .env                     # add: ANTHROPIC_API_KEY=<your key>
+docker compose up -d review   # watches both paper accounts for bad days
+docker compose logs --tail 20 review
+```
+
+Ask for a review any time, and read reports:
+
+```bash
+docker compose run --rm cli review run --account main --dry-run   # the facts only, free
+docker compose run --rm cli review run --account main             # full review (uses the API)
+docker compose run --rm cli review show --account main            # newest report
+```
+
+Reports are saved in `data/reports/review-<account>-<day>.md` (and `.json` with the facts).
+A phone alert starting `[review]` tells you when one is ready. Each review makes six requests
+to Claude (`configs/assistant.yaml` sets the model and effort per role); expect cents to well
+under a dollar per review, billed to your Anthropic account. Without a key the commands exit 3
+and the trading bots are unaffected. AI reviewers can be wrong; one day is a small sample.
+
 ## 8. Changing configuration
 
 Any edit to the profile, risk profile, eligibility, or authorization requires a **version

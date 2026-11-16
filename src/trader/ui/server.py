@@ -62,6 +62,7 @@ class Sources:
         perps_params: Callable[[], Any],
         prices: Callable[[], dict[str, Any]],
         perps_paper: Callable[[], dict[str, Any] | None] = lambda: None,
+        perps_degen: Callable[[], dict[str, Any] | None] = lambda: None,
     ) -> None:
         """
         Store the readers.
@@ -73,6 +74,7 @@ class Sources:
             prices (Callable): Returns live Jupiter prices.
             perps_paper (Callable): Returns the forward paper perps account summary, or None
                 when that session has not run yet.
+            perps_degen (Callable): The same for the second, degen paper account (ADR-038).
         """
         self.status, self.fetch, self.perps_params, self.prices = (
             status,
@@ -81,6 +83,7 @@ class Sources:
             prices,
         )
         self.perps_paper = perps_paper
+        self.perps_degen = perps_degen
         self._cache: dict[tuple[str, str], tuple[float, list[list[float]]]] = {}
 
     def rows(self, symbol: str, timeframe: str) -> list[list[float]]:
@@ -168,8 +171,10 @@ def make_handler(src: Sources) -> type[BaseHTTPRequestHandler]:
                         self._json(200, perps_payload(src.perps_params, market, bars))
                 elif url.path == "/api/prices":
                     self._json(200, src.prices())
-                elif url.path == "/api/perps-paper":
-                    acct = src.perps_paper()
+                elif url.path in ("/api/perps-paper", "/api/perps-degen"):
+                    acct = (
+                        src.perps_paper() if url.path == "/api/perps-paper" else src.perps_degen()
+                    )
                     self._json(
                         200, {"running": False} if acct is None else {"running": True, **acct}
                     )

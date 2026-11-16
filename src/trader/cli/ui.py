@@ -9,7 +9,12 @@ import typer
 
 from trader.common.paths import configs_root, data_root
 from trader.perps.history import with_history
-from trader.perps.params import load_perps_file, load_perps_params
+from trader.perps.params import (
+    PerpsConfigUnresolvedError,
+    load_perps_file,
+    load_perps_params,
+    settings_summary,
+)
 from trader.perps.prices import fetch_prices
 from trader.perps.session import read_status
 from trader.profiles.loader import ConfigLoadError, load_yaml
@@ -46,6 +51,21 @@ def _live_gate() -> dict[str, Any] | None:
     return out
 
 
+def _paper_account(account: str) -> dict[str, Any] | None:
+    """One paper perps account's summary with its trade history and settings (ADR-038)."""
+    from trader.cli.perps import ACCOUNTS, account_paths
+
+    state, events = account_paths(data_root(), account)
+    out = with_history(read_status(state), events)
+    if out is None:
+        return None
+    try:
+        p = load_perps_params(file_name=ACCOUNTS[account][0])
+    except (ValueError, PerpsConfigUnresolvedError) as exc:
+        return {**out, "settings_error": f"{type(exc).__name__}: {exc}"}
+    return {**out, "account": account, "settings": settings_summary(p)}
+
+
 @app.command("serve")
 def serve_cmd(
     host: str = typer.Option(
@@ -64,12 +84,10 @@ def serve_cmd(
         kraken_public_ohlc,
         load_perps_params,
         prices,
-        # Reason: the same state file and event log `trader perps paper run` writes
-        # (cli/perps.py); read only.
-        lambda: with_history(
-            read_status(data_root() / "state" / "perps-paper.json"),
-            data_root() / "logs" / "perps-paper-events.jsonl",
-        ),
+        # Reason: the same state files and event logs `trader perps paper run --account`
+        # writes (cli/perps.py); read only.
+        lambda: _paper_account("main"),
+        lambda: _paper_account("degen"),
     )
     # Reason: in Docker the server binds 0.0.0.0 inside the container, while compose
     # publishes it on the host's 127.0.0.1 only (docker-compose.yml, ADR-026).

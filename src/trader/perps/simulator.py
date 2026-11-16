@@ -49,6 +49,10 @@ class PaperPerpsAccount:
     # Typical daily move per market, set by the caller before signals are applied; used
     # only when leverage is assessed from volatility (ADR-032).
     daily_moves: dict[str, Decimal] = field(default_factory=dict)
+    # ADR-038: markets stopped out today (no new open until the next UTC day), and whether
+    # today's loss reached the daily loss limit (alerted once per day).
+    stopped_today: set[str] = field(default_factory=set)
+    day_halted: bool = False
 
     @classmethod
     def start(cls, params: PerpsParams, now: datetime) -> PaperPerpsAccount:
@@ -115,13 +119,40 @@ class PaperPerpsAccount:
             halted=self.halted,
         )
 
-    def mark(self, marks: dict[str, Decimal], now: datetime) -> None:
+    def stop_price(self, p: PerpPosition) -> Decimal | None:
         """
-        Accrue borrow fees, liquidate positions past maintenance, and roll the day.
+        Price at which ``p`` has lost the configured share of its collateral, fees included.
 
         Args:
-            marks (dict[str, Decimal]): Mark price per market.
+            p (PerpPosition): Open position.
+
+        Returns:
+            Decimal | None: The stop price, or None when no stop is configured (ADR-038).
+        """
+        share = self.params.stop_loss_pct_of_collateral
+        if share is None:
+            return None
+        fees = (
+            fee_usd(p.size_usd, self.params.open_fee_bps)
+            + fee_usd(p.size_usd, self.params.close_fee_bps)
+            + p.borrow_fees_usd
+        )
+        room = max(p.collateral_usd * share / HUNDRED - fees, Decimal(0))
+        sign = Decimal(1) if p.side == PerpSide.LONG else Decimal(-1)
+        return p.entry_price * (1 - sign * room / p.size_usd)
+
+    def mark(
+        self, marks: dict[str, Decimal], now: datetime, opens: dict[str, Decimal] | None = None
+    ) -> None:
+        """
+        Accrue borrow fees, apply stops, liquidate positions past maintenance, roll the day.
+
+        Args:
+            marks (dict[str, Decimal]): Mark price per market (the bar's adverse extreme for
+                open positions).
             now (datetime): Current time (UTC).
+            opens (dict[str, Decimal] | None): The bar's open per market; a stop that the
+                open already gapped through fills there instead of at the stop.
         """
         for m in list(self.positions):
             p = self.positions[m]
@@ -131,6 +162,26 @@ class PaperPerpsAccount:
                 fee = p.size_usd * self.params.borrow_rate_pct_per_hour / HUNDRED * hours
                 p.borrow_fees_usd += fee.quantize(CENT)
                 p.last_accrual = now
+            stop = self.stop_price(p)
+            sign = Decimal(1) if p.side == PerpSide.LONG else Decimal(-1)
+            if stop is not None and (marks[m] - stop) * sign <= 0:
+                fill = stop
+                o = (opens or {}).get(m)
+                if o is not None and (o - stop) * sign < 0:
+                    fill = o
+                if not is_liquidatable(
+                    p.side,
+                    p.size_usd,
+                    p.collateral_usd,
+                    p.entry_price,
+                    fill,
+                    self.params.close_fee_bps,
+                    p.borrow_fees_usd,
+                    self.params.maintenance_bps,
+                ):
+                    self.close(m, {**marks, m: fill}, now, reason="STOP_LOSS")
+                    self.stopped_today.add(m)
+                    continue
             if is_liquidatable(
                 p.side,
                 p.size_usd,
@@ -155,7 +206,40 @@ class PaperPerpsAccount:
         today = now.date().isoformat()
         if today != self.day:
             self.day, self.day_start_equity_usd = today, self.equity(marks)
+            self.stopped_today, self.day_halted = set(), False
             self._log(now, "DAY_ROLLED", day=today, equity_usd=str(self.day_start_equity_usd))
+
+    def check_day_loss(self, marks: dict[str, Decimal], now: datetime) -> bool:
+        """
+        Journal ``DAY_HALTED`` once when today's loss reaches the daily loss limit (ADR-038).
+
+        The risk checks already refuse new opens past the limit; this only records it so the
+        owner gets one alert to stop and look for the rest of the UTC day.
+
+        Args:
+            marks (dict[str, Decimal]): Mark prices.
+            now (datetime): Current time (UTC).
+
+        Returns:
+            bool: True if the limit was reached by this call.
+        """
+        if self.day_halted or self.day_start_equity_usd <= 0:
+            return False
+        equity = self.equity(marks)
+        loss = self.day_start_equity_usd - equity
+        limit = self.day_start_equity_usd * self.params.daily_loss_limit_pct / HUNDRED
+        if loss < limit:
+            return False
+        self.day_halted = True
+        self._log(
+            now,
+            "DAY_HALTED",
+            day=self.day,
+            loss_usd=str(loss.quantize(CENT)),
+            loss_pct=str((loss / self.day_start_equity_usd * HUNDRED).quantize(CENT)),
+            limit_pct=str(self.params.daily_loss_limit_pct),
+        )
+        return True
 
     def open(
         self, market: str, side: PerpSide, marks: dict[str, Decimal], now: datetime
@@ -256,5 +340,7 @@ class PaperPerpsAccount:
         current = self.positions.get(market)
         if current is not None and current.side != target:
             self.close(market, marks, now, reason="SIGNAL_CHANGED")
-        if target is not None and market not in self.positions:
+        # Reason: after a stop the trend usually still points the same way, so without the
+        # wait the next bar would reopen at once (ADR-038).
+        if target is not None and market not in self.positions and market not in self.stopped_today:
             self.open(market, target, marks, now)

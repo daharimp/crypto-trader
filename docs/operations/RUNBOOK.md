@@ -178,6 +178,39 @@ mv data/state/perps-paper.json data/state/perps-paper-$(date +%Y%m%d).json
 docker compose up -d perps
 ```
 
+## 2d. Second paper account with its own settings ("degen", ADR-038)
+
+A separate paper perps account beside the one in 2c, with its own simulated $2,500, its own
+settings (`configs/perps/jupiter-degen.yaml`) and its own record
+(`data/state/perps-degen.json`). Starting, stopping or resetting it never touches `perps`.
+It has no keys and cannot place a real order.
+
+```bash
+git pull && docker compose build                     # section 8a, if the image is older
+docker compose run --rm cli perps validate --account degen
+docker compose up -d perps-degen
+docker compose run --rm cli perps paper status --account degen
+docker compose logs --tail 20 perps-degen
+```
+
+Check: `validate` lists 5% collateral, buffer 3, stop 30% of collateral and the 15% daily
+limit; `status` shows `bars processed` rising every 4 hours. On the dashboard, tap
+**Degen · paper**; its Overview also lists the settings in force. Alerts start with
+`[perps degen]`. A **BAD DAY** alert means the account lost 15% since 00:00 UTC (7pm New York
+in winter): it opens nothing new until 00:00 UTC; look at what happened before the next day.
+
+To change a setting: edit its `value` in `configs/perps/jupiter-degen.yaml`, raise `version`
+by one, set `approved_on` to today, then `docker compose restart perps-degen`. Run
+`perps validate --account degen` first; a `TBD` or out-of-range value stops the account
+(exit 3 or 2) instead of guessing. A new buffer or collateral applies to new positions only.
+To start this account over, keep the old record:
+
+```bash
+docker compose stop perps-degen
+mv data/state/perps-degen.json data/state/perps-degen-$(date +%Y%m%d).json
+docker compose up -d perps-degen
+```
+
 ## 3. Create the Kraken API key (owner, on kraken.com)
 
 Kraken Pro → Settings → API → Create key. Grant **only**:

@@ -1,0 +1,31 @@
+Whole account (SOL + BTC + ETH, $250 per trade per coin) from 2022-01-10
+
+                 total $  last 26 wk  trades flips/wk   fees $  liqs  12h up worst 12h  max drop
+4H buffer 4       20,532       5,125     997      3.9    3,057     7     50%    -1,053    -5,087
+/home/user/crypto-trader/research/sweep_frequency_replay.py:89: Pandas4Warning: Sorting by default when concatenating all DatetimeIndex is deprecated.  In the future, pandas will respect the default of `sort=False`. Specify `sort=True` or `sort=False` to silence this message. If you see this warnings when not directly calling concat, report a bug to pandas.
+  bars = pd.concat(parts, axis=1).fillna(0.0).sum(axis=1)
+1H buffer 4       19,424       5,499    1917      7.6    5,822     3     49%    -1,106    -5,219
+4H buffer 3       26,233       6,761    1005      4.0    4,085    21     50%    -1,387    -6,819
+/home/user/crypto-trader/research/sweep_frequency_replay.py:89: Pandas4Warning: Sorting by default when concatenating all DatetimeIndex is deprecated.  In the future, pandas will respect the default of `sort=False`. Specify `sort=True` or `sort=False` to silence this message. If you see this warnings when not directly calling concat, report a bug to pandas.
+  bars = pd.concat(parts, axis=1).fillna(0.0).sum(axis=1)
+1H buffer 3       25,202       7,253    1920      7.6    7,721    11     49%    -1,462    -6,971
+
+last 8 weeks (week starting Monday; the last is partial):
+            4H buffer 4  1H buffer 4  4H buffer 3  1H buffer 3
+2026-09-21        721.0        783.0        949.0       1031.0
+2026-09-28        149.0        191.0        196.0        251.0
+2026-10-05      -1156.0      -1304.0      -1522.0      -1718.0
+2026-10-12       -478.0       -599.0       -629.0       -789.0
+2026-10-19        340.0        313.0        448.0        413.0
+2026-10-26        282.0        275.0        374.0        364.0
+2026-11-02        476.0        462.0        629.0        611.0
+2026-11-09       1023.0       1045.0       1351.0       1381.0
+
+Exploratory replay on past prices; not a forecast.
+
+=== Notes added after the run (the script above was not changed) ===
+- Deciding every hour instead of every 4 hours roughly doubles the trades (7.6 vs 3.9 a week
+  across the three coins) and the fees ($5,822 vs $3,057 at buffer 4), roughly halves the
+  liquidations (3 vs 7; 11 vs 21 at buffer 3), and ends about 5% lower overall but about 7%
+  higher over the last 26 weeks. Within noise: no clear gain from sweeping more often.
+- The pandas concat warning printed above is cosmetic (index sorting default); results unaffected.

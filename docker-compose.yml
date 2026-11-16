@@ -43,7 +43,8 @@ services:
   # alerts (ADR-038, configs/perps/jupiter-degen.yaml). Starting it never touches `perps`.
   perps-degen:
     <<: *trader
-    command: ["perps", "paper", "run", "--account", "degen"]
+    # Checks every hour; its 30-day trend and volatility come from 4h candles (ADR-040).
+    command: ["perps", "paper", "run", "--account", "degen", "--timeframe", "1h"]
 
   live:
     <<: *trader

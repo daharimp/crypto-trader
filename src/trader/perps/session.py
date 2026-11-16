@@ -149,6 +149,11 @@ class PerpsSession:
     signal: Signal = default_signal
     signal_name: str = "sma_stance_20_50"
     timeframe: str = "4h"
+    # Optional (ADR-040): read the signal and the volatility from completed candles of this
+    # longer timeframe plus the latest price, while deciding, marking and stopping every
+    # ``timeframe`` bar. Kraken's free feed holds 720 candles, one short of 30 days of 1h
+    # bars, so an hourly sweep takes its 30-day trend from 4h candles.
+    trend_timeframe: str | None = None
     symbols: dict[str, str] = field(default_factory=dict)
     acct: PaperPerpsAccount | None = None
     meta: dict[str, Any] = field(default_factory=dict)
@@ -157,6 +162,11 @@ class PerpsSession:
         """Validate the timeframe, default the symbols, and load any saved state."""
         if self.timeframe not in TIMEFRAMES:
             raise ValueError(f"timeframe must be one of {sorted(TIMEFRAMES)}")
+        if self.trend_timeframe is not None and (
+            self.trend_timeframe not in TIMEFRAMES
+            or TIMEFRAMES[self.trend_timeframe] <= TIMEFRAMES[self.timeframe]
+        ):
+            raise ValueError("trend_timeframe must be a longer timeframe than timeframe")
         if not self.symbols:
             self.symbols = {m: f"{m}/USD" for m in self.params.markets}
         if self.state_path.exists():
@@ -169,10 +179,16 @@ class PerpsSession:
             if d["state_version"] != STATE_VERSION:
                 raise SessionStateError(f"state version {d['state_version']} is not supported")
             meta = d["meta"]
-            same = (meta["signal"], meta["timeframe"], meta["markets"]) == (
+            same = (
+                meta["signal"],
+                meta["timeframe"],
+                meta["markets"],
+                meta.get("trend_timeframe"),
+            ) == (
                 self.signal_name,
                 self.timeframe,
                 sorted(self.params.markets),
+                self.trend_timeframe,
             )
             if not same:
                 raise SessionStateError(
@@ -224,10 +240,10 @@ class PerpsSession:
         closes_at = datetime.fromisoformat(last) + 2 * TIMEFRAMES[self.timeframe]
         return now >= closes_at + timedelta(seconds=90)
 
-    def _bars(self) -> dict[str, list[Bar]]:
+    def _bars(self, timeframe: str | None = None) -> dict[str, list[Bar]]:
         out: dict[str, list[Bar]] = {}
         for market, symbol in self.symbols.items():
-            rows = self.fetch(symbol, self.timeframe)
+            rows = self.fetch(symbol, timeframe or self.timeframe)
             if len(rows) < 2:
                 raise ValueError(f"{market}: no completed candles")
             out[market] = [
@@ -238,6 +254,31 @@ class PerpsSession:
                 for r in rows
             ]
         return out
+
+    def _trend_view(
+        self, candles: list[Bar], decided_at: datetime, latest: Decimal
+    ) -> tuple[list[Decimal], Decimal | None]:
+        """
+        Closes for the signal and the typical daily move, from the trend timeframe.
+
+        Args:
+            candles (list[Bar]): Trend-timeframe candles of one market (last one forming).
+            decided_at (datetime): Close time of the decision bar.
+            latest (Decimal): The decision bar's close.
+
+        Returns:
+            tuple[list[Decimal], Decimal | None]: Completed trend closes up to the decision,
+            plus ``latest`` when the decision falls inside a trend candle; and the move.
+        """
+        assert self.trend_timeframe is not None
+        span = TIMEFRAMES[self.trend_timeframe]
+        done = [b for b in candles if b.open_time_utc + span <= decided_at]
+        closes = [b.close for b in done]
+        move = typical_daily_move(closes, round(timedelta(days=1) / span))
+        # Reason: at a trend-candle boundary its close already is the latest price.
+        if not done or done[-1].open_time_utc + span != decided_at:
+            closes = [*closes, latest]
+        return closes, move
 
     def cycle(self, now: datetime) -> list[dict[str, Any]]:
         """
@@ -253,6 +294,7 @@ class PerpsSession:
             ValueError: If a market returns no completed candles.
         """
         bars = self._bars()
+        trend = self._bars(self.trend_timeframe) if self.trend_timeframe else None
         step = TIMEFRAMES[self.timeframe]
         by_time = {m: {b.open_time_utc: b for b in bs} for m, bs in bars.items()}
         # Reason: the last row of each market is the forming candle, so it is not "completed".
@@ -265,6 +307,7 @@ class PerpsSession:
             self.meta = {
                 "signal": self.signal_name,
                 "timeframe": self.timeframe,
+                "trend_timeframe": self.trend_timeframe,
                 "markets": sorted(self.params.markets),
                 "config_version": self.params.version,
                 "started_at": _iso(now),
@@ -306,6 +349,8 @@ class PerpsSession:
                 for m in bars:
                     closes = [b.close for b in bars[m] if b.open_time_utc <= t]
                     move = typical_daily_move(closes, per_day)
+                    if trend is not None:
+                        closes, move = self._trend_view(trend[m], closes_at, row[m].close)
                     if move is None:
                         acct.daily_moves.pop(m, None)
                     else:
@@ -354,6 +399,7 @@ def read_status(state_path: Path) -> dict[str, Any] | None:
     return {
         "signal": meta["signal"],
         "timeframe": meta["timeframe"],
+        "trend_timeframe": meta.get("trend_timeframe"),
         "started_at": meta["started_at"],
         "last_bar": meta["last_bar"],
         "last_cycle_utc": meta.get("last_cycle_utc"),

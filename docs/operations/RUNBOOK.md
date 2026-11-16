@@ -194,10 +194,19 @@ docker compose logs --tail 20 perps-degen
 ```
 
 Check: `validate` lists 5% collateral, buffer 3, stop 30% of collateral and the 15% daily
-limit; `status` shows `bars processed` rising every 4 hours. On the dashboard, tap
-**Degen · paper**; its Overview also lists the settings in force. Alerts start with
+limit; `status` shows `bars processed` rising every hour: this account checks every hour,
+taking its 30-day trend and volatility from 4-hour candles (ADR-040). On the dashboard, tap
+**Degen · paper**; its Overview also lists the settings in force. Tap **All** to see every
+account's open positions together, with entry, price now, liquidation or stop on each card. Alerts start with
 `[perps degen]`. A **BAD DAY** alert means the account lost 15% since 00:00 UTC (7pm New York
 in winter): it opens nothing new until 00:00 UTC; look at what happened before the next day.
+
+If this account already ran with 4-hour checks, the hourly version refuses that saved record
+(`perps session not started: ... different signal, timeframe`): keep it and start fresh with
+the three commands at the end of this section, then `docker compose up -d perps-degen`.
+
+To check the main account every hour too, only after its 7-day test: add
+`"--timeframe", "1h"` to the `perps` command in `docker-compose.yml`, then reset it as in 2c.
 
 To change a setting: edit its `value` in `configs/perps/jupiter-degen.yaml`, raise `version`
 by one, set `approved_on` to today, then `docker compose restart perps-degen`. Run

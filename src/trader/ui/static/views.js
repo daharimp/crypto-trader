@@ -81,7 +81,25 @@
       note: 'Account value is cash plus open positions at the price of the last completed 4-hour candle. Gain or loss per position uses the latest Kraken price and is before selling fees. Results are not a forecast; profit is not guaranteed.',
     };
   }
-  const model = () => (account in PERPS ? perpsModel(account) : spotModel());
+  // Every account in one view (owner, 2026-11-16): positions grouped by account, trades merged.
+  const NAMES = { perps: 'Leverage · paper', degen: 'Degen · paper', spot: 'Spot' };
+  function allModel() {
+    const parts = Object.keys(NAMES).map((k) => ({ k, m: k in PERPS ? perpsModel(k) : spotModel() }));
+    const ok = parts.filter((x) => !x.m.error);
+    const tag = (k, rows) => rows.map((r) => ({ ...r, acct: NAMES[k] }));
+    const sum = (f) => ok.reduce((a, x) => a + (f(x.m) ?? 0), 0);
+    const inUse = (x) => (x.kind === 'perps' ? x.positions.reduce((a, p) => a + (p.coll || 0), 0) : (x.equity ?? 0) - (x.cash ?? 0));
+    return {
+      kind: 'all', positions: ok.flatMap((x) => tag(x.k, x.m.positions)), points: [], start: null,
+      trades: ok.flatMap((x) => tag(x.k, x.m.trades)).sort((a, b) => (Date.parse(b.closed) || 0) - (Date.parse(a.closed) || 0)),
+      equity: sum((x) => x.equity), today: ok.some((x) => x.m.today != null) ? sum((x) => x.today) : null, inUse: sum(inUse),
+      title: 'All accounts · combined value',
+      stats: ok.map((x) => [NAMES[x.k], usd(x.m.equity)]),
+      health: parts.map((x) => [NAMES[x.k], x.m.error ? 'not running' : `${x.m.positions.length} open · ${x.m.trades.length} closed`]),
+      note: 'Every account added together: the two leverage accounts are simulated money; Spot is the spot session (paper until live is approved). Each account keeps its own limits. Results are not a forecast; profit is not guaranteed.',
+    };
+  }
+  const model = () => (account === 'all' ? allModel() : account in PERPS ? perpsModel(account) : spotModel());
 
   // ---- account value over time ----
   function valueChart(points, start) {
@@ -123,7 +141,7 @@
         el('div', null, `It is closed, and its ${usd(closest.coll)} lost, if ${closest.coin} ${closest.side === 'long' ? 'falls' : 'rises'} from ${usd(closest.now, digits(closest.coin))} to ${usd(closest.liq, digits(closest.coin))}.`));
       side.append(r);
     }
-    const inUse = m.kind === 'perps' ? m.positions.reduce((a, p) => a + (p.coll || 0), 0) : m.equity - m.cash;
+    const inUse = m.inUse ?? (m.kind === 'perps' ? m.positions.reduce((a, p) => a + (p.coll || 0), 0) : m.equity - m.cash);
     const share = m.equity > 0 ? Math.max(0, inUse / m.equity) : 0, use = card();
     const top = el('div', 'row'); top.append(el('span', 'muted', 'Your money in open positions'), el('span', 'num', `${Math.round(share * 100)}%`));
     use.append(top, meter(share, `${Math.round(share * 100)} percent of the account is in open positions`), el('div', 'num muted', `${usd(inUse)} of ${usd(m.equity)}`));
@@ -153,7 +171,7 @@
       r.append(el('div', null, `${p.coin} would have to ${p.side === 'long' ? 'fall' : 'rise'} ${p.dist.toFixed(1)}% from here before this position is closed and its ${usd(p.coll)} is lost.`));
       nodes.push(r);
     }
-    openSheet(`${p.coin} position`, ...nodes);
+    openSheet(`${p.coin} position${p.acct ? ` · ${p.acct}` : ''}`, ...nodes);
   }
   function drawPositions(m) {
     const box = $('positions'); box.replaceChildren();
@@ -162,12 +180,29 @@
     box.append(heading(`${m.positions.length} open position${m.positions.length === 1 ? '' : 's'}`,
       m.positions.length ? el('span', `num ${tone(total)}`, `${arrow(total)}${signed(total)}`) : null));
     if (!m.positions.length) { box.append(card(el('p', 'empty', 'No open positions right now.'))); return; }
+    const groups = m.kind === 'all' ? [...new Set(m.positions.map((p) => p.acct))] : [null];
+    groups.forEach((g) => {
+      const rows = m.positions.filter((p) => g == null || p.acct === g);
+      if (g != null) {
+        const sub = rows.reduce((a, p) => a + (p.pnl || 0), 0);
+        box.append(heading(`${g} · ${rows.length}`, el('span', `num ${tone(sub)}`, `${arrow(sub)}${signed(sub)}`)));
+      }
+      box.append(positionCards(rows));
+    });
+    box.append(el('p', 'note', 'Tap a position for all its details. The bar fills as the price gets closer to liquidation, and turns amber inside 15%.'));
+  }
+  function positionCards(list) {
     const cards = el('div', 'cards');
-    m.positions.forEach((p) => {
-      const b = el('button', 'card'), head = el('span', 'row'), left = el('span', 'row');
+    list.forEach((p) => {
+      const b = el('button', 'card'), head = el('span', 'row'), left = el('span', 'row'), d = digits(p.coin);
       left.append(el('span', 'coin', p.coin), el('span', 'tag', `${p.side === 'short' ? '▼ short' : '▲ long'}${p.lev ? ` · ${p.lev.toFixed(1)}x` : ''}`));
       head.append(left, el('span', `num ${tone(p.pnl)}`, signed(p.pnl)));
-      b.append(head, el('span', 'muted', p.lev != null ? `${usd(p.size, 0)} position on ${usd(p.coll)} of your money` : `${p.qty} bought at ${usd(p.entry, digits(p.coin))} · worth ${usd(p.size)}`));
+      b.append(head, el('span', 'muted', p.lev != null ? `${usd(p.size, 0)} position on ${usd(p.coll)} of your money` : `${p.qty} bought at ${usd(p.entry, d)} · worth ${usd(p.size)}`));
+      // Reason: the owner wants the details on the card itself, not only behind a tap.
+      const detail = p.lev != null
+        ? [`Entry ${usd(p.entry, d)} → now ${usd(p.now, d)}`, `Liquidation ${usd(p.liq, d)}${p.opened ? ` · opened ${when(p.opened)}` : ''}`]
+        : [`Now ${usd(p.now, d)} · stop ${usd(p.stop, d)}`];
+      detail.forEach((line) => b.append(el('span', 'muted', line)));
       const room = p.lev != null ? p.dist : p.room, word = p.lev != null ? 'to liquidation' : 'above its stop';
       if (room != null) {
         const near = p.lev != null && room < NEAR, line = el('span', 'row');
@@ -178,7 +213,7 @@
       b.addEventListener('click', () => positionSheet(p));
       cards.append(b);
     });
-    box.append(cards, el('p', 'note', 'Tap a position for its details. The bar fills as the price gets closer to liquidation, and turns amber inside 15%.'));
+    return cards;
   }
 
   // ---- Trades ----
@@ -198,11 +233,11 @@
       top.append(el('b', null, `${t.coin} `), el('span', 'num muted', `${t.side}${t.lev ? ` · ${t.lev.toFixed(1)}x` : ''}`));
       const held = t.opened && t.closed ? ` after ${span(Date.parse(t.closed) - Date.parse(t.opened))}` : '';
       const d = digits(t.coin), path = t.entry != null && t.exit != null ? ` · ${usd(t.entry, d)} → ${usd(t.exit, d)}` : '';
-      left.append(top, el('span', `sub${t.liquidated ? ' warn' : ''}`, `${when(t.closed)} · ${t.liquidated ? 'liquidated' : (t.reason || 'closed')}${held}${path}`));
+      left.append(top, el('span', `sub${t.liquidated ? ' warn' : ''}`, `${t.acct ? `${t.acct} · ` : ''}${when(t.closed)} · ${t.liquidated ? 'liquidated' : (t.reason || 'closed')}${held}${path}`));
       r.append(left, el('span', `num ${tone(t.pnl)}`, signed(t.pnl)));
       list.append(r);
     });
-    box.append(card(sum), card(list), el('p', 'note', `Dollars won or lost are after fees${m.kind === 'perps' ? ' and borrow; a liquidation loses the whole collateral' : ''}. Past results are not a forecast.`));
+    box.append(card(sum), card(list), el('p', 'note', `Dollars won or lost are after fees${m.kind === 'spot' ? '' : ' and borrow; a liquidation loses the whole collateral'}. Past results are not a forecast.`));
   }
 
   // ---- refresh ----

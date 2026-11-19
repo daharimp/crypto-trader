@@ -6,7 +6,7 @@ import math
 
 from typer.testing import CliRunner
 
-from tests.perps_support import bars_from_closes, fixture_params
+from tests.perps_support import bars_from_closes, fixture_params, no_stop_params
 from trader.cli.main import app
 from trader.perps.backtest import run_perps_backtest
 
@@ -47,7 +47,7 @@ def test_no_look_ahead() -> None:
 
 
 def test_high_leverage_gets_liquidated_on_wicks() -> None:
-    p = fixture_params(
+    p = no_stop_params(
         max_leverage="50",
         target_leverage="50",
         min_liquidation_distance_pct="1",

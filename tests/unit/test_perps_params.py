@@ -21,9 +21,10 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_shipped_config_is_fully_approved() -> None:
-    """UD-23 values (v2-v5), UD-26 assessed leverage (v7), UD-27 25x ceiling (v8)."""
+    """UD-23 values (v2-v5), UD-26 assessed leverage (v7), UD-27 25x ceiling (v8), stop (v10)."""
     p = load_perps_params(ROOT / "configs")
-    assert p.version == 9
+    assert p.version == 10
+    assert p.stop_loss_pct_of_collateral == Decimal(50)  # UD-31, ADR-042
     assert (p.open_fee_bps, p.close_fee_bps, p.maintenance_bps) == (
         Decimal(7),
         Decimal(7),
@@ -160,3 +161,19 @@ def test_buffer_is_optional_but_must_be_approved_and_positive() -> None:
     with pytest.raises(PerpsConfigUnresolvedError) as exc:
         resolve(PerpsConfigFile.model_validate(raw))
     assert exc.value.keys == ["risk.liquidation_buffer_daily_moves"]
+
+
+def test_a_config_without_a_stop_fails_closed() -> None:
+    """Owner rule (ADR-042): every perps account assesses a stop-loss; none means exit 3."""
+    with pytest.raises(PerpsConfigUnresolvedError) as exc:
+        resolve(PerpsConfigFile.model_validate(fixture_file(stop_loss_pct_of_collateral="")))
+    assert exc.value.keys == ["risk.stop_loss_pct_of_collateral"] and exc.value.refs == ["UD-31"]
+
+
+@pytest.mark.parametrize(
+    "name", sorted(p.name for p in (ROOT / "configs" / "perps").glob("*.yaml"))
+)
+def test_every_shipped_perps_account_has_an_approved_stop(name: str) -> None:
+    p = load_perps_params(ROOT / "configs", name)
+    assert p.stop_loss_pct_of_collateral is not None
+    assert Decimal(0) < p.stop_loss_pct_of_collateral < Decimal(100)

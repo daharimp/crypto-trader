@@ -11,7 +11,7 @@ import pytest
 from typer.testing import CliRunner
 
 from tests.conftest import SHIPPED_CONFIGS
-from tests.perps_support import fixture_params
+from tests.perps_support import fixture_params, no_stop_params
 from trader.cli.main import app
 from trader.perps.math import PerpSide
 from trader.perps.session import (
@@ -53,8 +53,9 @@ class Feed:
 
 def _session(tmp_path: Path, feed: Feed, **kw: object) -> tuple[PerpsSession, list[str]]:
     sent: list[str] = []
+    params = kw.pop("params", None) or fixture_params()
     s = PerpsSession(
-        fixture_params(),
+        params,  # type: ignore[arg-type]
         feed,
         tmp_path / "state" / "perps-paper.json",
         tmp_path / "logs" / "events.jsonl",
@@ -141,7 +142,7 @@ def test_trend_flip_closes_the_short_and_opens_a_long_at_the_next_open(tmp_path:
 
 def test_spike_through_the_liquidation_price_loses_the_collateral(tmp_path: Path) -> None:
     feed = Feed(DOWN)
-    s, sent = _session(tmp_path, feed)
+    s, sent = _session(tmp_path, feed, params=no_stop_params())
     s.cycle(feed.now())
     assert s.acct is not None
     collateral = s.acct.positions["SOL"].collateral_usd
@@ -267,3 +268,27 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     assert r.exit_code == 2 and "different signal" in r.output
     r = CliRunner().invoke(app, ["perps", "paper", "run", "--once", "--signal", "nope"])
     assert r.exit_code == 2 and "unknown signal" in r.output
+
+
+def test_stop_closes_before_a_spike_reaches_liquidation(tmp_path: Path) -> None:
+    """ADR-042: with a stop, the same spike that liquidates above costs only the stop's share."""
+    feed = Feed(DOWN)
+    s, sent = _session(tmp_path, feed, params=fixture_params(stop_loss_pct_of_collateral="30"))
+    s.cycle(feed.now())
+    assert s.acct is not None
+    collateral = s.acct.positions["SOL"].collateral_usd
+    cash_before = s.acct.cash_usd
+    rows = _rows([*feed.closes, feed.closes[-1]])
+    rows[-2][2] = feed.closes[-1] * 2  # the high doubles, but the bar opens below the stop
+    feed.closes.append(feed.closes[-1])
+    feed.rows = rows
+    events = s.cycle(feed.now())
+    stopped = [e for e in events if e["event"] == "CLOSED" and e["reason"] == "STOP_LOSS"]
+    assert {e["market"] for e in stopped} == {"SOL", "ETH"}
+    assert not any(e["event"] == "LIQUIDATED" for e in events)
+    assert s.acct.stopped_today == {"SOL", "ETH"}  # no reopen until the next UTC day
+    returned = s.acct.cash_usd - cash_before
+    # Both positions lost about 30% of their collateral, fees included.
+    assert returned > 0 and abs(returned - 2 * collateral * Decimal("0.7")) < collateral * Decimal(
+        "0.05"
+    )

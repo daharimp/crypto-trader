@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from tests.perps_support import T0, fixture_params
+from tests.perps_support import T0, no_stop_params
 from trader.perps.leverage_replay import (
     Venue,
     agreement,
@@ -156,7 +156,8 @@ def test_mismatched_index_is_refused() -> None:
 @pytest.mark.parametrize(("exit_price", "liquidated"), [(110.0, False), (60.0, True)])
 def test_one_trade_matches_the_paper_simulator(exit_price: float, liquidated: bool) -> None:
     """A single 3x long gives the same dollars as ``PaperPerpsAccount`` (fixture values)."""
-    params = fixture_params(borrow_rate_pct_per_hour="0")
+    # Reason: the vectorized replay has no stop, so compare the no-stop simulator path.
+    params = no_stop_params(borrow_rate_pct_per_hour="0")
     acct = PaperPerpsAccount.start(params, T0)
     acct.open("SOL", PerpSide.LONG, {"SOL": Decimal(100)}, T0)
     later = T0 + timedelta(hours=4)

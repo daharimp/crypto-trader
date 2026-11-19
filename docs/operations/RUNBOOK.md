@@ -166,6 +166,13 @@ leverage and liquidation price, and every closed trade with dollars won or lost 
 `[perps paper]`. The emergency stop (`trader killswitch engage`) blocks new paper positions
 here too.
 
+Every position has a stop-loss (ADR-042): it closes once it has lost 50% of its collateral,
+fees included, which is about 2 typical daily moves from entry and about half way to its
+liquidation price. That market then waits for the next UTC day before opening again. Change
+it in `configs/perps/jupiter.yaml` (`stop_loss_pct_of_collateral`, raise `version`, update
+`approved_on`, then `docker compose restart perps`); a file without a stop refuses to start
+(exit 3), on every account.
+
 The session follows the 1-month trend rule (`tsmom_30d`: long if the price is above its level
 30 days ago, short if below; ADR-035). To run a different rule add
 `--signal consensus_sma_tsmom` or `--signal sma_stance_20_50` to the `perps` command

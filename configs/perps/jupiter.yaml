@@ -1,11 +1,11 @@
 # Jupiter Perps, PAPER ONLY (ADR-025). No wallet, no keys, no transactions.
 # UD-23: the owner approved starting collateral and every risk limit on 2026-11-02 (v2).
-# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3); borrow set to the cautious assumption (v4); 10% of equity per position (v5); trades open at 12x (UD-25, v6); each opening leverage is assessed from volatility, up to 12x (UD-26, v7); ceiling raised to 25x with a 3.5% minimum liquidation distance (UD-27, v8); borrow fee set to the rate in Jupiter's documented example (UD-28, v9).
+# Venue values were checked against docs.jup.ag and approved by the owner on 2026-11-10 (v3); borrow set to the cautious assumption (v4); 10% of equity per position (v5); trades open at 12x (UD-25, v6); each opening leverage is assessed from volatility, up to 12x (UD-26, v7); ceiling raised to 25x with a 3.5% minimum liquidation distance (UD-27, v8); borrow fee set to the rate in Jupiter's documented example (UD-28, v9); a stop-loss at 50% of collateral, about 2 typical daily moves away (UD-31, ADR-042, v10).
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:
 # https://dev.jup.ag and https://station.jup.ag/guides/perpetual-exchange
 schema_version: "1.0.0"
 kind: PerpsConfig
-version: 9
+version: 10
 venue: jupiter_perps
 mode: paper
 starting_collateral_usd: {value: 2500, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}
@@ -26,6 +26,7 @@ risk:
   target_leverage: {value: 25, status: approved, ref: UD-27, approved_by: owner, approved_on: "2026-11-12", note: "ceiling for the assessed opening leverage; raised from 12 so a calm market can open higher"}
   liquidation_buffer_daily_moves: {value: 4, status: approved, ref: UD-26, approved_by: owner, approved_on: "2026-11-12", note: "each new position opens at the leverage that keeps liquidation this many typical daily moves (30-day) away, never above target_leverage"}
   max_collateral_per_position_pct: {value: 10, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "% of equity posted per position"}
+  stop_loss_pct_of_collateral: {value: 50, status: approved, ref: UD-31, approved_by: owner, approved_on: "2026-11-19", note: "owner: add a stop to the main account and always assess one; 50% chosen in ADR-042: with the buffer of 4 daily moves the stop sits about 2 typical daily moves from entry (half way to liquidation), so one trade loses at most about 5% of equity (10% collateral x 50%) plus any gap; after a stop that market waits for the next UTC day"}
   max_total_size_pct_of_equity: {value: 400, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "sum of open position sizes as % of equity"}
   min_liquidation_distance_pct: {value: 3.5, status: approved, ref: UD-27, approved_by: owner, approved_on: "2026-11-12", note: "refuse opens whose liquidation price is closer than this; lowered from 8 so 25x (about 3.7% away) is allowed"}
   max_open_positions: {value: 3, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}

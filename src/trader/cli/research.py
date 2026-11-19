@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 
-from .common import EXIT_INVALID, utc_option
+from .common import EXIT_BLOCKED, EXIT_INVALID, utc_option
 
 app = typer.Typer(help="Research tools (backtest environment only).", no_args_is_help=True)
 
@@ -73,4 +73,33 @@ def compare(
     (out / "compare.json").write_text(json.dumps(result, indent=1, default=str))
     md = render_markdown(result)
     (out / "compare.md").write_text(md)
+    typer.echo(md)
+
+
+@app.command("snapshot")
+def snapshot(
+    history_dir: Path = typer.Option(
+        Path("data/long"), "--history-dir", help="Folder with <coin>_usd_4h.csv history files."
+    ),
+    capital: float = typer.Option(2500.0, "--capital", help="Dollars to express results in."),
+    out: Path = typer.Option(Path("data/research/snapshot"), "--out"),
+) -> None:
+    """Live market state per coin, compared with what happened after similar states (ADR-029).
+
+    Reads public Kraken data only; places no orders. Writes snapshot.json and snapshot.md.
+    Exit 3 if no coin's live data could be read.
+    """
+    from trader.research.snapshot import render_markdown, take_snapshot
+
+    if capital <= 0:
+        typer.echo("--capital must be positive", err=True)
+        raise typer.Exit(EXIT_INVALID)
+    snap = take_snapshot(history_dir, capital)
+    if not snap.states:
+        typer.echo(f"no live data: {snap.errors}", err=True)
+        raise typer.Exit(EXIT_BLOCKED)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "snapshot.json").write_text(snap.to_json())
+    md = render_markdown(snap)
+    (out / "snapshot.md").write_text(md)
     typer.echo(md)

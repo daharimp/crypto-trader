@@ -1,0 +1,349 @@
+=== Data files (rows, first, last, sha256) ===
+  data/long/btc_usd_4h.csv: 23371 rows, 2016-03-09T08:00:00Z to 2026-11-12T04:00:00Z, 81038e89afe409eaf9222bb7bf620cb84b6a630f140b7eb666164e4ebf448595
+  data/long/eth_usd_4h.csv: 21876 rows, 2016-11-14T08:00:00Z to 2026-11-12T04:00:00Z, 8dfc8ff6408257bffb6966b14b775dc35dab377b44ddc7e0b78768f62f893827
+  data/long/sol_usd_4h.csv: 11836 rows, 2021-06-17T16:00:00Z to 2026-11-12T04:00:00Z, e6e694c594831d415df6d645445e7e4a7a33029a219447d7e154d2e7ecb93ae3
+  data/funding/deribit_btc.csv: 66069 rows, 2019-04-30T09:00:00+00:00 to 2026-11-12T07:00:00+00:00, fa5b44710daf24639b4d5de5b723604e4e7b9eb691823a6a2c4bd009a63e5ccf
+  data/funding/deribit_eth.csv: 66069 rows, 2019-04-30T09:00:00+00:00 to 2026-11-12T07:00:00+00:00, 19c3a48bf5f3b0c520501eab51b463fa868eeacff401997f2791a024cdabfc7a
+  data/funding/deribit_sol.csv: 40849 rows, 2022-03-16T08:00:00+00:00 to 2026-11-12T08:00:00+00:00, 4bb227b9cefc2b7a4778a6cc2afeaa8708a3e89db9af51b7815b371d27fa8b02
+  data/funding/hyperliquid_btc.csv: 30159 rows, 2023-05-11T23:00:00+00:00 to 2026-11-12T07:00:00+00:00, 5d205dcfe23b42fd643c0b264d8f3feb7e8e4064e58a01cd4002cf8b9703e3d9
+  data/funding/hyperliquid_eth.csv: 30159 rows, 2023-05-11T23:00:00+00:00 to 2026-11-12T07:00:00+00:00, aa618b9882287f295d0d7985196f1863c805713213f8321803b5ebdacca23035
+  data/funding/hyperliquid_sol.csv: 30159 rows, 2023-05-11T23:00:00+00:00 to 2026-11-12T07:00:00+00:00, 31ae973cf13735a50bfb5766aa651fae13639e8485417fd3ffa4c7e2f4e1c2c4
+  data/funding/kraken_btc.csv: 8763 rows, 2025-11-11T23:00:00+00:00 to 2026-11-12T07:00:00+00:00, 385792211a8a5b56666224ee92dbf4a24fdf7098567a31c5857dc3781b479463
+  data/funding/kraken_eth.csv: 8763 rows, 2025-11-11T23:00:00+00:00 to 2026-11-12T07:00:00+00:00, 6ae4fe16e1db439499ca153ba3b2fe467e74e563f556fdf1424ee822a2aeeac8
+  data/funding/kraken_sol.csv: 8764 rows, 2025-11-11T23:00:00+00:00 to 2026-11-12T07:00:00+00:00, efa38ee3813cf9b4aa1202b329f4a8e7c356cee98b05374d867115277de2c78c
+
+=== BTC 2019-04-30 to 2026-11-12, deribit funding (PRIMARY), $2,500 constant ===
+funding in window: average +7.7% of position size per year (positive: longs pay shorts); positive in 63% of hours; 16505 bars, 1 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold          1,340      392 to 2,287    -1,606    3,387      -719     77%              
+T1 blend  L+S  full        767      106 to 1,440       -16      911        78     60%          -190
+T2 blend  L    full        957      294 to 1,690      -688    1,850      -280     57%          -191
+T3 blend  L+S  vol40       587       77 to 1,106        77      736       164     43%          -127
+T4 blend  L    vol40       677      183 to 1,194      -505    1,338      -217     36%          -133
+T5 1-mo   L+S  full      1,291      399 to 2,193      -876    2,110       220     64%          -186
+T6 1-mo   L    full      1,219      539 to 1,933      -590    2,824      -231     48%          -189
+T7 1-mo   L+S  vol40     1,034      349 to 1,721      -582    1,843       238     52%          -124
+T8 1-mo   L    vol40       902      367 to 1,466      -513    1,988      -184     33%          -131
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -191  (-619 to 244)
+  T3 vs T4:     -90  (-405 to 247)
+  T5 vs T6:      71  (-442 to 637)
+  T7 vs T8:     132  (-254 to 529)
+
+--- BTC same window, reference costs: fees only (context only) ---
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+T1 blend  L+S  full        957      228 to 1,694       -23    1,297       126     56%              
+T2 blend  L    full      1,148      434 to 1,853      -688    2,327      -235     54%              
+T3 blend  L+S  vol40       714      185 to 1,244        70      969       206     39%              
+T4 blend  L    vol40       810      279 to 1,349      -505    1,627      -176     35%              
+T5 1-mo   L+S  full      1,477      555 to 2,406      -731    2,653       264     62%              
+T6 1-mo   L    full      1,408      650 to 2,182      -592    3,423      -191     46%              
+T7 1-mo   L+S  vol40     1,158      505 to 1,855      -441    2,167       274     50%              
+T8 1-mo   L    vol40     1,033      467 to 1,637      -515    2,329      -146     31%              
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -192  (-625 to 271)
+  T3 vs T4:     -95  (-413 to 241)
+  T5 vs T6:      69  (-469 to 648)
+  T7 vs T8:     125  (-245 to 523)
+
+--- BTC same window, reference costs: EXP-013 assumption 0.01%/h (context only) ---
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+T1 blend  L+S  full       -418     -1,110 to 285      -995     -241      -948     92%              
+T2 blend  L    full       -167       -841 to 502    -1,021      105      -854     86%              
+T3 blend  L+S  vol40      -317       -809 to 182      -845     -110      -726     80%              
+T4 blend  L    vol40      -179       -689 to 331      -929      134      -734     74%              
+T5 1-mo   L+S  full       -713     -1,635 to 216    -1,766     -264    -1,290     99%              
+T6 1-mo   L    full        186       -494 to 894    -1,091      981      -934     79%              
+T7 1-mo   L+S  vol40      -480     -1,134 to 220    -1,517       96    -1,079     94%              
+T8 1-mo   L    vol40       105       -418 to 650      -869      773      -804     67%              
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -251  (-669 to 178)
+  T3 vs T4:    -138  (-441 to 181)
+  T5 vs T6:    -899  (-1,401 to -362)
+  T7 vs T8:    -585  (-938 to -225)
+
+=== BTC 2023-06-08 to 2026-11-12, hyperliquid funding (cross-check), $2,500 constant ===
+funding in window: average +14.3% of position size per year (positive: longs pay shorts); positive in 88% of hours; 7515 bars, 3 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold            975      -67 to 2,039      -394    2,181      -275     54%              
+T1 blend  L+S  full        425     -340 to 1,190         7      516        20     37%          -238
+T2 blend  L    full        521     -223 to 1,304      -143      969      -128     32%          -298
+T3 blend  L+S  vol40       486     -259 to 1,249       100      603       107     31%          -212
+T4 blend  L    vol40       513     -187 to 1,239      -148    1,004      -120     27%          -265
+T5 1-mo   L+S  full        280     -823 to 1,388      -958      403        76     66%          -206
+T6 1-mo   L    full        449     -370 to 1,324      -369      824       -98     42%          -281
+T7 1-mo   L+S  vol40       447     -553 to 1,452      -666      549       230     53%          -186
+T8 1-mo   L    vol40       495     -277 to 1,249      -285      917       -63     35%          -252
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:     -97  (-607 to 429)
+  T3 vs T4:     -28  (-475 to 464)
+  T5 vs T6:    -169  (-812 to 477)
+  T7 vs T8:     -48  (-639 to 572)
+
+=== BTC 2025-11-12 to 2026-11-12, kraken funding (cross-check), $2,500 constant ===
+funding in window: average +3.7% of position size per year (positive: longs pay shorts); positive in 69% of hours; 2189 bars, 6 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold           -553   -2,507 to 1,271      -366      nan      -358     43%              
+T1 blend  L+S  full        213     -944 to 1,513       -64      nan        41     27%            21
+T2 blend  L    full       -216       -689 to 272      -132      nan      -115     13%           -35
+T3 blend  L+S  vol40       289     -872 to 1,518        26      nan        92     25%            20
+T4 blend  L    vol40      -213       -680 to 250      -137      nan      -113     13%           -35
+T5 1-mo   L+S  full        963     -437 to 2,456       114      nan       413     32%           -11
+T6 1-mo   L    full        159     -713 to 1,106      -112      nan        47     23%           -52
+T7 1-mo   L+S  vol40     1,041     -345 to 2,449       167      nan       481     29%           -12
+T8 1-mo   L    vol40       163     -665 to 1,073       -84      nan        53     21%           -51
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:     429  (-1,093 to 2,028)
+  T3 vs T4:     502  (-968 to 2,057)
+  T5 vs T6:     804  (-528 to 2,310)
+  T7 vs T8:     878  (-426 to 2,331)
+
+=== ETH 2019-04-30 to 2026-11-12, deribit funding (PRIMARY), $2,500 constant ===
+funding in window: average +5.7% of position size per year (positive: longs pay shorts); positive in 56% of hours; 16506 bars, 1 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold          1,603      421 to 2,868    -1,687    6,291      -797     81%              
+T1 blend  L+S  full        969       65 to 1,906      -399    1,399       215     68%          -182
+T2 blend  L    full      1,215      327 to 2,128      -500    3,062      -125     54%          -162
+T3 blend  L+S  vol40       701      187 to 1,220      -254    1,084       324     44%           -96
+T4 blend  L    vol40       752      258 to 1,261      -316    1,842       -64     31%           -94
+T5 1-mo   L+S  full      2,001      887 to 3,114      -431    1,911     1,891     59%          -227
+T6 1-mo   L    full      1,731      818 to 2,667      -145    4,311       575     51%          -185
+T7 1-mo   L+S  vol40     1,276      667 to 1,927        31    1,528     1,288     42%          -118
+T8 1-mo   L    vol40     1,040      519 to 1,597      -156    2,234       345     31%          -104
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -246  (-890 to 380)
+  T3 vs T4:     -51  (-416 to 328)
+  T5 vs T6:     270  (-356 to 958)
+  T7 vs T8:     236  (-141 to 653)
+
+--- ETH same window, reference costs: fees only (context only) ---
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+T1 blend  L+S  full      1,151      172 to 2,132      -291    1,962       284     66%              
+T2 blend  L    full      1,377      483 to 2,298      -522    3,797       -84     55%              
+T3 blend  L+S  vol40       798      255 to 1,360      -155    1,315       360     42%              
+T4 blend  L    vol40       846      333 to 1,385      -328    2,124       -42     31%              
+T5 1-mo   L+S  full      2,228    1,109 to 3,367      -281    2,632     2,055     58%              
+T6 1-mo   L    full      1,916      976 to 2,915       -39    5,257       651     51%              
+T7 1-mo   L+S  vol40     1,394      780 to 2,032       156    1,815     1,369     40%              
+T8 1-mo   L    vol40     1,144      614 to 1,725      -161    2,554       386     31%              
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -226  (-874 to 421)
+  T3 vs T4:     -48  (-417 to 316)
+  T5 vs T6:     312  (-380 to 1,016)
+  T7 vs T8:     249  (-125 to 674)
+
+--- ETH same window, reference costs: EXP-013 assumption 0.01%/h (context only) ---
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+T1 blend  L+S  full       -192     -1,134 to 735    -1,090      -25      -720     93%              
+T2 blend  L    full        142     -700 to 1,007      -940      696      -685     90%              
+T3 blend  L+S  vol40        15       -495 to 542      -925      268      -283     69%              
+T4 blend  L    vol40       107       -393 to 626      -563      695      -428     67%              
+T5 1-mo   L+S  full         38   -1,081 to 1,177    -1,579     -364      -449     96%              
+T6 1-mo   L    full        735     -172 to 1,652      -658    1,794      -245     69%              
+T7 1-mo   L+S  vol40        98       -516 to 728    -1,173      171       -45     83%              
+T8 1-mo   L    vol40       437        -75 to 973      -443    1,145      -129     48%              
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -333  (-953 to 279)
+  T3 vs T4:     -92  (-435 to 253)
+  T5 vs T6:    -697  (-1,348 to -32)
+  T7 vs T8:    -339  (-692 to 49)
+
+=== ETH 2023-06-08 to 2026-11-12, hyperliquid funding (cross-check), $2,500 constant ===
+funding in window: average +14.3% of position size per year (positive: longs pay shorts); positive in 87% of hours; 7515 bars, 3 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold            535     -878 to 1,981      -770      837      -522     68%              
+T1 blend  L+S  full        593     -324 to 1,592        14      409       237     45%          -200
+T2 blend  L    full        385     -524 to 1,383      -187      399        -6     43%          -279
+T3 blend  L+S  vol40       524     -161 to 1,203        49      456       336     29%          -156
+T4 blend  L    vol40       342     -304 to 1,023      -123      481         7     31%          -210
+T5 1-mo   L+S  full      1,572      257 to 2,800      -502      104     2,865     55%          -169
+T6 1-mo   L    full        874     -134 to 1,933       154      316     1,107     45%          -263
+T7 1-mo   L+S  vol40     1,232      372 to 2,097       -47      358     1,968     38%          -133
+T8 1-mo   L    vol40       697       -0 to 1,411       385      464       688     32%          -199
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:     208  (-645 to 1,047)
+  T3 vs T4:     182  (-340 to 745)
+  T5 vs T6:     697  (-168 to 1,624)
+  T7 vs T8:     535  (-78 to 1,134)
+
+=== ETH 2025-11-12 to 2026-11-12, kraken funding (cross-check), $2,500 constant ===
+funding in window: average +3.8% of position size per year (positive: longs pay shorts); positive in 69% of hours; 2189 bars, 6 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold           -761   -3,356 to 1,701      -693      nan      -515     55%              
+T1 blend  L+S  full        228   -1,116 to 1,785      -167      nan        10     34%            19
+T2 blend  L    full       -314     -1,252 to 638      -190      nan      -178     23%           -38
+T3 blend  L+S  vol40       347     -655 to 1,445       -68      nan       140     21%            12
+T4 blend  L    vol40      -179       -880 to 535      -106      nan      -101     15%           -29
+T5 1-mo   L+S  full      1,258   -1,052 to 3,520      -392      nan       629     55%           -24
+T6 1-mo   L    full        201   -1,374 to 1,892      -300      nan        49     33%           -59
+T7 1-mo   L+S  vol40     1,300     -343 to 2,920      -184      nan       755     38%           -17
+T8 1-mo   L    vol40       298     -911 to 1,595      -153      nan       127     22%           -44
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:     542  (-1,219 to 2,418)
+  T3 vs T4:     526  (-866 to 2,000)
+  T5 vs T6:   1,057  (-609 to 2,926)
+  T7 vs T8:   1,001  (-197 to 2,352)
+
+=== SOL 2022-06-15 to 2026-11-12, deribit funding (PRIMARY), $2,500 constant ===
+funding in window: average -0.0% of position size per year (positive: longs pay shorts); positive in 57% of hours; 9660 bars, 0 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold          1,597     -326 to 3,527    -1,634   12,584    -1,105     82%              
+T1 blend  L+S  full        196   -1,182 to 1,576      -879     -273      -326     75%          -346
+T2 blend  L    full        901     -231 to 2,098      -636    3,317      -365     58%          -173
+T3 blend  L+S  vol40       198       -421 to 841      -299       97        65     39%          -122
+T4 blend  L    vol40       435     -104 to 1,071      -204    1,292      -137     33%           -83
+T5 1-mo   L+S  full        555   -1,057 to 2,288    -1,304      258      -438     85%          -371
+T6 1-mo   L    full      1,094     -233 to 2,498      -431    4,898      -348     67%          -185
+T7 1-mo   L+S  vol40       504     -293 to 1,305      -170      768        62     53%          -132
+T8 1-mo   L    vol40       593      -69 to 1,334      -154    1,906      -120     38%           -88
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -705  (-1,831 to 319)
+  T3 vs T4:    -236  (-748 to 304)
+  T5 vs T6:    -539  (-1,574 to 502)
+  T7 vs T8:     -89  (-566 to 439)
+
+--- SOL same window, reference costs: fees only (context only) ---
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+T1 blend  L+S  full        542     -874 to 2,066      -834       68       -31     75%              
+T2 blend  L    full      1,074      -73 to 2,294      -578    3,950      -344     56%              
+T3 blend  L+S  vol40       320     -332 to 1,004      -268      248       167     40%              
+T4 blend  L    vol40       518      -88 to 1,148      -168    1,513      -121     32%              
+T5 1-mo   L+S  full        926     -671 to 2,616    -1,087      721      -158     83%              
+T6 1-mo   L    full      1,279     -104 to 2,693      -398    5,761      -323     61%              
+T7 1-mo   L+S  vol40       636     -199 to 1,472      -147      959       165     50%              
+T8 1-mo   L    vol40       681       13 to 1,450      -129    2,165      -102     36%              
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -532  (-1,779 to 643)
+  T3 vs T4:    -198  (-763 to 351)
+  T5 vs T6:    -354  (-1,428 to 816)
+  T7 vs T8:     -45  (-555 to 497)
+
+--- SOL same window, reference costs: EXP-013 assumption 0.01%/h (context only) ---
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+T1 blend  L+S  full       -905     -2,283 to 599    -1,606   -1,043      -910     94%              
+T2 blend  L    full         14   -1,094 to 1,192    -1,300    1,486      -790     84%              
+T3 blend  L+S  vol40      -378     -1,035 to 294      -844     -383      -367     67%              
+T4 blend  L    vol40         4       -580 to 596      -655      675      -414     55%              
+T5 1-mo   L+S  full     -1,263     -2,859 to 427    -1,913   -1,158    -1,283     99%              
+T6 1-mo   L    full        176   -1,159 to 1,536    -1,048    2,497      -870     86%              
+T7 1-mo   L+S  vol40      -434     -1,295 to 406      -953     -185      -597     83%              
+T8 1-mo   L    vol40       131       -516 to 868      -655    1,203      -454     61%              
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -919  (-2,116 to 225)
+  T3 vs T4:    -382  (-939 to 151)
+  T5 vs T6:  -1,439  (-2,494 to -311)
+  T7 vs T8:    -565  (-1,061 to -45)
+
+=== SOL 2023-06-08 to 2026-11-12, hyperliquid funding (cross-check), $2,500 constant ===
+funding in window: average +12.4% of position size per year (positive: longs pay shorts); positive in 76% of hours; 7515 bars, 3 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold          1,903       11 to 4,033      -852    6,378      -840     78%              
+T1 blend  L+S  full        567     -873 to 2,119      -906    1,007      -481     72%          -314
+T2 blend  L    full      1,078     -390 to 2,517      -669    2,999      -465     60%          -313
+T3 blend  L+S  vol40       252       -471 to 988      -318      386      -125     39%          -139
+T4 blend  L    vol40       527     -170 to 1,296      -227    1,189      -183     33%          -139
+T5 1-mo   L+S  full        893   -1,034 to 2,948    -1,339    2,866      -561     86%          -320
+T6 1-mo   L    full      1,243     -219 to 2,861      -435    4,424      -429     68%          -315
+T7 1-mo   L+S  vol40       580     -398 to 1,585      -205    1,055       -86     54%          -147
+T8 1-mo   L    vol40       692     -145 to 1,589      -161    1,643      -143     38%          -143
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -510  (-1,522 to 487)
+  T3 vs T4:    -275  (-834 to 304)
+  T5 vs T6:    -349  (-1,431 to 778)
+  T7 vs T8:    -112  (-679 to 469)
+
+=== SOL 2025-11-12 to 2026-11-12, kraken funding (cross-check), $2,500 constant ===
+funding in window: average +0.7% of position size per year (positive: longs pay shorts); positive in 52% of hours; 2189 bars, 5 dropped for missing hours
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD  funding $/yr
+BH buy and hold         -1,058   -3,952 to 1,636      -826      nan      -659     61%              
+T1 blend  L+S  full        548   -1,145 to 2,327       -75      nan       118     35%           -31
+T2 blend  L    full       -263     -1,109 to 697      -267      nan      -147     20%           -24
+T3 blend  L+S  vol40       344     -792 to 1,496        58      nan       118     27%           -20
+T4 blend  L    vol40      -136       -762 to 601      -142      nan       -78     14%           -18
+T5 1-mo   L+S  full        271   -2,121 to 2,794      -373      nan       -93     56%           -53
+T6 1-mo   L    full       -402   -2,004 to 1,384      -426      nan      -255     43%           -35
+T7 1-mo   L+S  vol40       359   -1,394 to 2,020        49      nan        84     36%           -36
+T8 1-mo   L    vol40      -129   -1,194 to 1,171      -153      nan       -97     28%           -26
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:     812  (-1,322 to 2,994)
+  T3 vs T4:     480  (-938 to 1,931)
+  T5 vs T6:     673  (-1,310 to 2,771)
+  T7 vs T8:     488  (-810 to 1,848)
+
+=== Decision (Deribit funding; pass = both conditions on >= 2 of 3 coins) ===
+  T1 vs T2: short side adds on 0/3 coins; T1 itself above $0 on 2/3; both on 0 -> not shown
+    cross-checks (L+S minus L, $/yr): hyperliquid BTC -97; kraken BTC +429; hyperliquid ETH +208; kraken ETH +542; hyperliquid SOL -510; kraken SOL +812
+  T3 vs T4: short side adds on 0/3 coins; T3 itself above $0 on 2/3; both on 0 -> not shown
+    cross-checks (L+S minus L, $/yr): hyperliquid BTC -28; kraken BTC +502; hyperliquid ETH +182; kraken ETH +526; hyperliquid SOL -275; kraken SOL +480
+  T5 vs T6: short side adds on 0/3 coins; T5 itself above $0 on 2/3; both on 0 -> not shown
+    cross-checks (L+S minus L, $/yr): hyperliquid BTC -169; kraken BTC +804; hyperliquid ETH +697; kraken ETH +1,057; hyperliquid SOL -349; kraken SOL +673
+  T7 vs T8: short side adds on 0/3 coins; T7 itself above $0 on 2/3; both on 0 -> not shown
+    cross-checks (L+S minus L, $/yr): hyperliquid BTC -48; kraken BTC +878; hyperliquid ETH +535; kraken ETH +1,001; hyperliquid SOL -112; kraken SOL +488
+no rule passes: the short side is not shown to add money at real funding
+
+=== Reading (2026-11-12), against the pre-registered plan ===
+Columns as in EXP-2026-013, plus "funding $/yr": funding dollars per year on $2,500
+(negative = paid, positive = received). Deribit decides; Hyperliquid and Kraken are context.
+
+1. Decision rule: NO rule passes. On Deribit funding the 90% range of (long+short minus
+   long-only) includes $0 for every pair on every coin (0 of 3), so the short side is still
+   "not shown" to add money. Nothing is added to the paper session from this experiment.
+2. The holding-cost assumption was the problem in EXP-2026-013. Measured funding averaged
+   about +8% of position size per year on BTC and +6% on ETH (Deribit, 2019-2026), about 0%
+   on SOL (Deribit, 2022-2026), and +12% to +14% on Hyperliquid (2023-2026), against the 88%
+   assumed. In dollars the trend rules paid roughly $90 to $370 a year in funding on $2,500,
+   not the roughly $1,100+ a year the assumption charged. Over identical dates, the "real
+   funding" table sits close to the "fees only" table and far from the "0.01%/h" table.
+3. With real funding the long+short rules made money on their own on BTC and ETH: all four
+   have a 90% range above $0 there (e.g. BTC 1-month vol-scaled T7: +$1,034/yr, range $349 to
+   $1,721; ETH T7: +$1,276/yr, range $667 to $1,927). On SOL every range includes $0. That is
+   condition 2 of the rule (2 of 3 coins) met; condition 1 (beating long-only) is what failed.
+4. What the short side did: in years when the coin fell, long+short made money where
+   long-only lost or made less (BTC T7 +$238 vs T8 -$184; ETH T5 +$1,891 vs T6 +$575), and
+   it gave part of that back in rising years. Net over the whole period: about +$70 to +$270
+   a year for the 1-month rule on BTC and ETH, negative for the 1/3/12 blend and for SOL, and
+   every one of those ranges spans $0. Adding shorts also deepened the worst drop (BTC T8 33%
+   -> T7 52%).
+5. Shorts do not collect funding for free. Funding was positive in most hours, but trend
+   rules are short mainly in falling markets, when funding turns low or negative, and long in
+   rising markets, when it is high. So the long+short rules paid about as much funding as the
+   long-only ones (BTC, ETH) or twice as much (SOL), instead of earning it back.
+6. Buy-and-hold still made the most dollars on BTC ($1,340/yr) and SOL; on ETH the 1-month
+   long+short rule's average was higher ($2,001 vs $1,603) with overlapping ranges, so that
+   is not a finding. The trend rules' worst drops were 31-68% on BTC/ETH against 77-81% for
+   holding.
+7. Cross-checks. Hyperliquid (3.4 years): same picture, short side positive on ETH, negative
+   on BTC and SOL, all ranges span $0. Kraken (12 months, a falling year for all three
+   coins): long+short ahead of long-only by $430 to $1,060 a year on every pair, but every
+   range is about $2,500 to $4,000 wide and spans $0. One falling year cannot show anything.
+
+What this does and does not apply to: venues that charge funding between longs and shorts
+(Kraken Futures, Hyperliquid, Deribit, and Jupiter's beta markets). Jupiter's SOL/ETH/BTC
+markets charge an hourly borrow fee to both sides instead; no historical series of that fee
+was found, so those markets remain untested with real data. The paper session's 0.01%/h is
+the owner's approved cautious value and is not changed here.
+
+Limits (as pre-registered): four pairs on three coins; Coinbase spot stands in for perps
+prices; Deribit does not serve US customers; SOL funding on Deribit was thinly traded early
+on; windows are shorter than EXP-2026-013. One Deribit bar per coin and up to six Kraken bars
+were dropped for a missing hour, none filled in. No parameter was tuned. Past results do not
+predict future results.
+
+=== Proposed next pre-registered test (EXP-2026-015; plan to be committed before any run) ===
+The eight trials have now been seen on BTC, ETH and SOL, so any new rule tried on those three
+coins and dates is no longer a clean test. Each option below therefore uses coins or data not
+yet looked at, and ends in forward paper trading.
+A. (recommended) Shorts only in a confirmed downtrend: the same 1-month TSMOM, but a short is
+   allowed only while price is below its 200-day average (Faber 2007, "A Quantitative
+   Approach to Tactical Asset Allocation", J. Wealth Management). Motivated by reading 4
+   (shorts lose in rising years), so it must be judged on coins not used here (for example
+   XRP, DOGE, LTC, LINK, AVAX, ADA with Coinbase prices and Hyperliquid funding), with the
+   same decision rule.
+B. Cross-sectional momentum: each week hold the recent winners long and the recent losers
+   short across about ten coins (Liu, Tsyvinski & Wu 2022, "Common Risk Factors in
+   Cryptocurrency", J. Finance). Roughly market-neutral, so funding paid and received mostly
+   cancel. Needs funding for ten coins (Hyperliquid, 2023 onward: a short history).
+C. Volatility-managed size on the long+short rule (Moreira & Muir 2017, "Volatility-Managed
+   Portfolios", J. Finance; Barroso & Santa-Clara 2015, "Momentum Has Its Moments", JFE).
+   Largely covered already by the vol-scaled trials (T3, T4, T7, T8), which cut the worst
+   drops but did not change the long+short versus long-only answer; lowest priority.

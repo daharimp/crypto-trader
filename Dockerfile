@@ -5,13 +5,15 @@ ENV PYTHONUNBUFFERED=1 \
     UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
     TRADER_DATA_DIR=/app/data \
-    TRADER_CONFIGS_DIR=/app/configs
+    TRADER_CONFIGS_DIR=/app/configs \
+    TRADER_IN_CONTAINER=1
 
 RUN pip install --no-cache-dir "uv>=0.5,<1" && useradd --create-home --uid 1000 trader
 WORKDIR /app
 
-# Dependencies first (cached layer), then the code.
-COPY pyproject.toml uv.lock README.md ./
+# Dependencies first (cached layer), then the code. pyproject.toml names README.md and LICENSE
+# as package metadata, so both must be present before `uv sync` builds the project.
+COPY pyproject.toml uv.lock README.md LICENSE ./
 COPY src ./src
 RUN uv sync --frozen --no-dev
 COPY schemas ./schemas

@@ -1,5 +1,8 @@
 # TASK
 
+New work from 2026-11-12 onward is tracked one file per task in [`tasks/`](tasks/README.md).
+This file keeps the earlier history and the "Discovered During Work" list.
+
 ## 2026-11-01: Implement M1 vertical slice from the spec package
 
 - [x] BL-001 Scaffold, uv, ruff/mypy/pytest, `.gitignore`, `.env.example`, `BLOCKERS.md`, `docs/spec/`, ADR stubs
@@ -75,7 +78,76 @@
 - [ ] Owner: set up the server and start paper (RUNBOOK steps 1-2)
 - [ ] Live limit orders (post-only on Kraken, fill polling, prompt stops), if approved
 
+## 2026-11-02: Jupiter Perps, paper only (ADR-025)
+
+- [x] `trader.perps`: math, fail-closed config (UD-23), risk checks and sizing, paper simulator, replay, read-only Jupiter prices
+- [x] CLI `trader perps validate|prices|backtest`; T-46 amended; paper-only safety test
+- [x] Owner approved UD-23 risk limits 2026-11-02 (v2): 25x max, 10x target, 20%/position, 400% total, 8% liquidation buffer, 3 positions, 15% daily loss, $2,500 paper
+- [ ] Venue values (fees, borrow rate, maintenance, venue max leverage): verify against Jupiter docs once `jup.ag` is reachable
+- [ ] Allow `jup.ag` in the cloud environment's network settings, then verify `trader perps prices`
+- [ ] Download SOL/ETH/BTC candles and run the perps backtest on real data
+- [ ] Forward paper perps session (reuse the BL-027 scheduler) once the backtest is reviewed
+
+## 2026-11-10: Phone dashboard (ADR-026, BL-041/BL-042 first cut)
+
+- [x] `trader ui serve`: read-only server, phone page, TradingView Lightweight Charts bundled
+- [x] Live Kraken candles + SMA 20/50, live Jupiter price, paper perps markers and liquidation line, sessions and kill switch
+- [x] Tests: data builders, routes, 405 on writes, 400/404/502 handling, read-only safety scan
+- [x] Jupiter docs verified (docs.jup.ag): 0.06% base + >=0.01% price impact per side, liquidation at size/500, 250x max, all remaining collateral lost on liquidation
+- [x] Owner approved venue values 2026-11-10 (v3): 7 bps open/close, liquidation at size/500, 250x venue max; borrow first 0.0016%/h, then changed to the cautious 0.01%/h (v4)
+- [x] Checked: charging the opening fee on top of collateral leaves the same recorded collateral as Jupiter's deposit-minus-fee; no change needed
+
+## 2026-11-10: Strategy research lab (ADR-027, EXP-2026-010)
+
+- [x] `trader.research.lab`: no-look-ahead harness, costs and borrow, 3 walk-forward folds, sealed 180-day holdout; 8 tests
+- [x] Sweep of 40 ideas x SOL/BTC/ETH x Jupiter perps and Kraken spot costs (`research/EXP-2026-010-results.txt`)
+- [x] Holdout opened once for 2 pre-chosen ideas (`research/EXP-2026-010-holdout.txt`)
+- [x] QuantConnect version of the squeeze breakout for owner confirmation (`research/lean/`, not run here)
+- [ ] Owner: run `research/lean/squeeze_breakout_main.py` in QuantConnect's web IDE and share the result
+- [ ] Register the squeeze breakout as a real strategy class with tests, then a spot paper run (BL-022)
+
+## 2026-11-10: Research pass + EXP-2026-011 (10 hypotheses)
+
+- [x] Literature pass: crypto momentum real but cost-sensitive; volatility sizing mainly cuts drawdowns; volume confirmation and funding signals weakly supported
+- [x] 10 hypotheses vs the squeeze control on folds only (holdout already used): `research/EXP-2026-011-results.txt`
+- [x] Owner set perps collateral to 10% of equity per position (UD-23, perps config v5)
+- [ ] Forward paper run of the best candidate on the server (the only clean test left)
+
+## 2026-11-10: Deploy on the owner's n8n VPS (plan approved)
+
+- [x] `dashboard` compose service: localhost-only port, read-only mounts, project name `crypto-trader`
+- [x] RUNBOOK: 1b server with n8n, 1c ntfy, 2b Tailscale dashboard; deploy branch `crypto-trader`
+- [x] `tests/safety/test_deploy_config.py`
+- [ ] Owner: run RUNBOOK S1-S6 on the VPS and share the outputs
+
+## 2026-11-10: EXP-2026-013 two-sided trend following (owner: ride downtrends too)
+
+- [x] Pre-registered plan committed before results (`research/EXP-2026-013-plan.md`)
+- [x] 8 published-rule trials x BTC/ETH/SOL (5-10 years) at approved perps costs and a no-borrow bound (`research/EXP-2026-013-results.txt`)
+- [ ] Replace the borrow assumption with real historical perps funding rates and re-run the same trials
+
+## 2026-11-12: Margin and perps focus (owner decision UD-24)
+
+- [x] Forward paper perps session, long and short on live prices (ADR-031)
+- [ ] Owner: start it on the server (`docker compose up -d perps`)
+- [ ] Per-market venue values so HYPE (Jupiter beta market) can be added; needs the owner's funding-rate assumption and HYPE opening leverage
+- [ ] Better two-sided signals with evidence (separate session: "Addressing trading strategy")
+- [ ] Show the perps paper session on the dashboard
+
+## 2026-11-12: Server on Linode; dashboard workspace (owner requests)
+
+- [x] Owner: Linode Nanode 1 GB (Ubuntu 24.04), hardened SSH, Docker, deploy key, ntfy alerts
+- [x] Owner: paper session started on the server 2026-11-12 (the 42-cycle record is running)
+- [x] Dashboard as a draggable widget workspace (ADR-030)
+- [ ] Owner: Tailscale for phone and computer access to the dashboard
+- [ ] RUNBOOK: replace the n8n-server assumption with the Linode steps actually used
+- [ ] Private control panel (start/pause, kill switch, Kraken link wizard): needs its own ADR
+- [ ] Live paper perps session (leverage practice on live prices)
+
 ## Discovered During Work
+
+- [ ] 2026-11-10 real-data perps replay (Coinbase 4h, Sep 2024 to Nov 2026, SOL+BTC, sma_stance): at the approved 10x it ends at $259 from $2,500 (92.8% max drawdown, 14 liquidations); long-only $1,255. A leverage sweep shows about breakeven at 1.1x and larger losses at every higher level: the signal has no edge after costs, so leverage only magnifies losses. Perps need better strategies (BL-022 to BL-025) before any forward paper run.
+- [ ] 2026-11-10 real-data spot backtest (balanced profile, sma_trend, BTC+ETH): +5.4% vs +27.2% buy-and-hold BTC; max drawdown 5.3% vs 53.6%; Sortino 1.01 vs 0.71; only 6 closed trades (fails sample-size gate G-09).
 
 - [ ] Re-evaluate journal `synchronous=FULL` for live sessions (ADR-019).
 - [ ] Real-data evaluation: Kraken OHLC gives only 720 candles; long 4h backtests need Kraken's downloadable history (CSV import).

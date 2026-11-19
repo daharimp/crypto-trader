@@ -1,0 +1,61 @@
+Shared 15M index: 70029 bars, replay from 2024-12-30 (65781 bars)
+Weeks run Monday 00:00 UTC to Sunday; the last week is partial.
+
+DEGEN2: 817 trades (8.3/week), won 33%, TP1 hit 28%, avg lev 24.0x, fees $20,592, liquidations 0
+    by coin: {'sol': 299, 'btc': 268, 'eth': 250}  exits: {'trail': 567, 'stop': 250}
+CAP40: 817 trades (8.3/week), won 33%, TP1 hit 28%, avg lev 34.8x, fees $29,895, liquidations 0
+    by coin: {'sol': 299, 'btc': 268, 'eth': 250}  exits: {'trail': 567, 'stop': 250}
+NOLADDER: 802 trades (8.2/week), won 28%, TP1 hit 0%, avg lev 24.0x, fees $20,212, liquidations 0
+    by coin: {'sol': 295, 'btc': 261, 'eth': 246}  exits: {'trail': 596, 'stop': 206}
+
+                         weeks   total $  avg wk  median win wks  best wk worst wk  max drop
+DEGEN2 all                  98    -6,354     -65    -232     41%    2,818   -1,339   -15,060
+DEGEN2 last 26              26    -1,290     -50    -215     42%    1,939     -798    -3,447
+CAP40 all                   98   -13,237    -135    -354     42%    3,197   -1,712   -22,849
+CAP40 last 26               26    -1,159     -45    -255     42%    3,197   -1,229    -4,780
+NOLADDER all                98       855       9    -233     37%    3,803   -1,436   -13,949
+NOLADDER last 26            26     1,247      48    -232     35%    3,317   -1,117    -4,379
+BASELINE all                98     6,462      66      61     57%    1,873   -1,706    -2,748
+BASELINE last 26            26     5,044     194     134     62%    1,873   -1,156    -1,633
+
+whole account, last 26 weeks (week starting Monday):
+            DEGEN2   CAP40  NOLADDER  BASELINE
+2026-05-18  -789.0 -1113.0    -661.0      68.0
+2026-05-25   169.0    63.0    -156.0     261.0
+2026-06-01  1222.0  1909.0    1794.0    1311.0
+2026-06-08  -406.0  -623.0    -501.0    -295.0
+2026-06-15   -67.0   -17.0    -134.0     102.0
+2026-06-22   134.0   175.0    -206.0     361.0
+2026-06-29  -305.0  -279.0    -342.0    -630.0
+2026-07-06  -638.0  -888.0    -857.0     -66.0
+2026-07-13   234.0   542.0     495.0      -3.0
+2026-07-20  -681.0 -1064.0    -775.0     118.0
+2026-07-27  -178.0  -232.0     -34.0    -258.0
+2026-08-03  -741.0 -1226.0    -909.0      -8.0
+2026-08-10  -798.0 -1169.0   -1117.0    -322.0
+2026-08-17  1939.0  3197.0    3317.0    1873.0
+2026-08-24   871.0  1210.0     996.0     189.0
+2026-08-31    47.0   110.0      78.0     521.0
+2026-09-07  -354.0  -666.0    -508.0    -579.0
+2026-09-14   172.0   419.0     431.0    1040.0
+2026-09-21  -341.0  -498.0    -342.0     721.0
+2026-09-28     1.0    71.0     104.0     149.0
+2026-10-05  -485.0  -776.0    -425.0   -1156.0
+2026-10-12  -707.0 -1171.0    -812.0    -478.0
+2026-10-19  -251.0  -401.0    -259.0     340.0
+2026-10-26  -758.0 -1229.0    -775.0     282.0
+2026-11-02   228.0   364.0     507.0     476.0
+2026-11-09  1191.0  2132.0    2337.0    1023.0
+
+Exploratory replay on past prices with test inputs; not a forecast.
+
+=== Notes added after the run (the script above was not changed) ===
+- The 2x volume spike and one-position-at-a-time cut trading from about 25 to 8.3 trades a
+  week across the account, but at 24x on $750 the fees were still $20,592 (CAP40: $29,895).
+- The TP ladder made things worse (-6,354 with it, +855 without): the profits come from a
+  few long trend runs, and taking 35% off early plus a stop at entry clipped those runs more
+  than it saved on reversals.
+- 40x lost about twice as much as 25x; more leverage on a strategy that loses after fees
+  loses faster.
+- Worst peak-to-trough drop: DEGEN2 -15,060, NOLADDER -13,949, running rule -2,748, on $750
+  of collateral per trade. The running rule (BASELINE) did better on every summary measure.

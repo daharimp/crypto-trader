@@ -1,0 +1,61 @@
+=== Data files (rows, first, last, sha256) ===
+  data/hourly/btc_usd_1h.csv: 52787 rows, 2020-11-06T06:00:00Z to 2026-11-15T05:00:00Z, e28e28d9db73795f
+  data/long/btc_usd_4h.csv: 19179 rows, 2018-02-10T08:00:00Z to 2026-11-15T00:00:00Z, 21915bee23605263
+  data/funding/deribit_btc.csv: 66138 rows, 2019-04-30T09:00:00+00:00 to 2026-11-15T04:00:00+00:00, 76c8e380b7b9b547
+  data/hourly/eth_usd_1h.csv: 52787 rows, 2020-11-06T06:00:00Z to 2026-11-15T05:00:00Z, 03493a97c90ff164
+  data/long/eth_usd_4h.csv: 19186 rows, 2018-02-10T08:00:00Z to 2026-11-15T00:00:00Z, eac1e5b7b76fb364
+  data/funding/deribit_eth.csv: 66138 rows, 2019-04-30T09:00:00+00:00 to 2026-11-15T04:00:00+00:00, 5b3109be6ce314d2
+  data/hourly/sol_usd_1h.csv: 47423 rows, 2021-06-17T16:00:00Z to 2026-11-15T05:00:00Z, 51b0168a419df69d
+  data/long/sol_usd_4h.csv: 11853 rows, 2021-06-17T16:00:00Z to 2026-11-15T00:00:00Z, 3a0b99c8778de915
+  data/funding/deribit_sol.csv: 40917 rows, 2022-03-16T08:00:00+00:00 to 2026-11-15T04:00:00+00:00, 62d45e37224b5856
+
+=== BTC from 2021-01-11 (1h bars 51208) ===
+                           weeks    total $   avg wk   median  win wks  best wk worst wk  trades  liqs    in mkt    lev
+DEGEN all                    306    -10,474      -34      -75      31%    1,232     -587    2000     3       40%   18.4
+DEGEN last 26 wks             26        844       32      -42      38%      895     -336
+BASELINE all                 305      6,915       23       10      52%      972     -507     412     5      100%   10.0
+BASELINE last 26 wks          26      1,548       60       55      62%      591     -164
+
+=== ETH from 2021-01-11 (1h bars 51208) ===
+                           weeks    total $   avg wk   median  win wks  best wk worst wk  trades  liqs    in mkt    lev
+DEGEN all                    306     -5,123      -17      -62      34%    1,580     -538    1947    12       41%   15.1
+DEGEN last 26 wks             26      1,643       63      -66      31%    1,580     -301
+BASELINE all                 305      7,826       26       13      55%      945     -898     400     1      100%    8.4
+BASELINE last 26 wks          26      2,213       85       64      73%      945     -496
+
+=== SOL from 2022-03-21 (1h bars 40790) ===
+                           weeks    total $   avg wk   median  win wks  best wk worst wk  trades  liqs    in mkt    lev
+DEGEN all                    244      2,371       10      -33      38%    1,192     -453    1377     3       38%   11.6
+DEGEN last 26 wks             26      2,526       97      -27      35%    1,192     -262
+BASELINE all                 243      7,829       32        7      53%    3,469     -835     290     3      100%    6.3
+BASELINE last 26 wks          26      1,499       58      -15      46%      642     -431
+
+=== Whole account: BTC + ETH + SOL together, $250 collateral each per trade ===
+(weeks before every coin has data are left out)
+                           weeks    total $   avg wk   median  win wks  best wk worst wk
+DEGEN all                    244    -10,932      -45     -145      34%    3,407   -1,372
+DEGEN last 26 wks             26      5,014      193     -149      35%    3,407     -617
+BASELINE all                 243     21,013       86       -2      49%    3,847   -1,436
+BASELINE last 26 wks          26      5,260      202       19      54%    1,690   -1,024
+
+whole account, dollars per calendar year (context):
+                DEGEN  BASELINE
+open_time_utc                  
+2022          -1588.0    3413.0
+2023          -1213.0   11308.0
+2024          -4479.0    -656.0
+2025          -7015.0    1943.0
+2026           3363.0    5005.0
+
+whole account, last 8 weeks (week starting Monday):
+             DEGEN  BASELINE
+2026-09-27  -577.0     -83.0
+2026-10-04  -121.0   -1024.0
+2026-10-11  -231.0    -316.0
+2026-10-18   -87.0     212.0
+2026-10-25   145.0     403.0
+2026-11-01  -337.0     212.0
+2026-11-08  1909.0    1399.0
+2026-11-15  -178.0       NaN
+
+Exploratory replay on past prices; not pre-registered and not a forecast.

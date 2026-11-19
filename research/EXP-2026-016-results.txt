@@ -1,0 +1,232 @@
+=== Data files (rows, first, last, sha256) ===
+  data/long/btc_usd_4h.csv: 23371 rows, 2016-03-09T08:00:00Z to 2026-11-12T04:00:00Z, 81038e89afe409eaf9222bb7bf620cb84b6a630f140b7eb666164e4ebf448595
+  data/funding/deribit_btc.csv: 66069 rows, 2019-04-30T09:00:00+00:00 to 2026-11-12T07:00:00+00:00, fa5b44710daf24639b4d5de5b723604e4e7b9eb691823a6a2c4bd009a63e5ccf
+  data/long/eth_usd_4h.csv: 21876 rows, 2016-11-14T08:00:00Z to 2026-11-12T04:00:00Z, 8dfc8ff6408257bffb6966b14b775dc35dab377b44ddc7e0b78768f62f893827
+  data/funding/deribit_eth.csv: 66069 rows, 2019-04-30T09:00:00+00:00 to 2026-11-12T07:00:00+00:00, 19c3a48bf5f3b0c520501eab51b463fa868eeacff401997f2791a024cdabfc7a
+  data/long/sol_usd_4h.csv: 11836 rows, 2021-06-17T16:00:00Z to 2026-11-12T04:00:00Z, e6e694c594831d415df6d645445e7e4a7a33029a219447d7e154d2e7ecb93ae3
+  data/funding/deribit_sol.csv: 40849 rows, 2022-03-16T08:00:00+00:00 to 2026-11-12T08:00:00+00:00, 4bb227b9cefc2b7a4778a6cc2afeaa8708a3e89db9af51b7815b371d27fa8b02
+  data/long/doge_usd_4h.csv: 8105 rows, 2023-03-01T16:00:00Z to 2026-11-12T08:00:00Z, 5d38075ec6daf695135aaa4a5689c6e993c751ea7e4c1d405a5069f70595052b
+  data/funding/hyperliquid_doge.csv: 30166 rows, 2023-05-11T23:00:00+00:00 to 2026-11-12T14:00:00+00:00, ffed00e4d75dc6703c63ae20ca4b83b8e76f51a0555522fb6e952c436f5c6ef2
+  data/long/ltc_usd_4h.csv: 8105 rows, 2023-03-01T16:00:00Z to 2026-11-12T08:00:00Z, aaddf50bb318c5c1dbd5b47b9666ca29fec4fc5021bf76a7414021048f5f9486
+  data/funding/hyperliquid_ltc.csv: 30166 rows, 2023-05-11T23:00:00+00:00 to 2026-11-12T14:00:00+00:00, f3a9ca3cfeb22bbb2b704fcf88cc7c4f9b00d1dcf6819c73043cf6b979405fd5
+  data/long/link_usd_4h.csv: 8105 rows, 2023-03-01T16:00:00Z to 2026-11-12T08:00:00Z, 5be5437dfef2063fa58290b09f28f204df378b15c7ab9a74f7d4fd852123e55f
+  data/funding/hyperliquid_link.csv: 30147 rows, 2023-05-18T07:00:00+00:00 to 2026-11-12T14:00:00+00:00, 10480d3e43e51c16af34e30e9578ce88383e93c677bb4108c0336eeb48e934c5
+  data/long/avax_usd_4h.csv: 8105 rows, 2023-03-01T16:00:00Z to 2026-11-12T08:00:00Z, de6110b713c45c3433b55955d47832515068f6424233e941e0faa274c1f062d4
+  data/funding/hyperliquid_avax.csv: 30166 rows, 2023-05-11T23:00:00+00:00 to 2026-11-12T14:00:00+00:00, 46a9c92e9dbd81301528cfc1e3a1c80dd161d1895f187eb326116fd88f35bc7d
+  data/long/ada_usd_4h.csv: 8105 rows, 2023-03-01T16:00:00Z to 2026-11-12T08:00:00Z, f5020c23915c61b0e120bbd9164b8c3267b9af1440081ca03976b7a62a57f537
+  data/funding/hyperliquid_ada.csv: 26817 rows, 2023-10-22T05:00:00+00:00 to 2026-11-12T14:00:00+00:00, 4548e9be82184c65e420475602d352d739402186379ef37439e51496485f0e59
+
+=== Panel A: BTC 2019-04-30 to 2026-11-12, 16505 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: deribit funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA             652      -263 to 1,566    -1,073     2,527             0.26     400    20       100%      9.3          -114
+TSMOM         1,929       792 to 3,184      -320     3,020             0.64     500     5       100%      9.7          -183
+CONSENSUS     1,117       278 to 1,952      -522     1,749             0.64     440     8        66%      9.6          -138
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:     465  (75 to 839)
+  CONSENSUS minus TSMOM:    -812  (-1,516 to -154)
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA             438      -502 to 1,364    -1,137     2,825             0.15     400    20       100%      9.3          -334
+TSMOM         1,760       604 to 3,043      -655     2,974             0.59     500     5       100%      9.7          -352
+CONSENSUS     1,027       186 to 1,872      -569     1,847             0.56     440     8        66%      9.6          -230
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:     589  (203 to 969)
+  CONSENSUS minus TSMOM:    -733  (-1,442 to -66)
+
+=== Panel A: ETH 2019-04-30 to 2026-11-12, 16506 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: deribit funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA             567      -266 to 1,390      -260     2,549             0.22     390    15       100%      7.2          -106
+TSMOM         1,616       610 to 2,609       159     1,818             0.89     504     2       100%      8.2          -165
+CONSENSUS     1,078       353 to 1,853       258     1,607             0.67     440     3        66%      7.8          -126
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:     511  (137 to 868)
+  CONSENSUS minus TSMOM:    -538  (-1,110 to 36)
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA             413      -431 to 1,250      -451     3,339             0.12     390    16       100%      7.2          -257
+TSMOM         1,506       489 to 2,535        31     1,950             0.77     504     2       100%      8.2          -276
+CONSENSUS     1,025       301 to 1,793       159     1,817             0.56     440     4        66%      7.8          -175
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:     612  (238 to 970)
+  CONSENSUS minus TSMOM:    -481  (-1,060 to 98)
+
+=== Panel A: SOL 2022-06-15 to 2026-11-12, 9660 bars, 0 with a missing funding hour ===
+
+--- PRIMARY: deribit funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,219        79 to 2,542    -1,430     1,697             0.72     227     8       100%      5.9          -131
+TSMOM         1,487      -342 to 3,588    -1,146     4,584             0.32     281     4       100%      6.4          -237
+CONSENSUS     1,054        24 to 2,315      -459     1,437             0.73     249     2        63%      6.2          -157
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:    -165  (-716 to 407)
+  CONSENSUS minus TSMOM:    -434  (-2,009 to 886)
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,122        -7 to 2,409    -1,286     1,747             0.64     227     9       100%      5.9          -214
+TSMOM         1,498      -375 to 3,616    -1,099     4,871             0.31     281     4       100%      6.4          -226
+CONSENSUS     1,073        26 to 2,341      -194     1,453             0.74     249     2        63%      6.2          -137
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:     -49  (-607 to 530)
+  CONSENSUS minus TSMOM:    -424  (-2,008 to 906)
+
+=== Panel B: DOGE 2023-06-08 to 2026-11-12, 7516 bars, 3 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,253        71 to 2,694       150     1,884             0.67     186     6       100%      6.7          -172
+TSMOM         1,738      -628 to 4,501      -192     3,643             0.48     239     2       100%      6.7          -438
+CONSENSUS     1,051       -82 to 2,379        87     2,051             0.51     210     2        64%      6.7          -222
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:    -202  (-859 to 468)
+  CONSENSUS minus TSMOM:    -687  (-2,793 to 1,000)
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,207       -38 to 2,738       169     1,871             0.65     185     5       100%      6.7          -232
+TSMOM         1,949      -490 to 4,804      -390     3,690             0.53     238     1       100%      6.7          -269
+CONSENSUS     1,129       -81 to 2,567       -53     1,968             0.57     209     1        64%      6.7          -154
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:     -78  (-734 to 602)
+  CONSENSUS minus TSMOM:    -820  (-2,948 to 901)
+
+=== Panel B: LTC 2023-06-08 to 2026-11-12, 7516 bars, 3 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA            -415      -1,435 to 605      -893     2,939            -0.14     198     7       100%      7.7          -116
+TSMOM          -732      -2,081 to 711    -1,332     3,543            -0.21     366     8       100%      8.4          -221
+CONSENSUS      -541      -1,436 to 458      -875     2,865            -0.19     273     5        60%      8.3          -146
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:    -126  (-664 to 406)
+  CONSENSUS minus TSMOM:     191  (-672 to 958)
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA            -564      -1,584 to 478    -1,055     3,268            -0.17     198     8       100%      7.7          -278
+TSMOM          -811      -2,188 to 668    -1,377     3,765            -0.22     366     8       100%      8.4          -303
+CONSENSUS      -557      -1,474 to 451      -959     2,826            -0.20     273     5        60%      8.3          -177
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:       7  (-535 to 533)
+  CONSENSUS minus TSMOM:     253  (-607 to 1,035)
+
+=== Panel B: LINK 2023-06-08 to 2026-11-12, 7516 bars, 3 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,307        67 to 2,565      -223     1,944             0.67     167     4       100%      6.2           -86
+TSMOM           946      -614 to 2,631        81     2,301             0.41     253     3       100%      6.7          -152
+CONSENSUS     1,012      -123 to 2,219      -213     1,548             0.65     207     2        63%      6.6          -109
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:    -295  (-775 to 214)
+  CONSENSUS minus TSMOM:      66  (-756 to 874)
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,171       -78 to 2,435      -313     2,026             0.58     167     4       100%      6.2          -223
+TSMOM           839      -737 to 2,536        62     2,387             0.35     253     4       100%      6.7          -241
+CONSENSUS       975      -173 to 2,205      -212     1,584             0.62     207     2        63%      6.6          -144
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:    -195  (-668 to 312)
+  CONSENSUS minus TSMOM:     136  (-688 to 960)
+
+=== Panel B: AVAX 2023-06-08 to 2026-11-12, 7516 bars, 3 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,339        98 to 2,845      -438     1,661             0.81     165     2       100%      6.1          -137
+TSMOM         1,838    -1,055 to 5,073    -1,232     4,731             0.39     234     2       100%      6.5          -252
+CONSENSUS     1,366       163 to 2,826       152     1,296             1.05     193     1        64%      6.3          -174
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:      27  (-487 to 535)
+  CONSENSUS minus TSMOM:    -472  (-2,930 to 1,627)
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,253       -17 to 2,780      -582     1,797             0.70     166     4       100%      6.1          -211
+TSMOM         1,890    -1,045 to 5,169    -1,041     4,617             0.41     233     1       100%      6.5          -224
+CONSENSUS     1,400       158 to 2,876        49     1,430             0.98     193     1        64%      6.3          -140
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:     147  (-377 to 653)
+  CONSENSUS minus TSMOM:    -490  (-2,978 to 1,595)
+
+=== Panel B: ADA 2023-10-22 to 2026-11-12, 6698 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,562      -213 to 3,554      -425     1,998             0.78     154     4       100%      6.0           -86
+TSMOM         1,307    -1,487 to 4,512      -550     4,706             0.28     200     1       100%      6.6          -186
+CONSENSUS     1,459      -315 to 3,635      -387     2,248             0.65     176     3        64%      6.4          -111
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:    -103  (-671 to 460)
+  CONSENSUS minus TSMOM:     152  (-1,658 to 1,944)
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+SMA           1,434      -366 to 3,426      -588     2,239             0.64     154     4       100%      6.0          -215
+TSMOM         1,252    -1,549 to 4,461      -550     4,771             0.26     200     1       100%      6.6          -243
+CONSENSUS     1,426      -370 to 3,635      -468     2,331             0.61     176     3        64%      6.4          -146
+differences, $/yr with 90% range:
+  CONSENSUS minus SMA:      -9  (-576 to 552)
+  CONSENSUS minus TSMOM:     174  (-1,639 to 1,964)
+
+=== Decision (primary cost) ===
+Panel A, CONSENSUS vs SMA: above $0 on 2/3, below $0 on 0/3 -> consensus beats it
+Panel A, CONSENSUS vs TSMOM: above $0 on 0/3, below $0 on 1/3 -> not shown either way
+Panel A, CONSENSUS own range above $0: 3/3
+Panel B, CONSENSUS own range above $0: 1/5
+Panel B, CONSENSUS average at least as high as both single rules: 0/5
+Panel B, CONSENSUS average below SMA on 4/5, below TSMOM on 2/5
+VERDICT: contradicted
+
+=== Reading (2026-11-12), against the pre-registered plan ===
+Columns: $/yr = average dollars per year on a constant $2,500 ($250 collateral per trade, one
+coin at a time, assessed opening leverage); 90% range = block-bootstrap range; max drop =
+largest peak-to-trough fall in dollars; $/yr per $ drop = the two divided (descriptive);
+in market = share of bars with a side signalled; funding $/yr = funding or borrow paid.
+
+1. VERDICT BY THE PRE-REGISTERED RULE: CONTRADICTED. The clause that triggered it is the
+   Panel B one: on the five coins never looked at before, the consensus made fewer average
+   dollars than SMA alone on 4 of 5 (DOGE -$202, LTC -$126, LINK -$295, ADA -$103 a year;
+   AVAX +$27). Every one of those differences has a 90% range that spans $0, so this is a
+   consistent direction, not a measured gap. The clause was written on averages before the
+   run and is reported as written.
+2. Panel A (BTC, ETH, SOL; not unseen data): the consensus beat SMA alone on BTC (+$465/yr,
+   range $75 to $839) and ETH (+$511, $137 to $868). Against TSMOM alone it made less on all
+   three (BTC -$812, range -$1,516 to -$154; ETH -$538, range -$1,110 to +$36; SOL -$434,
+   range spans $0): "not shown either way" under the 2-of-3 rule. Its own range was above $0
+   on all three coins.
+3. Panel B (unseen, about 3.4 years): the consensus's own range was above $0 on 1 of 5 coins
+   (AVAX), and it was never at least as good as both single rules. TSMOM alone, the best rule
+   on Panel A, was not the best here: it led on DOGE and AVAX only, with the largest drops
+   everywhere ($2,301 to $4,731). SMA alone, the weakest rule on BTC and ETH, had the highest
+   average on LINK and ADA. LTC lost money under every signal. So neither single rule is
+   shown to be the better one across both panels either.
+4. What the consensus does, consistently: it is flat about a third of the time (in market 60%
+   to 66%), so it earns less than the better single rule on each coin and falls less. Its
+   largest drop was the smallest of the three on 6 of 8 coins (all but DOGE and ADA), and it
+   had the fewest or equal-fewest liquidations on 7 of 8. Dollars per dollar of largest drop:
+   best or tied on BTC, SOL and AVAX, in the middle elsewhere. These are descriptive.
+5. Holding cost: at the paper session's 0.0016%/h borrow (UD-28) the picture is the same as
+   with measured funding; the borrow fee is about $140 to $350 a year at these leverages.
+
+What the owner can take from this:
+- The evidence does not support the consensus as the best default on dollars. It also does
+  not show either single rule to be better across seen and unseen coins.
+- The consensus is the lower-drop, fewer-liquidations choice and gives up dollars for it.
+  Whether that trade is wanted is a risk preference, not something this test can decide.
+- The single rules disagree about which is best depending on the coins and years, which is a
+  warning against picking a default from one history. The forward paper session is the test.
+
+Limits (as pre-registered): Panel A is not unseen data; Panel B is one market cycle and its
+coins move together; spot highs and lows stand in for perps wicks; Deribit and Hyperliquid
+funding stand in for the venue; one coin at a time on constant capital (no account-level
+limits, compounding, or running out of money). Bars with a missing funding hour (1 to 3 per
+coin) were charged the hours that exist. No parameter was tuned. Past results do not predict
+future results.

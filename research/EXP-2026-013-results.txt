@@ -1,0 +1,134 @@
+
+=== BTC 2017-03-05 to 2026-11-10, primary costs, $2,500 constant ===
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD
+BH buy and hold          1,634      645 to 2,547    -1,834    7,230      -992     84%
+T1 blend  L+S  full        -92       -851 to 664    -1,308      952    -1,039     96%
+T2 blend  L    full        132       -621 to 862    -1,651    1,621    -1,051     92%
+T3 blend  L+S  vol40      -135       -618 to 362      -845      283      -692     83%
+T4 blend  L    vol40       -13       -471 to 436      -952      634      -786     74%
+T5 1-mo   L+S  full       -796     -1,749 to 262    -2,078     -203    -1,489    100%
+T6 1-mo   L    full        302     -422 to 1,074    -1,621    1,775    -1,106     80%
+T7 1-mo   L+S  vol40      -507     -1,153 to 142    -1,517      158    -1,179     96%
+T8 1-mo   L    vol40       148       -357 to 672    -1,086    1,051      -875     67%
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -224  (-620 to 182)
+  T3 vs T4:    -121  (-405 to 174)
+  T5 vs T6:  -1,099  (-1,647 to -548)
+  T7 vs T8:    -656  (-1,002 to -289)
+
+=== BTC 2017-03-05 to 2026-11-10, no-borrow bound costs, $2,500 constant ===
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD
+BH buy and hold          1,634      645 to 2,547    -1,834    7,230      -992     84%
+T1 blend  L+S  full      1,284      472 to 2,086      -679    3,661       -77     63%
+T2 blend  L    full      1,459      649 to 2,234    -1,239    5,384      -484     66%
+T3 blend  L+S  vol40       830      320 to 1,362       -47    1,490       141     39%
+T4 blend  L    vol40       912      435 to 1,382      -590    2,260      -277     35%
+T5 1-mo   L+S  full      1,394      441 to 2,452    -1,490    2,853      -183     86%
+T6 1-mo   L    full      1,514      741 to 2,334    -1,380    4,974      -488     72%
+T7 1-mo   L+S  vol40     1,035      395 to 1,671      -795    2,202        -1     58%
+T8 1-mo   L    vol40     1,016      470 to 1,566      -871    2,694      -327     43%
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -175  (-589 to 270)
+  T3 vs T4:     -82  (-397 to 243)
+  T5 vs T6:    -120  (-688 to 461)
+  T7 vs T8:      19  (-346 to 402)
+
+=== ETH 2017-11-11 to 2026-11-10, primary costs, $2,500 constant ===
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD
+BH buy and hold          1,418      136 to 2,677    -2,059    5,768      -956     94%
+T1 blend  L+S  full         93     -822 to 1,038    -1,090      508      -701     94%
+T2 blend  L    full        234     -597 to 1,151    -1,268    1,115      -809     90%
+T3 blend  L+S  vol40       128       -347 to 629      -925      459      -251     69%
+T4 blend  L    vol40       150       -307 to 630      -563      806      -447     66%
+T5 1-mo   L+S  full        266     -884 to 1,379    -1,579      113      -596     97%
+T6 1-mo   L    full        792      -86 to 1,660      -840    1,941      -393     75%
+T7 1-mo   L+S  vol40       191       -398 to 798    -1,173      362       -86     83%
+T8 1-mo   L    vol40       450        -14 to 924      -443    1,159      -171     48%
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -140  (-791 to 525)
+  T3 vs T4:     -22  (-341 to 328)
+  T5 vs T6:    -526  (-1,211 to 200)
+  T7 vs T8:    -259  (-592 to 123)
+
+=== ETH 2017-11-11 to 2026-11-10, no-borrow bound costs, $2,500 constant ===
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD
+BH buy and hold          1,418      136 to 2,677    -2,059    5,768      -956     94%
+T1 blend  L+S  full      1,438      509 to 2,429      -291    2,223       458     74%
+T2 blend  L    full      1,428      553 to 2,386      -788    3,730      -168     65%
+T3 blend  L+S  vol40       873      383 to 1,402      -155    1,332       412     43%
+T4 blend  L    vol40       828      357 to 1,329      -328    1,985       -62     31%
+T5 1-mo   L+S  full      2,456    1,306 to 3,569      -281    2,630     1,956     64%
+T6 1-mo   L    full      1,937      994 to 2,858      -403    4,835       515     61%
+T7 1-mo   L+S  vol40     1,420      828 to 2,016       156    1,714     1,297     40%
+T8 1-mo   L    vol40     1,102      608 to 1,602      -204    2,321       328     31%
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:      10  (-681 to 715)
+  T3 vs T4:      45  (-301 to 427)
+  T5 vs T6:     519  (-206 to 1,294)
+  T7 vs T8:     318  (-37 to 717)
+
+=== SOL 2022-06-15 to 2026-11-10, primary costs, $2,500 constant ===
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD
+BH buy and hold          1,615     -285 to 3,427    -1,634   12,584    -1,088     82%
+T1 blend  L+S  full       -911     -2,399 to 554    -1,606   -1,043      -914     94%
+T2 blend  L    full         20   -1,051 to 1,201    -1,300    1,486      -783     84%
+T3 blend  L+S  vol40      -382     -1,044 to 325      -844     -383      -371     67%
+T4 blend  L    vol40         9       -554 to 639      -655      675      -408     54%
+T5 1-mo   L+S  full     -1,278     -2,906 to 418    -1,913   -1,158    -1,291     99%
+T6 1-mo   L    full        176   -1,126 to 1,568    -1,048    2,497      -870     86%
+T7 1-mo   L+S  vol40      -444     -1,255 to 408      -957     -185      -606     83%
+T8 1-mo   L    vol40       131       -478 to 852      -655    1,203      -454     61%
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -931  (-2,090 to 216)
+  T3 vs T4:    -391  (-969 to 151)
+  T5 vs T6:  -1,454  (-2,489 to -326)
+  T7 vs T8:    -576  (-1,081 to -56)
+
+=== SOL 2022-06-15 to 2026-11-10, no-borrow bound costs, $2,500 constant ===
+trial                     $/yr         90% range  worst yr   up yrs  down yrs  max DD
+BH buy and hold          1,615     -285 to 3,427    -1,634   12,584    -1,088     82%
+T1 blend  L+S  full        538     -979 to 2,041      -834       68       -38     75%
+T2 blend  L    full      1,081      -24 to 2,333      -578    3,950      -336     56%
+T3 blend  L+S  vol40       317     -361 to 1,035      -268      248       161     40%
+T4 blend  L    vol40       523      -43 to 1,182      -168    1,513      -116     32%
+T5 1-mo   L+S  full        911     -718 to 2,607    -1,087      721      -177     83%
+T6 1-mo   L    full      1,281      -88 to 2,728      -398    5,761      -323     61%
+T7 1-mo   L+S  vol40       625     -189 to 1,477      -147      959       148     50%
+T8 1-mo   L    vol40       682       26 to 1,448      -129    2,165      -102     36%
+short side added (L+S minus L), $/yr with 90% range:
+  T1 vs T2:    -543  (-1,720 to 656)
+  T3 vs T4:    -206  (-774 to 358)
+  T5 vs T6:    -370  (-1,426 to 794)
+  T7 vs T8:     -57  (-571 to 483)
+
+=== Decision (primary costs; pass = 90% range above $0 on >= 2 of 3 coins) ===
+  T1 vs T2: range above $0 on 0/3 coins -> not shown
+  T3 vs T4: range above $0 on 0/3 coins -> not shown
+  T5 vs T6: range above $0 on 0/3 coins -> not shown
+  T7 vs T8: range above $0 on 0/3 coins -> not shown
+
+=== Reading (2026-11-10), against the pre-registered plan ===
+Columns: $/yr = average dollars per year on a constant $2,500; 90% range = block-bootstrap
+range for that average; worst yr = worst calendar year in dollars; up/down yrs = average
+dollars in calendar years when the coin itself rose / fell; max DD = largest drop.
+
+1. Decision rule (primary costs): the short side is NOT shown to add money (0 of 3 coins
+   for every pair). At the approved cautious perps borrow (0.01%/h, about 88% of position
+   size per year, charged long or short), every trend rule loses to buy-and-hold, long-only
+   included. The borrow assumption dominates the result, not the direction of the trades.
+2. Optimistic bound (fees only, no borrow): the short side does what the owner expected in
+   bear years. In calendar years when the coin fell, long+short beat long-only on every coin
+   (e.g. ETH 1-month: +$1,956/yr vs +$515/yr; BTC blend vol40: +$141/yr vs -$277/yr). It
+   gave that back in up years (sharp rallies stop out shorts), so over the full period it
+   helped on ETH (+$519/yr, range -$206 to +$1,294), was roughly neutral on BTC, and hurt on
+   SOL. No pair's range was wholly above $0.
+3. Volatility scaling roughly halved the worst drops (e.g. BTC 1-month long-only 72% -> 43%;
+   ETH blend long+short 74% -> 43%) at the cost of lower average dollars.
+4. Buy-and-hold made the most dollars per year on all three coins but with drops of 82-94%.
+   Trend rules trade return for much smaller drops; none beat holding on dollars per year.
+5. What decides this is the real cost of holding a short. The test brackets it between
+   88%/yr and 0%. Next: replace the assumption with real historical funding rates (perps
+   funding is paid by longs to shorts in many bull markets, which would favour shorts), then
+   re-run these same eight trials unchanged.
+Limits: Coinbase spot prices stand in for perps prices; 3 coins; overlapping bootstrap
+blocks; calendar-year split is coarse. No parameter was tuned.

@@ -4,7 +4,7 @@
 # below in their own words, with a version increment.
 schema_version: "1.0.0"
 kind: LiveAuthorization
-version: 2
+version: 3
 exchange: kraken
 # The bot assumes it is the only thing trading BTC and ETH in this account; reconciliation
 # compares its ledger with the exchange balances and halts on any mismatch.
@@ -15,7 +15,10 @@ max_capital_usd: {value: 250, status: approved, ref: UD-22, approved_by: Dahari 
 min_paper_cycles_before_live: {value: 42, status: approved, ref: UD-22, approved_by: Dahari Morgan-Parker, approved_on: "2026-11-02"}
 # Names of the environment variables holding the Kraken API key (never put keys in this file).
 api_key_env: {key: KRAKEN_API_KEY, secret: KRAKEN_API_SECRET}
+# Paper only for now (owner, 2026-11-15). Uncomment this block, with a fresh UTC time, on the
+# day the owner approves going live.
 # acknowledgement:
-#   acknowledged_by: <owner name>
-#   acknowledged_at_utc: "YYYY-MM-DDTHH:MM:SSZ"
-#   statement: "<your own words: you accept that real money can be lost, that results are not guaranteed, ...>"
+#   acknowledged_by: Dahari Morgan-Parker
+#   acknowledged_at_utc: "2026-11-15T20:07:28Z"
+#   statement: "We finally got to version 4, or maybe it's version 3. This is my acknowledgement statement, just acknowledging that real money can possibly be lost here. Thank you."
+

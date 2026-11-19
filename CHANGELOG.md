@@ -4,6 +4,9 @@ All notable changes are recorded here, following
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions follow
 [Semantic Versioning](https://semver.org/).
 
+Changes not yet released are described one file per pull request in
+[`changes/`](changes/README.md) and folded in here at release time.
+
 ## Unreleased (2026-11-03): profile builder
 
 - `trader profile build`: one question per risk setting, options from the spec (UD-01..UD-17)
@@ -20,6 +23,12 @@ All notable changes are recorded here, following
 ## [Unreleased]
 
 ### Added
+- Research: `trader.research.bots` simulates grid, DCA-with-safety-orders, and plain DCA bots
+  on hourly candles with maker/taker fees (ADR-028).
+- `trader perps paper run|status` and a `perps` compose service: a forward paper perps
+  session that goes long in uptrends and short in downtrends on live prices (ADR-031).
+- Dashboard redesigned as a workspace of widgets you can drag to reorder, resize, hide, and
+  open for detail, on phone and computer; all five coins; road-to-live progress (ADR-030).
 - Gated live spot trading on Kraken (ADR-023): `live` environment, live authorization
   (capital cap and paper prerequisite, UD-22), profile activation (`trader profile activate`).
 - Forward paper and live sessions (`trader session run|status|flatten|reset-breaker`) with

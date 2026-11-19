@@ -1,0 +1,265 @@
+=== Data files (rows, first, last, sha256) ===
+  data/long/btc_usd_4h.csv: 23371 rows, 2016-03-09T08:00:00Z to 2026-11-12T04:00:00Z, 81038e89afe409eaf9222bb7bf620cb84b6a630f140b7eb666164e4ebf448595
+  data/long/eth_usd_4h.csv: 21876 rows, 2016-11-14T08:00:00Z to 2026-11-12T04:00:00Z, 8dfc8ff6408257bffb6966b14b775dc35dab377b44ddc7e0b78768f62f893827
+  data/long/sol_usd_4h.csv: 11836 rows, 2021-06-17T16:00:00Z to 2026-11-12T04:00:00Z, e6e694c594831d415df6d645445e7e4a7a33029a219447d7e154d2e7ecb93ae3
+  data/funding/deribit_btc.csv: 66069 rows, 2019-04-30T09:00:00+00:00 to 2026-11-12T07:00:00+00:00, fa5b44710daf24639b4d5de5b723604e4e7b9eb691823a6a2c4bd009a63e5ccf
+  data/funding/deribit_eth.csv: 66069 rows, 2019-04-30T09:00:00+00:00 to 2026-11-12T07:00:00+00:00, 19c3a48bf5f3b0c520501eab51b463fa868eeacff401997f2791a024cdabfc7a
+  data/funding/deribit_sol.csv: 40849 rows, 2022-03-16T08:00:00+00:00 to 2026-11-12T08:00:00+00:00, 4bb227b9cefc2b7a4778a6cc2afeaa8708a3e89db9af51b7815b371d27fa8b02
+
+=== BTC 2019-04-30 to 2026-11-12, 16505 bars, 1 with a missing funding hour; typical daily move 2.7% (middle half 2.1% to 3.5%) ===
+
+--- PRIMARY: 1-month trend, Deribit funding ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3              525         207 to 875      -118       795     498     0         0      3.0           -56
+F6            1,054       380 to 1,758      -236     1,589     498     1        33      6.0          -112
+F12           2,089       842 to 3,532      -513     3,179     505    14       468     12.0          -224
+F25           4,405     1,755 to 7,244    -1,008     6,622     547    87     2,936     25.0          -466
+V             1,929       827 to 3,189      -320     3,020     500     5       167      9.7          -183
+VS1-raise     1,966       840 to 3,255      -320     3,020     500     5       167      9.7          -185
+VS1-tilt      1,624       693 to 2,683      -253     2,437     499     2        67      7.8          -150
+VS2-raise     2,193       745 to 3,819      -476     4,000     502    10       335     10.8          -222
+VS2-tilt      2,174       838 to 3,860      -398     4,000     501     9       302     10.2          -220
+differences, $/yr with 90% range:
+  V minus F12:    -160  (-574 to 231)
+  VS1-raise minus V:      38  (-3 to 107)
+  VS1-tilt minus V:    -305  (-543 to -82)
+  VS2-raise minus V:     264  (-53 to 636)
+  VS2-tilt minus V:     246  (-84 to 614)
+strong-signal trades against the rest, under V:
+  S1 trend strength: too few trades to compare (1 strong, 499 other)
+  S2 agreement: strong +1.72 per $100 of position (167 trades), other +0.70 (333); difference +1.02 (-0.95 to +3.51)
+
+--- context: 1-month trend, paper session's 0.01%/h borrow ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3              -76        -403 to 282      -761     2,559     498     0         0      3.0          -657
+F6             -181        -881 to 534    -1,522     5,291     500     4       133      6.0        -1,314
+F12            -340    -1,627 to 1,153    -3,021    10,291     517    28       937     12.0        -2,628
+F25            -783    -3,461 to 2,107    -6,806    22,330     590   135     4,557     25.0        -5,475
+V              -130    -1,218 to 1,184    -2,985     8,400     504    12       401      9.7        -2,203
+VS1-raise       -98    -1,232 to 1,213    -2,985     8,400     504    12       401      9.7        -2,210
+VS1-tilt        -21      -935 to 1,061    -2,166     6,622     500     4       133      7.8        -1,784
+VS2-raise       -30    -1,493 to 1,613    -3,314    10,080     510    18       603     10.8        -2,439
+VS2-tilt         92    -1,260 to 1,788    -3,036     9,270     508    16       536     10.2        -2,302
+differences, $/yr with 90% range:
+  V minus F12:     209  (-206 to 615)
+  VS1-raise minus V:      32  (-8 to 95)
+  VS1-tilt minus V:     109  (-144 to 336)
+  VS2-raise minus V:     100  (-222 to 492)
+  VS2-tilt minus V:     222  (-116 to 584)
+
+--- context: sma_stance 20/50 (today's paper signal), Deribit funding ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3               61        -220 to 351      -353     1,075     384     1        33      3.0           -40
+F6               99        -450 to 667      -804     2,266     388     7       233      6.0           -80
+F12             167      -914 to 1,354    -1,662     5,158     429    49     1,639     12.0          -160
+F25             -83    -2,414 to 2,199    -3,554    12,587     616   256     8,641     25.0          -333
+V               652      -222 to 1,609    -1,073     2,527     400    20       668      9.3          -114
+VS1-raise       655      -294 to 1,665    -1,085     3,025     407    29       970     10.3          -129
+VS1-tilt        570      -353 to 1,517    -1,036     2,968     403    26       870      9.6          -121
+VS2-raise       731      -313 to 1,749    -1,181     3,224     407    26       870     10.3          -150
+VS2-tilt        711      -258 to 1,770    -1,059     2,988     405    24       803      9.8          -155
+differences, $/yr with 90% range:
+  V minus F12:     485  (33 to 969)
+  VS1-raise minus V:       3  (-145 to 162)
+  VS1-tilt minus V:     -82  (-273 to 111)
+  VS2-raise minus V:      79  (-111 to 278)
+  VS2-tilt minus V:      59  (-171 to 289)
+
+=== ETH 2019-04-30 to 2026-11-12, 16506 bars, 1 with a missing funding hour; typical daily move 3.6% (middle half 2.8% to 4.5%) ===
+
+--- PRIMARY: 1-month trend, Deribit funding ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3              672       232 to 1,082        23     1,025     504     0         0      3.0           -68
+F6            1,331       494 to 2,175        45     2,050     504     1        33      6.0          -137
+F12           2,689     1,036 to 4,381        22     4,146     515    17       569     12.0          -273
+F25           5,222     1,806 to 8,869       401     9,140     574   125     4,219     25.0          -569
+V             1,616       633 to 2,588       159     1,818     504     2        67      8.2          -165
+VS1-raise     1,616       615 to 2,576       159     1,818     504     2        67      8.2          -165
+VS1-tilt      1,290       520 to 2,081       143     1,449     504     1        33      6.6          -132
+VS2-raise     1,769       604 to 2,932       229     2,316     504     2        67      9.1          -192
+VS2-tilt      1,689       541 to 2,877       222     2,261     504     2        67      8.5          -190
+differences, $/yr with 90% range:
+  V minus F12:  -1,073  (-1,885 to -230)
+  VS1-raise minus V:       0  (0 to 0)
+  VS1-tilt minus V:    -326  (-517 to -135)
+  VS2-raise minus V:     153  (-80 to 401)
+  VS2-tilt minus V:      73  (-194 to 345)
+strong-signal trades against the rest, under V:
+  S1 trend strength: too few trades to compare (0 strong, 504 other)
+  S2 agreement: strong +1.18 per $100 of position (169 trades), other +1.41 (335); difference -0.24 (-1.86 to +1.65)
+
+--- context: 1-month trend, paper session's 0.01%/h borrow ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3               83        -355 to 501      -584     2,027     504     0         0      3.0          -657
+F6              156      -679 to 1,022    -1,187     4,065     506     4       133      6.0        -1,314
+F12             276    -1,395 to 1,998    -2,464     8,492     524    32     1,070     12.0        -2,628
+F25             391    -3,077 to 4,068    -5,042    18,521     603   159     5,366     25.0        -5,475
+V                34      -976 to 1,032    -1,623     5,331     508     6       200      8.2        -1,724
+VS1-raise        34      -966 to 1,019    -1,623     5,331     508     6       200      8.2        -1,724
+VS1-tilt         39        -736 to 854    -1,305     4,126     504     2        67      6.6        -1,383
+VS2-raise        84    -1,101 to 1,269    -1,918     6,560     509     9       301      9.1        -1,852
+VS2-tilt        136    -1,021 to 1,348    -1,888     6,159     508     7       234      8.5        -1,739
+differences, $/yr with 90% range:
+  V minus F12:    -242  (-1,064 to 614)
+  VS1-raise minus V:       0  (0 to 0)
+  VS1-tilt minus V:       5  (-191 to 203)
+  VS2-raise minus V:      51  (-180 to 296)
+  VS2-tilt minus V:     102  (-152 to 367)
+
+--- context: sma_stance 20/50 (today's paper signal), Deribit funding ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3              145        -197 to 494      -116     1,441     379     0         0      3.0           -50
+F6              267        -375 to 984      -193     2,776     391    14       466      6.0           -99
+F12             308    -1,048 to 1,691      -574     6,482     481   113     3,780     12.0          -199
+F25            -354    -3,320 to 2,689    -3,486    17,925     754   399    13,466     25.0          -414
+V               567      -239 to 1,421      -260     2,549     390    15       500      7.2          -106
+VS1-raise       588      -329 to 1,465      -144     2,633     396    23       767      7.9          -118
+VS1-tilt        466      -331 to 1,296      -185     2,449     395    21       700      7.3          -109
+VS2-raise       627      -342 to 1,616      -388     3,082     402    28       935      8.0          -131
+VS2-tilt        674      -229 to 1,633      -272     2,737     398    24       801      7.6          -132
+differences, $/yr with 90% range:
+  V minus F12:     260  (-406 to 918)
+  VS1-raise minus V:      21  (-110 to 168)
+  VS1-tilt minus V:    -102  (-291 to 108)
+  VS2-raise minus V:      59  (-148 to 267)
+  VS2-tilt minus V:     106  (-140 to 352)
+
+=== SOL 2022-06-15 to 2026-11-12, 9660 bars, 0 with a missing funding hour; typical daily move 4.2% (middle half 3.3% to 5.4%) ===
+
+--- PRIMARY: 1-month trend, Deribit funding ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3              430      -322 to 1,241      -525     1,721     279     1        57      3.0          -111
+F6              830      -630 to 2,506    -1,076     3,468     282     5       285      6.0          -222
+F12           1,690    -1,118 to 4,881    -2,018     6,877     302    35     2,000     12.0          -445
+F25           3,148   -3,105 to 10,054    -5,032    16,621     368   139     8,016     25.0          -927
+V             1,487      -429 to 3,760    -1,146     4,584     281     4       228      6.4          -237
+VS1-raise     1,494      -432 to 3,762    -1,146     4,584     281     4       228      6.4          -237
+VS1-tilt      1,162      -350 to 2,959    -1,017     3,792     280     2       114      5.1          -190
+VS2-raise     1,503      -503 to 3,834      -944     4,525     282     5       285      7.2          -292
+VS2-tilt      1,496      -585 to 3,821      -871     4,320     282     5       285      6.8          -290
+differences, $/yr with 90% range:
+  V minus F12:    -203  (-1,433 to 974)
+  VS1-raise minus V:       7  (0 to 19)
+  VS1-tilt minus V:    -326  (-769 to 62)
+  VS2-raise minus V:      16  (-186 to 240)
+  VS2-tilt minus V:       9  (-271 to 287)
+strong-signal trades against the rest, under V:
+  S1 trend strength: strong -25.14 per $100 of position (2 trades), other +1.07 (279); difference -26.21 (-29.48 to -23.09)
+  S2 agreement: strong -0.38 per $100 of position (109 trades), other +1.68 (172); difference -2.06 (-5.77 to +0.89)
+
+--- context: 1-month trend, paper session's 0.01%/h borrow ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3             -114        -881 to 713    -1,058     3,308     279     1        57      3.0          -657
+F6             -217    -1,746 to 1,505    -1,996     6,508     284     7       398      6.0        -1,313
+F12            -472    -3,402 to 2,781    -4,167    13,221     314    48     2,743     12.0        -2,627
+F25          -1,698    -8,148 to 5,250   -10,296    30,047     404   176    10,150     25.0        -5,472
+V               314    -1,598 to 2,555    -2,113     7,983     283     7       398      6.4        -1,414
+VS1-raise       328    -1,594 to 2,591    -2,113     7,983     282     6       342      6.4        -1,414
+VS1-tilt        210    -1,308 to 2,024    -1,847     6,536     280     3       171      5.1        -1,131
+VS2-raise       191    -1,834 to 2,506    -2,117     8,545     288    13       741      7.3        -1,615
+VS2-tilt        271    -1,806 to 2,625    -2,007     8,075     288    12       684      6.8        -1,530
+differences, $/yr with 90% range:
+  V minus F12:     786  (-495 to 1,989)
+  VS1-raise minus V:      14  (0 to 38)
+  VS1-tilt minus V:    -104  (-550 to 280)
+  VS2-raise minus V:    -123  (-355 to 121)
+  VS2-tilt minus V:     -43  (-326 to 245)
+
+--- context: sma_stance 20/50 (today's paper signal), Deribit funding ---
+policy         $/yr          90% range  worst yr  max drop  trades  liqs  liq $/yr  avg lev  funding $/yr
+F3              372        -167 to 937      -739       948     221     1        57      3.0           -75
+F6              615      -463 to 1,784    -1,728     2,115     229     9       512      6.0          -149
+F12           1,273      -708 to 3,498    -3,523     4,344     288    69     3,944     12.0          -299
+F25           1,945    -2,630 to 6,696    -6,334     8,577     448   243    14,014     25.0          -623
+V             1,219         6 to 2,539    -1,430     1,697     227     8       456      5.9          -131
+VS1-raise     1,312       -50 to 2,907    -1,412     1,680     230    10       570      6.3          -136
+VS1-tilt      1,136      -154 to 2,605    -1,103     1,318     229     9       513      5.8          -128
+VS2-raise     1,284       -59 to 2,680    -1,371     1,737     232    14       798      6.5          -176
+VS2-tilt      1,090       -78 to 2,331    -1,138     1,643     231    14       798      6.1          -179
+differences, $/yr with 90% range:
+  V minus F12:     -54  (-1,194 to 965)
+  VS1-raise minus V:      94  (-156 to 414)
+  VS1-tilt minus V:     -83  (-407 to 317)
+  VS2-raise minus V:      65  (-130 to 289)
+  VS2-tilt minus V:    -129  (-454 to 174)
+
+=== Decisions (1-month trend, Deribit funding; needs 2 of 3 coins) ===
+Q1 volatility-assessed vs fixed 12x: above $0 on 0/3, below $0 on 1/3 -> not shown either way
+Q2 VS1-raise vs V: above $0 on 0/3, below $0 on 0/3 -> not shown
+Q2 VS1-tilt vs V: above $0 on 0/3, below $0 on 2/3 -> not shown
+Q2 VS2-raise vs V: above $0 on 0/3, below $0 on 0/3 -> not shown
+Q2 VS2-tilt vs V: above $0 on 0/3, below $0 on 0/3 -> not shown
+Worth running at all (own 90% range above $0 on >= 2 of 3 coins):
+  F3         2/3 -> yes
+  F6         2/3 -> yes
+  F12        2/3 -> yes
+  F25        2/3 -> yes
+  V          2/3 -> yes
+  VS1-raise  2/3 -> yes
+  VS1-tilt   2/3 -> yes
+  VS2-raise  2/3 -> yes
+  VS2-tilt   2/3 -> yes
+
+=== Reading (2026-11-12), against the pre-registered plan ===
+Columns: $/yr = average dollars per year on a constant $2,500 ($250 collateral per trade, one
+coin at a time); 90% range = block-bootstrap range for that average; worst yr = worst calendar
+year; max drop = largest peak-to-trough fall in dollars; liqs = liquidations; liq $/yr =
+dollars lost to liquidations per year; avg lev = average opening leverage; funding $/yr =
+funding or borrow paid (negative) per year. F = fixed leverage, V = assessed from volatility
+(ADR-032), VS = volatility plus signal strength.
+
+1. Q1, does volatility-assessed leverage beat fixed 12x? NOT SHOWN EITHER WAY. V made less
+   than fixed 12x on all three coins (BTC -$160/yr, ETH -$1,073, SOL -$203); only the ETH
+   range is wholly below $0. The reason is simple: V opened at lower leverage on average
+   (9.7x BTC, 8.2x ETH, 6.4x SOL), and less leverage means fewer dollars both ways.
+2. What V bought was smaller drops and fewer liquidations: worst drop $3,020 vs $3,179 (BTC),
+   $1,818 vs $4,146 (ETH), $4,584 vs $6,877 (SOL); liquidations 5 vs 14, 2 vs 17, 4 vs 35.
+   Dollars earned per dollar of worst drop: BTC 0.64 vs 0.66 (the same), ETH 0.89 vs 0.65,
+   SOL 0.32 vs 0.25. That comparison is descriptive, not a pre-registered test.
+3. Q2, should leverage also rise when the signal is strong? NOT SHOWN for any of the four
+   versions (0 of 3 coins each).
+   - Agreement across lookbacks (VS2): +$264, +$153, +$16 a year over V, every range spans
+     $0, and it used about 10% more leverage. Trade by trade, strong-agreement trades were not
+     shown to be better per $100 of position (BTC +1.02, range -0.95 to +3.51; ETH -0.24;
+     SOL -2.06, both ranges spanning $0).
+   - Trend strength (VS1) could not be tested with this signal. A 1-month trend trade opens
+     at the moment the 30-day return crosses zero, so the "strength" at the open is always
+     near zero: 1, 0 and 2 strong opens out of 500, 504 and 281. VS1-raise is therefore V,
+     and VS1-tilt is just V with a wider buffer (lower leverage, fewer dollars; its range is
+     below $0 on BTC and ETH). This is a design limit found in the run, not evidence against
+     the idea; the plan's definitions were not changed.
+4. Leverage is a volume knob, not an edge. With fixed leverage, dollars per year and the
+   worst drop both scale almost exactly with the leverage (BTC: 3x $525 and $795; 6x $1,054
+   and $1,589; 12x $2,089 and $3,179; 25x $4,405 and $6,622). On a $2,500 account, fixed 12x
+   had a worst drop larger than the whole account on every coin, and V on BTC and SOL. This
+   replay keeps betting $250 after losses, so it does not show an account running out; a real
+   account would. At 25x, liquidations alone cost $2,936 to $8,016 a year.
+5. Holding cost decides whether any of this is positive. With Deribit funding every policy
+   made money on BTC and ETH (own 90% range above $0; SOL ranges span $0). With the paper
+   session's approved 0.01%/h borrow, no policy is shown to make money on any coin: at V's
+   leverage the borrow fee is about $1,400 to $2,200 a year on $2,500, and $2,628 at fixed
+   12x, which is larger than the trend profits. The paper session uses that borrow value, so
+   it should be expected to show losses at high leverage even with a better signal.
+6. Today's paper signal (`sma_stance` 20/50, context only): not shown to make money on BTC or
+   ETH at any leverage (every range spans $0; SOL under V is marginal, $6 to $2,539). It was
+   liquidated far more often (fixed 12x: 49, 113, 69 times; V: 20, 15, 8). Here V beat fixed
+   12x on BTC (+$485/yr, range $33 to $969) because it avoided liquidations; ETH and SOL
+   ranges span $0.
+
+What the owner can take from this:
+- Volatility-assessed leverage (UD-26) is a reasonable risk control: fewer liquidations and
+  smaller drops for somewhat fewer dollars. It is not shown to make more money than fixed 12x.
+- Nothing here supports raising leverage further on signal strength.
+- The ceiling of 25x (UD-27) is reached only in calm markets under V; a fixed 25x would have
+  been liquidated 87 to 139 times per coin.
+- The two things that mattered most are the direction signal and the holding cost, not the
+  leverage rule.
+
+Limits (as pre-registered): the 1-month trend rule was chosen after seeing these coins and
+dates, so its dollar levels are optimistic; Coinbase spot highs and lows stand in for perps
+wicks; Deribit funding stands in for the venue; one coin at a time on constant capital, so
+account-level limits, compounding, and running out of money are not modelled; four VS
+versions on three coins. One Deribit bar on BTC and one on ETH had a missing funding hour and
+were charged the hours that exist. The engine's dollar total was cross-checked against an
+independent calculation (BTC, fixed 3x: $3,956.99 both ways, 498 trades). No parameter was
+tuned. Past results do not predict future results.

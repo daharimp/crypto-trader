@@ -1,0 +1,166 @@
+=== Data files (rows, first, last, sha256) ===
+  data/long/btc_usd_4h.csv: 19179 rows, 2018-02-10T08:00:00Z to 2026-11-15T00:00:00Z, 21915bee236052632a9e6ce3e86970a9954959e4a4234be7f786246f56ea89bd
+  data/funding/deribit_btc.csv: 66138 rows, 2019-04-30T09:00:00+00:00 to 2026-11-15T04:00:00+00:00, 76c8e380b7b9b547b7491c2fbf5b8c8f32001120eae018179ac7640439c13ce9
+  data/long/eth_usd_4h.csv: 19186 rows, 2018-02-10T08:00:00Z to 2026-11-15T00:00:00Z, eac1e5b7b76fb364b09d15e168bc99211a10886962a773ae77a24be0ddde0d65
+  data/funding/deribit_eth.csv: 66138 rows, 2019-04-30T09:00:00+00:00 to 2026-11-15T04:00:00+00:00, 5b3109be6ce314d29e70bb17e6ad8960c31de18f53beaec7ead257f78e1d0838
+  data/long/sol_usd_4h.csv: 11853 rows, 2021-06-17T16:00:00Z to 2026-11-15T00:00:00Z, 3a0b99c8778de91553f315be457fb1940ddcdf1610a0b188a9518ae0140a6793
+  data/funding/deribit_sol.csv: 40917 rows, 2022-03-16T08:00:00+00:00 to 2026-11-15T04:00:00+00:00, 62d45e37224b585639551f7e82522b6e17343726faa344c9b4681afebc613170
+  data/long/doge_usd_4h.csv: 8393 rows, 2023-01-15T08:00:00Z to 2026-11-15T00:00:00Z, 0b7c48a8f0945d1e0d2e05f2afb169a9f2d0d1e35cafcd70abcf526a2f8b8c97
+  data/funding/hyperliquid_doge.csv: 30228 rows, 2023-05-11T23:00:00+00:00 to 2026-11-15T04:00:00+00:00, acf7ebf287a3288e9fba070bfdb1820201dc63ecb4d540e59229a1a3f74afeec
+  data/long/ltc_usd_4h.csv: 8393 rows, 2023-01-15T08:00:00Z to 2026-11-15T00:00:00Z, 9e2eb11c3024554f74a8d4717910afad0a4f42a68cb249419d0d5e0c6dacc712
+  data/funding/hyperliquid_ltc.csv: 30228 rows, 2023-05-11T23:00:00+00:00 to 2026-11-15T04:00:00+00:00, a2458b106a8e8bd23e7d08af421ed45e0231faecd70ca245a24128dc93ce84a6
+  data/long/link_usd_4h.csv: 8393 rows, 2023-01-15T08:00:00Z to 2026-11-15T00:00:00Z, 1e0340a91165d317322a9c60fdbf3af25f6882cd397a4a9a5e466432660889ae
+  data/funding/hyperliquid_link.csv: 30209 rows, 2023-05-18T07:00:00+00:00 to 2026-11-15T04:00:00+00:00, a64d4d44de79f275fdad1deb8580e64f602273e757ed74d250af4aec6d6cfd62
+  data/long/avax_usd_4h.csv: 8393 rows, 2023-01-15T08:00:00Z to 2026-11-15T00:00:00Z, fa13a734b7d3d128f0059061945ba6308004a5260330922fd90ab38a3f4b221d
+  data/funding/hyperliquid_avax.csv: 30228 rows, 2023-05-11T23:00:00+00:00 to 2026-11-15T04:00:00+00:00, ac097ed65297192780a6ba03c2f75e3fbc3832abc47b0f98edb074213407cdb6
+  data/long/ada_usd_4h.csv: 8393 rows, 2023-01-15T08:00:00Z to 2026-11-15T00:00:00Z, 0ee03beed5a0bbae7f9f00e982746480fb7e6f979e8dda2e0a81b75a8811510d
+  data/funding/hyperliquid_ada.csv: 26879 rows, 2023-10-22T05:00:00+00:00 to 2026-11-15T04:00:00+00:00, c4d9fa7f9cd73157a54421b95374641354bb9a4de64ed7ae2ea521f7b7d8c6bf
+
+=== Panel A: BTC 2019-04-30 to 2026-11-14, 16522 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: deribit funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM         1,985       836 to 3,224      -320     3,020             0.66     500     5       100%      9.7          -183
+MEANREV      -1,756   -2,316 to -1,206    -2,583    13,508            -0.13    1925    77        50%      9.4            83
+REGIME          141        -631 to 991    -1,500     3,852             0.04    1315    20        74%      9.6          -129
+REGIME minus TSMOM, $/yr with 90% range:  -1,843  (-2,784 to -940)
+bars counted as trending: 49%
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM         1,816       649 to 3,083      -655     2,974             0.61     500     5       100%      9.7          -353
+MEANREV      -1,973   -2,538 to -1,422    -2,836    15,118            -0.13    1925    77        50%      9.4          -165
+REGIME            8        -783 to 879    -1,756     4,727             0.00    1315    20        74%      9.6          -266
+REGIME minus TSMOM, $/yr with 90% range:  -1,807  (-2,756 to -894)
+bars counted as trending: 49%
+
+=== Panel A: ETH 2019-04-30 to 2026-11-14, 16523 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: deribit funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM         1,654       658 to 2,704       159     1,818             0.91     504     2       100%      8.2          -165
+MEANREV      -1,524   -2,022 to -1,024    -2,229    11,819            -0.13    1994    84        50%      7.2            75
+REGIME          363      -362 to 1,164    -1,144     3,176             0.11    1318    28        75%      7.3           -92
+REGIME minus TSMOM, $/yr with 90% range:  -1,291  (-2,034 to -475)
+bars counted as trending: 50%
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM         1,543       542 to 2,602        31     1,950             0.79     504     2       100%      8.2          -276
+MEANREV      -1,743   -2,250 to -1,241    -2,423    13,429            -0.13    1997    87        50%      7.2          -126
+REGIME          261      -471 to 1,065    -1,240     3,489             0.07    1318    28        75%      7.3          -201
+REGIME minus TSMOM, $/yr with 90% range:  -1,282  (-2,028 to -459)
+bars counted as trending: 50%
+
+=== Panel A: SOL 2022-07-17 to 2026-11-14, 9481 bars, 0 with a missing funding hour ===
+
+--- PRIMARY: deribit funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM         1,666      -269 to 3,976    -1,146     4,584             0.36     269     3       100%      6.5          -239
+MEANREV      -1,632     -2,486 to -829    -2,605     7,857            -0.21    1110    42        52%      6.1            66
+REGIME          137    -1,160 to 1,586    -1,800     4,254             0.03     781    18        76%      6.2          -171
+REGIME minus TSMOM, $/yr with 90% range:  -1,529  (-3,099 to -255)
+bars counted as trending: 49%
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM         1,676      -300 to 4,032    -1,099     4,871             0.34     269     3       100%      6.5          -229
+MEANREV      -1,833   -2,706 to -1,012    -2,718     8,669            -0.21    1111    43        52%      6.1          -112
+REGIME          123    -1,196 to 1,587    -1,929     4,512             0.03     782    19        76%      6.2          -177
+REGIME minus TSMOM, $/yr with 90% range:  -1,553  (-3,133 to -262)
+bars counted as trending: 49%
+
+=== Panel B: DOGE 2024-02-14 to 2026-11-14, 6021 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM         1,952      -942 to 5,273         8     3,643             0.54     208     0       100%      6.3          -247
+MEANREV      -1,827     -2,795 to -945    -2,217     5,396            -0.34     700    35        50%      6.1            90
+REGIME          809    -1,097 to 3,015      -773     3,026             0.27     486    11        75%      6.3          -143
+REGIME minus TSMOM, $/yr with 90% range:  -1,143  (-3,014 to 566)
+bars counted as trending: 51%
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM         1,968    -1,006 to 5,415      -191     3,690             0.53     208     0       100%      6.3          -231
+MEANREV      -1,980   -2,965 to -1,090    -2,383     5,787            -0.34     700    35        50%      6.1          -105
+REGIME          786    -1,172 to 3,058      -892     3,144             0.25     486    11        75%      6.3          -168
+REGIME minus TSMOM, $/yr with 90% range:  -1,183  (-3,059 to 541)
+bars counted as trending: 51%
+
+=== Panel B: LTC 2024-02-14 to 2026-11-14, 6021 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM          -256    -1,870 to 1,530    -1,211     3,365            -0.08     283     5       100%      8.2          -188
+MEANREV        -719      -1,645 to 158    -1,387     2,364            -0.30     737    27        50%      7.6            63
+REGIME         -159    -1,734 to 1,521    -1,092     3,279            -0.05     441    10        77%      8.1          -148
+REGIME minus TSMOM, $/yr with 90% range:      97  (-957 to 1,129)
+bars counted as trending: 54%
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM          -368    -2,042 to 1,474    -1,377     3,765            -0.10     283     5       100%      8.2          -301
+MEANREV        -888        -1,824 to 5    -1,566     2,814            -0.32     737    27        50%      7.6          -135
+REGIME         -233    -1,826 to 1,473    -1,213     3,550            -0.07     441    10        77%      8.1          -232
+REGIME minus TSMOM, $/yr with 90% range:     134  (-925 to 1,174)
+bars counted as trending: 54%
+
+=== Panel B: LINK 2024-02-14 to 2026-11-14, 6021 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM           565      -996 to 2,197       265     2,301             0.25     209     3       100%      6.8           -84
+MEANREV        -612      -1,459 to 176      -922     2,616            -0.23     714    20        51%      6.2            37
+REGIME          754      -410 to 1,979      -220     1,917             0.39     490     6        74%      6.3           -70
+REGIME minus TSMOM, $/yr with 90% range:     189  (-1,042 to 1,456)
+bars counted as trending: 48%
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM           403    -1,180 to 2,060       270     2,387             0.17     210     3       100%      6.8          -236
+MEANREV        -750       -1,605 to 36    -1,049     2,951            -0.25     714    20        51%      6.2          -110
+REGIME          663      -516 to 1,928      -194     2,003             0.33     490     6        74%      6.3          -172
+REGIME minus TSMOM, $/yr with 90% range:     260  (-965 to 1,531)
+bars counted as trending: 48%
+
+=== Panel B: AVAX 2024-02-14 to 2026-11-14, 6021 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM           548      -775 to 1,877       -74     1,708             0.32     184     2       100%      6.4          -135
+MEANREV        -604      -1,577 to 350    -1,513     3,324            -0.18     740    26        52%      5.8            60
+REGIME         -365      -1,496 to 815    -3,017     3,385            -0.11     525     9        74%      6.0           -49
+REGIME minus TSMOM, $/yr with 90% range:    -913  (-2,375 to 565)
+bars counted as trending: 47%
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM           454      -857 to 1,786      -268     1,843             0.25     184     2       100%      6.4          -211
+MEANREV        -764      -1,736 to 183    -1,662     3,715            -0.21     740    26        52%      5.8          -104
+REGIME         -463      -1,594 to 713    -3,044     3,446            -0.13     525     9        74%      6.0          -153
+REGIME minus TSMOM, $/yr with 90% range:    -917  (-2,394 to 578)
+bars counted as trending: 47%
+
+=== Panel B: ADA 2024-02-14 to 2026-11-14, 6021 bars, 1 with a missing funding hour ===
+
+--- PRIMARY: hyperliquid funding ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM           404    -2,107 to 3,260      -144     4,706             0.09     188     1       100%      6.6          -116
+MEANREV      -1,110     -2,014 to -268    -1,543     3,920            -0.28     709    24        51%      5.9            55
+REGIME          591    -1,294 to 2,932      -976     2,778             0.21     491     7        74%      6.2           -74
+REGIME minus TSMOM, $/yr with 90% range:     187  (-904 to 1,346)
+bars counted as trending: 47%
+
+--- context: paper session's 0.0016%/h borrow (UD-28) ---
+signal         $/yr          90% range  worst yr  max drop  $/yr per $ drop  trades  liqs  in market  avg lev  funding $/yr
+TSMOM           296    -2,245 to 3,153      -287     4,771             0.06     188     1       100%      6.6          -226
+MEANREV      -1,278     -2,188 to -430    -1,685     4,232            -0.30     709    25        51%      5.9          -107
+REGIME          504    -1,396 to 2,893    -1,122     2,913             0.17     491     7        74%      6.2          -167
+REGIME minus TSMOM, $/yr with 90% range:     208  (-877 to 1,371)
+bars counted as trending: 47%
+
+=== Decision (primary cost; rule fixed in the plan) ===
+Panel A, REGIME minus TSMOM range above $0 on 0/3, below $0 on 3/3
+Panel B, REGIME average at least TSMOM's on 3/5, below on 2/5
+VERDICT: contradicted

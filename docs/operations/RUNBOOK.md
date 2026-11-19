@@ -30,14 +30,26 @@ cat ~/.ssh/crypto_trader_deploy.pub
 # "Allow write access" UNTICKED.
 printf 'Host github.com\n  IdentityFile ~/.ssh/crypto_trader_deploy\n' >> ~/.ssh/config
 git clone git@github.com:daharimp/crypto-trader.git && cd crypto-trader
-git checkout main            # or the branch you were told to deploy
+git checkout crypto-trader   # until it is merged to main
 cp .env.example .env && chmod 600 .env
 mkdir -p data && sudo chown 1000:1000 data
-docker compose build
+docker compose build                 # one image, crypto-trader:local, for every service
 docker compose run --rm cli version
 ```
 
 Check: `version` prints the safety statement.
+
+All services (paper, perps, dashboard, live, cli, builder) run the same image, and
+`docker compose build` is the only command that refreshes it (ADR-036). If a command answers
+`No such image: crypto-trader:local`, run `docker compose build` first.
+
+Run every `docker compose` command from inside the project folder (`cd ~/crypto-trader`).
+If Docker answers:
+
+- `no configuration file provided`: you are not in `~/crypto-trader`.
+- `unknown flag: --rm` (or `--tail`): Docker did not see the word `compose`. Retype the
+  command by hand (copying from a phone or chat app can swap the space for an invisible
+  character) and check that `docker compose version` prints a version.
 
 Optional alerts: put `ALERT_WEBHOOK_URL=https://ntfy.sh/<your-topic>` in `.env`.
 
@@ -59,12 +71,38 @@ It writes `configs/profiles/<name>.yaml`, `configs/risk/<name>.yaml`, and a spec
 steps below and set `TRADER_PROFILE=configs/profiles/<name>.yaml` in `.env` so the `paper` and
 `live` services run it.
 
+## 1b. Server that already runs n8n (or other apps)
+
+The bot runs beside n8n without touching it: its own folder, its own compose project
+(`crypto-trader`), no shared ports or volumes. Check the server first:
+
+```bash
+uname -a; lsb_release -a; free -h; df -h /
+docker --version; docker compose version
+docker ps --format '{{.Names}}  {{.Ports}}'
+```
+
+Need: Linux, at least 1 GB RAM free with n8n running, 5 GB disk free, Docker with compose v2,
+and nothing already using port 8787. If Docker is already installed for n8n, **skip the
+`get.docker.com` line** in step 1 and do the rest. Never run `docker compose down` from the
+n8n folder for the bot, or from the bot folder for n8n.
+
+## 1c. Phone alerts with ntfy
+
+Install the free **ntfy** app, subscribe to a long random topic name (it acts as a password),
+then on the server:
+
+```bash
+nano .env      # ALERT_WEBHOOK_URL=https://ntfy.sh/<your-topic>   ALERT_WEBHOOK_KIND=ntfy
+curl -d "trader alert test" "ntfy.sh/<your-topic>"     # should arrive on the phone
+```
+
 ## 2. Start paper trading on live Kraken prices (starts the track record)
 
 ```bash
 docker compose run --rm cli profile activate configs/profiles/balanced-paper.yaml \
   --environment paper --reason "start paper track record"
-docker compose up -d paper
+docker compose up -d paper dashboard
 docker compose logs -f paper        # Ctrl-C to stop watching; the session keeps running
 docker compose run --rm cli session status
 ```
@@ -72,6 +110,115 @@ docker compose run --rm cli session status
 Check: `session status` shows a `last bar` that advances every 4 hours (00, 04, 08, 12, 16,
 20 UTC, about 2 minutes after the hour). Each completed bar counts toward the paper track
 record that live trading requires.
+
+## 2b. Dashboard on your phone with Tailscale
+
+The dashboard is read-only and listens on the server's `127.0.0.1:8787` only. Tailscale makes
+it reachable from your own devices and nobody else's.
+
+```bash
+docker compose up -d dashboard
+curl -s http://127.0.0.1:8787/api/status          # JSON means it is running
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up                                  # log in with the same account as your phone
+sudo tailscale serve --bg 8787                     # prints https://<server>.<tailnet>.ts.net
+tailscale serve status                             # shows that address again any time
+```
+
+1. If `serve` answers **"Serve is not enabled on your tailnet"** with a link: open the link,
+   log in, click **Enable** (also turn on **HTTPS certificates** and **MagicDNS** if offered),
+   then run `sudo tailscale serve --bg 8787` again.
+2. On **every device** that should see the dashboard (phone, laptop): install Tailscale, sign
+   in with the same account, and keep it switched on. `tailscale status` on the server lists
+   each connected device.
+3. Open the printed `https://<server>.<tailnet>.ts.net` address: `https`, no port number. The
+   first load can take a minute while Tailscale issues the certificate. The server's own
+   Tailscale IP with `:8787` does not work: the dashboard listens on the server only.
+
+If the browser says the site **can't be reached** (`DNS_PROBE_FINISHED_NXDOMAIN`), that device
+is not connected to your Tailscale account, or Chrome's secure DNS is skipping Tailscale's
+names: turn off Chrome → Settings → Privacy and security → Security → **Use secure DNS**, or
+try Safari. `--bg` keeps the setting across restarts. To stop sharing:
+`sudo tailscale serve reset`.
+
+The page refreshes itself every 60 seconds and is never cached. Prices move every minute;
+equity, positions, and trades change when the bots run, every 4 hours.
+
+## 2c. Leverage practice: paper perps, long and short (ADR-031)
+
+This runs beside the spot paper bot with its own simulated $2,500. It goes long in uptrends
+and short in downtrends at the leverage limits you approved (UD-23). It has no keys and
+cannot place a real order.
+
+```bash
+docker compose up -d perps
+docker compose run --rm cli perps paper status
+docker compose logs --tail 20 perps
+```
+
+If `status` answers `No such command 'paper'`, the image is older than the code: run the
+update in section 8a.
+
+Check: `status` shows equity, any open long or short positions, and `bars processed` rising
+by one every 4 hours. The dashboard opens on the same account (**Leverage · paper**): slide between
+Overview, Positions, Trades and Markets to see its value, each open long or short with its
+leverage and liquidation price, and every closed trade with dollars won or lost (ADR-037). Opens, closes, and liquidations arrive as phone alerts starting with
+`[perps paper]`. The emergency stop (`trader killswitch engage`) blocks new paper positions
+here too.
+
+The session follows the 1-month trend rule (`tsmom_30d`: long if the price is above its level
+30 days ago, short if below; ADR-035). To run a different rule add
+`--signal consensus_sma_tsmom` or `--signal sma_stance_20_50` to the `perps` command
+in `docker-compose.yml`. A saved account will not continue under a different rule, so when you
+switch, keep the old record and start a new account:
+
+```bash
+docker compose stop perps
+mv data/state/perps-paper.json data/state/perps-paper-$(date +%Y%m%d).json
+docker compose up -d perps
+```
+
+## 2d. Second paper account with its own settings ("degen", ADR-038)
+
+A separate paper perps account beside the one in 2c, with its own simulated $2,500, its own
+settings (`configs/perps/jupiter-degen.yaml`) and its own record
+(`data/state/perps-degen.json`). Starting, stopping or resetting it never touches `perps`.
+It has no keys and cannot place a real order.
+
+```bash
+git pull && docker compose build                     # section 8a, if the image is older
+docker compose run --rm cli perps validate --account degen
+docker compose up -d perps-degen
+docker compose run --rm cli perps paper status --account degen
+docker compose logs --tail 20 perps-degen
+```
+
+Check: `validate` lists 5% collateral, buffer 3, stop 30% of collateral and the 15% daily
+limit; `status` shows `bars processed` rising every hour: this account checks every hour,
+taking its 30-day trend and volatility from 4-hour candles (ADR-040). On the dashboard, tap
+**Degen · paper**; its Overview also lists the settings in force. Tap **All** to see every
+account's open positions together, with entry, price now, liquidation or stop on each card. Alerts start with
+`[perps degen]`. A **BAD DAY** alert means the account lost 15% since 00:00 UTC (7pm New York
+in winter): it opens nothing new until 00:00 UTC; look at what happened before the next day.
+
+If this account already ran with 4-hour checks, the hourly version refuses that saved record
+(`perps session not started: ... different signal, timeframe`): keep it and start fresh with
+the three commands at the end of this section, then `docker compose up -d perps-degen`.
+
+To check the main account every hour too, only after its 7-day test: add
+`"--timeframe", "1h"` to the `perps` command in `docker-compose.yml`, then reset it as in 2c.
+
+To change a setting: edit its `value` in `configs/perps/jupiter-degen.yaml`, raise `version`
+by one, set `approved_on` to today, then `docker compose restart perps-degen`. Run
+`perps validate --account degen` first; a `TBD` or out-of-range value stops the account
+(exit 3 or 2) instead of guessing. A new buffer or collateral applies to new positions only.
+To start this account over, keep the old record:
+
+```bash
+docker compose stop perps-degen
+mv data/state/perps-degen.json data/state/perps-degen-$(date +%Y%m%d).json
+docker compose up -d perps-degen
+```
 
 ## 3. Create the Kraken API key (owner, on kraken.com)
 
@@ -161,6 +308,40 @@ a protective stop disappears, the clock drifts more than 5 s from Kraken's, mark
 for 3 bars, 3 consecutive exchange errors, the configuration changes while running, or any
 unexpected error. Investigate, fix, then disengage the kill switch.
 
+## 7a. AI review assistant for the paper accounts (ADR-039)
+
+When a paper perps account has a bad day (it lost the daily limit and stopped for the rest of
+the UTC day), the review assistant reads that account's record, settings and the market, and
+six AI reviewers each do one job: market analyst, trade reviewer and risk officer (each on its
+own, from the same measured facts), then a strategy researcher proposes at most three setting
+changes, a skeptic challenges each, and a lead editor writes you a plain-language report.
+Every proposed value is checked by code against the account's config rules. **It cannot change
+anything**: you decide, and you edit the settings file yourself (RUNBOOK 2d for the degen
+account, section 8 for others).
+
+One-time setup: create an API key at console.anthropic.com and add one line to `.env` on the
+server (never in the repository, a config file, or chat):
+
+```bash
+nano .env                     # add: ANTHROPIC_API_KEY=<your key>
+docker compose up -d review   # watches both paper accounts for bad days
+docker compose logs --tail 20 review
+```
+
+Ask for a review any time, and read reports:
+
+```bash
+docker compose run --rm cli review run --account main --dry-run   # the facts only, free
+docker compose run --rm cli review run --account main             # full review (uses the API)
+docker compose run --rm cli review show --account main            # newest report
+```
+
+Reports are saved in `data/reports/review-<account>-<day>.md` (and `.json` with the facts).
+A phone alert starting `[review]` tells you when one is ready. Each review makes six requests
+to Claude (`configs/assistant.yaml` sets the model and effort per role); expect cents to well
+under a dollar per review, billed to your Anthropic account. Without a key the commands exit 3
+and the trading bots are unaffected. AI reviewers can be wrong; one day is a small sample.
+
 ## 8. Changing configuration
 
 Any edit to the profile, risk profile, eligibility, or authorization requires a **version
@@ -172,11 +353,35 @@ re-run `profile activate` for the environment, disengage the kill switch, restar
 ```bash
 docker compose run --rm cli killswitch engage --reason "update"   # positions and stops stay
 git pull
-docker compose build
-docker compose up -d paper            # or: docker compose --profile live up -d live
+docker compose build                  # rebuilds the one image every service uses
+docker compose up -d paper perps dashboard
+#   when live: docker compose --profile live up -d live perps dashboard
+docker compose ps --format '{{.Service}} {{.Image}}'   # every line shows the same image ID
+docker image inspect crypto-trader:local --format '{{.Id}}'   # that same ID
 docker compose run --rm cli session status
 docker compose run --rm cli killswitch disengage --reason "update done"
 ```
+
+`docker compose build` builds one image, `crypto-trader:local`, and every service runs it,
+including `cli`, `builder`, and `live`, which sit behind profiles (ADR-036). So these steps
+cannot leave one of them on old code. `up -d` restarts each running service on the new image;
+a service you do not name keeps running the old code until you restart it.
+
+**Once, after the update that brought ADR-036 (2026-11-14):** the old layout gave each
+service its own image (`crypto-trader-paper`, `crypto-trader-cli`, ...). After the steps
+above, remove them to free disk space:
+
+```bash
+docker image ls 'crypto-trader-*'
+docker image rm crypto-trader-paper crypto-trader-perps crypto-trader-dashboard \
+  crypto-trader-cli crypto-trader-builder crypto-trader-live
+```
+
+`No such image` for a name you never built is fine. `image is being used by ... container`
+means a container still points at it: `docker ps -a --filter ancestor=<image>` shows which.
+If it is running, restart that service on the new image first (`up -d <service>`, with
+`--profile live` for live); if it is stopped, `docker rm <container id>`, then remove the
+image again. Leaving old images in place is harmless; they only use disk.
 
 If the update changed a profile, risk, eligibility, or authorization file, re-run
 `profile activate` first (section 8). Read `CHANGELOG.md` before updating a live bot.

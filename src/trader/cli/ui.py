@@ -1,0 +1,104 @@
+"""``trader ui serve``: read-only phone dashboard (ADR-026)."""
+
+from __future__ import annotations
+
+import os
+from typing import Any
+
+import typer
+
+from trader.common.paths import configs_root, data_root
+from trader.perps.history import with_history
+from trader.perps.params import (
+    PerpsConfigUnresolvedError,
+    load_perps_file,
+    load_perps_params,
+    settings_summary,
+)
+from trader.perps.prices import fetch_prices
+from trader.perps.session import read_status
+from trader.profiles.loader import ConfigLoadError, load_yaml
+from trader.risk.controls import PersistedKillSwitch
+from trader.ui.data import kraken_public_ohlc, status_snapshot
+from trader.ui.server import Sources, serve
+
+app = typer.Typer(help="Read-only dashboard (ADR-026).", no_args_is_help=True)
+
+
+def _kill_switch() -> dict[str, Any] | None:
+    s = PersistedKillSwitch().state()
+    if s is None:
+        return None
+    return {k: str(v) for k, v in s.model_dump(mode="json").items()}
+
+
+def _live_gate() -> dict[str, Any] | None:
+    """Owner-approved live requirements for display, or None if unreadable or unapproved."""
+    try:
+        raw = load_yaml(configs_root() / "live" / "authorization.yaml")
+    except ConfigLoadError:
+        return None
+    out: dict[str, Any] = {}
+    for key, name in (
+        ("min_paper_cycles_before_live", "min_paper_cycles"),
+        ("max_capital_usd", "max_capital_usd"),
+    ):
+        param = raw.get(key)
+        # Reason: show only owner-approved numbers; TBD or hypothesis values are not displayed.
+        if isinstance(param, dict) and param.get("status") == "approved":
+            out[name] = param.get("value")
+    out["acknowledged"] = raw.get("acknowledgement") is not None
+    return out
+
+
+def _paper_account(account: str) -> dict[str, Any] | None:
+    """One paper perps account's summary with its trade history and settings (ADR-038)."""
+    from trader.cli.perps import ACCOUNTS, account_paths
+
+    state, events = account_paths(data_root(), account)
+    out = with_history(read_status(state), events)
+    if out is None:
+        return None
+    try:
+        p = load_perps_params(file_name=ACCOUNTS[account][0])
+    except (ValueError, PerpsConfigUnresolvedError) as exc:
+        return {**out, "settings_error": f"{type(exc).__name__}: {exc}"}
+    return {**out, "account": account, "settings": settings_summary(p)}
+
+
+@app.command("serve")
+def serve_cmd(
+    host: str = typer.Option(
+        "127.0.0.1", "--host", help="Bind address; keep localhost unless behind a private network"
+    ),
+    port: int = typer.Option(8787, "--port"),
+) -> None:
+    """Serve the dashboard. GET only; it cannot trade or change settings."""
+
+    def prices() -> dict[str, Any]:
+        markets: dict[str, str] = {m.market: m.price_mint for m in load_perps_file().markets}
+        return {k: float(v) for k, v in fetch_prices(markets).items()}
+
+    src = Sources(
+        lambda: status_snapshot(data_root(), _kill_switch(), _live_gate()),
+        kraken_public_ohlc,
+        load_perps_params,
+        prices,
+        # Reason: the same state files and event logs `trader perps paper run --account`
+        # writes (cli/perps.py); read only.
+        lambda: _paper_account("main"),
+        lambda: _paper_account("degen"),
+    )
+    # Reason: in Docker the server binds 0.0.0.0 inside the container, while compose
+    # publishes it on the host's 127.0.0.1 only (docker-compose.yml, ADR-026).
+    in_container = os.environ.get("TRADER_IN_CONTAINER") == "1"
+    if host not in ("127.0.0.1", "localhost", "::1") and not in_container:
+        typer.echo(
+            "warning: serving beyond this machine; put it behind a VPN or SSH tunnel", err=True
+        )
+    httpd = serve(src, host, port)
+    typer.echo(f"dashboard: http://{host}:{httpd.server_address[1]}/  (Ctrl-C to stop)")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        pass

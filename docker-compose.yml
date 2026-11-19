@@ -1,10 +1,21 @@
 # Usage (see docs/operations/RUNBOOK.md):
-#   docker compose build
+#   docker compose build                             # builds the one shared image (ADR-036)
 #   docker compose up -d paper                       # forward paper session
 #   docker compose --profile live up -d live         # real money (only after the runbook gates)
 #   docker compose run --rm cli session status       # any trader command
+#   docker compose up -d review                      # AI review of bad days (ADR-039)
+#   docker compose up -d dashboard                   # read-only phone dashboard (ADR-026)
+#   docker compose up -d perps                       # paper leverage practice (ADR-031)
+#   docker compose up -d perps-degen                 # second paper account, degen settings (ADR-038)
+# Project name keeps these containers separate from other stacks on the same server (n8n).
+name: crypto-trader
+# Reason: every service runs the same image, crypto-trader:local (ADR-036). Only `paper`
+# builds it, so a plain `docker compose build` refreshes the code for every service, including
+# the profile-gated cli, builder and live services that a plain build skips. pull_policy never
+# stops Compose from ever looking for this name on Docker Hub.
 x-trader: &trader
-  build: .
+  image: crypto-trader:local
+  pull_policy: never
   env_file: .env
   volumes:
     - ./data:/app/data
@@ -18,14 +29,45 @@ x-trader: &trader
 services:
   paper:
     <<: *trader
+    build: .  # the only build in this file: never move it to a profile-gated service
     command: ["session", "run", "--profile", "${TRADER_PROFILE:-configs/profiles/balanced-paper.yaml}",
               "--environment", "paper"]
+
+  # Paper-only leverage practice, long and short, on live prices (ADR-031). It has no keys
+  # and cannot place a real order.
+  perps:
+    <<: *trader
+    command: ["perps", "paper", "run"]
+
+  # A second, separate paper-only perps account with its own settings, state file and
+  # alerts (ADR-038, configs/perps/jupiter-degen.yaml). Starting it never touches `perps`.
+  perps-degen:
+    <<: *trader
+    # Checks every hour; its 30-day trend and volatility come from 4h candles (ADR-040).
+    command: ["perps", "paper", "run", "--account", "degen", "--timeframe", "1h"]
 
   live:
     <<: *trader
     profiles: ["live"]  # never starts unless explicitly requested with --profile live
     command: ["session", "run", "--profile", "${TRADER_PROFILE:-configs/profiles/balanced-paper.yaml}",
               "--environment", "live"]
+
+  # AI review assistant (ADR-039): reviews each paper account's bad day and alerts you when
+  # the report is ready. Reads state and logs; writes only data/reports and its own cursor.
+  # Needs ANTHROPIC_API_KEY in .env; without it the service exits 3 and stops retrying.
+  review:
+    <<: *trader
+    command: ["review", "watch"]
+    restart: on-failure:3
+
+  dashboard:
+    <<: *trader
+    command: ["ui", "serve", "--host", "0.0.0.0", "--port", "8787"]
+    # Reason: published on the server's localhost only; Tailscale serves it to your devices.
+    ports: ["127.0.0.1:8787:8787"]
+    volumes:
+      - ./data:/app/data:ro
+      - ./configs:/app/configs:ro
 
   cli:
     <<: *trader

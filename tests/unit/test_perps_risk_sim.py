@@ -7,7 +7,7 @@ from decimal import Decimal as D
 
 import pytest
 
-from tests.perps_support import T0, fixture_params
+from tests.perps_support import T0, fixture_params, no_stop_params
 from trader.perps.math import PerpSide
 from trader.perps.risk import AccountView, check_open, size_open
 from trader.perps.simulator import PaperPerpsAccount
@@ -93,7 +93,7 @@ def test_borrow_fees_accrue_hourly() -> None:
 
 
 def test_liquidation_loses_collateral_and_is_journaled() -> None:
-    a = PaperPerpsAccount.start(fixture_params(), T0)
+    a = PaperPerpsAccount.start(no_stop_params(), T0)
     a.open("SOL", PerpSide.LONG, M, T0)
     a.mark({**M, "SOL": D(60)}, T0 + timedelta(hours=4))
     assert "SOL" not in a.positions

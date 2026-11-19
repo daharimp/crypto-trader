@@ -101,8 +101,10 @@ class PerpsParams:
     # Optional (ADR-032): when set, each new position's leverage is assessed from the
     # market's recent volatility, with ``target_leverage`` as the ceiling.
     liquidation_buffer_daily_moves: Decimal | None = None
-    # Optional (ADR-038): when set, a position closes once it has lost this share of its
-    # collateral (fees included), and that market opens nothing more until the next UTC day.
+    # ADR-038, required in every config file since ADR-042: a position closes once it has
+    # lost this share of its collateral (fees included), and that market opens nothing more
+    # until the next UTC day. ``resolve`` refuses a file without it (exit 3); None remains
+    # only for parameters built in code (research replays).
     stop_loss_pct_of_collateral: Decimal | None = None
 
 
@@ -180,6 +182,11 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
     for key, top in ((BUFFER_KEY, None), (STOP_KEY, Decimal(100))):
         opt = cfg.risk.get(key)
         if opt is None:
+            if key == STOP_KEY:
+                # Reason: owner rule (2026-11-19, ADR-042): every perps account assesses a
+                # stop-loss; an account without one fails closed instead of running unguarded.
+                missing.append(f"risk.{key}")
+                refs.add("UD-31")
             continue
         if opt.value == "TBD":
             missing.append(f"risk.{key}")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -23,7 +24,10 @@ def _v(x: str) -> dict[str, Any]:
 
 
 def fixture_file(**overrides: str) -> dict[str, Any]:
-    """A fully approved perps config dict (fixture values), with optional overrides."""
+    """A fully approved perps config dict (fixture values), with optional overrides.
+
+    An override of ``""`` leaves that key out of the file.
+    """
     vals = {
         "open_fee_bps": "6",
         "close_fee_bps": "6",
@@ -37,8 +41,12 @@ def fixture_file(**overrides: str) -> dict[str, Any]:
         "min_liquidation_distance_pct": "15",
         "max_open_positions": "3",
         "daily_loss_limit_pct": "5",
+        # Required since ADR-042. Far enough out that tests about other behaviour are not
+        # stopped first; tests about the stop override it. "" leaves the key out.
+        "stop_loss_pct_of_collateral": "90",
     }
     vals.update(overrides)
+    vals = {k: v for k, v in vals.items() if v != ""}
     group = {
         "costs": ("open_fee_bps", "close_fee_bps", "borrow_rate_pct_per_hour"),
         "venue_limits": ("maintenance_bps", "venue_max_leverage"),
@@ -67,6 +75,14 @@ def fixture_file(**overrides: str) -> dict[str, Any]:
 def fixture_params(**overrides: str) -> PerpsParams:
     """Resolved fixture parameters."""
     return resolve(PerpsConfigFile.model_validate(fixture_file(**overrides)))
+
+
+def no_stop_params(**overrides: str) -> PerpsParams:
+    """Fixture parameters with the stop removed, for tests of the liquidation path itself.
+
+    Config files must carry a stop (ADR-042), so this is only reachable from code.
+    """
+    return replace(fixture_params(**overrides), stop_loss_pct_of_collateral=None)
 
 
 def bars_from_closes(closes: list[float], start: datetime = T0, wick: float = 0.002) -> list[Bar]:

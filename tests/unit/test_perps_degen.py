@@ -18,7 +18,7 @@ import pytest
 from typer.testing import CliRunner
 
 from tests.conftest import SHIPPED_CONFIGS
-from tests.perps_support import T0, fixture_file, fixture_params
+from tests.perps_support import T0, fixture_file, fixture_params, no_stop_params
 from trader.cli.main import app
 from trader.perps.math import PerpSide
 from trader.perps.params import (
@@ -51,11 +51,11 @@ def test_shipped_degen_config_has_the_owner_values_and_main_is_unchanged() -> No
     assert degen.stop_loss_pct_of_collateral == D(30)
     assert degen.daily_loss_limit_pct == D(15)
     main = load_perps_params(SHIPPED_CONFIGS)
-    assert main.stop_loss_pct_of_collateral is None
+    assert main.stop_loss_pct_of_collateral == D(50)  # UD-31, ADR-042
     assert main.max_collateral_per_position_pct == D(10)
     assert main.liquidation_buffer_daily_moves == D(4)
     assert settings_summary(degen)["stop_pct_of_collateral"] == "30"
-    assert settings_summary(main)["stop_pct_of_collateral"] is None
+    assert settings_summary(main)["stop_pct_of_collateral"] == "50"
 
 
 def test_unresolved_stop_fails_closed() -> None:
@@ -117,7 +117,8 @@ def test_gap_past_liquidation_is_a_liquidation_not_a_stop() -> None:
 
 
 def test_without_a_stop_setting_nothing_changes() -> None:
-    a = _long_sol()
+    a = PaperPerpsAccount.start(no_stop_params(), T0)
+    assert a.open("SOL", PerpSide.LONG, M, T0).approved
     assert a.stop_price(a.positions["SOL"]) is None
     a.mark({**M, "SOL": D(85)}, T0 + timedelta(hours=4), opens={"SOL": D(88)})
     assert "SOL" in a.positions
@@ -170,7 +171,9 @@ def test_cli_validates_each_account_and_rejects_unknown(
     assert r.exit_code == 0, r.output
     assert "jupiter-degen.yaml v1" in r.output and "stop 30% of collateral" in r.output
     r = CliRunner().invoke(app, ["perps", "validate"])
-    assert r.exit_code == 0 and "jupiter.yaml v9" in r.output and "stop off" in r.output
+    assert (
+        r.exit_code == 0 and "jupiter.yaml v10" in r.output and "stop 50% of collateral" in r.output
+    )
     assert CliRunner().invoke(app, ["perps", "validate", "--account", "yolo"]).exit_code == 2
     r = CliRunner().invoke(app, ["perps", "paper", "status", "--account", "degen"])
     assert r.exit_code == 0 and "no perps paper degen session" in r.output

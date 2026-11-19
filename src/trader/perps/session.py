@@ -157,6 +157,11 @@ class PerpsSession:
     symbols: dict[str, str] = field(default_factory=dict)
     acct: PaperPerpsAccount | None = None
     meta: dict[str, Any] = field(default_factory=dict)
+    # Optional (ADR-041): one JSON line per processed bar with the account's equity, so an
+    # archived run keeps its full equity curve, not only the day-change points.
+    equity_path: Path | None = None
+    # Whether this session has a run on disk (loaded or saved); see ``_save``.
+    _on_disk: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         """Validate the timeframe, default the symbols, and load any saved state."""
@@ -193,14 +198,26 @@ class PerpsSession:
             if not same:
                 raise SessionStateError(
                     "saved perps session used a different signal, timeframe, or market list; "
-                    f"move {self.state_path} aside to start a new one"
+                    "archive it with `trader perps paper reset --reason ...` to start a new one"
                 )
             self.acct, self.meta = _load_account(self.params, d["account"]), meta
+            self._on_disk = True
         except (ValueError, KeyError, TypeError) as exc:
             raise SessionStateError(f"unreadable perps session state: {exc}") from exc
 
+    def _guard_archived(self) -> None:
+        if self._on_disk and not self.state_path.exists():
+            # Reason: the run was archived (or moved aside) while this process still held it
+            # in memory; writing it back, or appending its events to the new run's log,
+            # would silently resurrect the old run (ADR-041).
+            raise SessionStateError(
+                f"{self.state_path} was archived or moved while the session ran; "
+                "restart the account to begin the new run"
+            )
+
     def _save(self) -> None:
         assert self.acct is not None
+        self._guard_archived()
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         data = {
             "state_version": STATE_VERSION,
@@ -211,6 +228,7 @@ class PerpsSession:
         tmp.write_text(json.dumps(data, indent=1, sort_keys=True), encoding="utf-8")
         # Reason: replace is atomic, so a crash never leaves a half-written state file.
         os.replace(tmp, self.state_path)
+        self._on_disk = True
 
     def _flush_events(self) -> list[dict[str, Any]]:
         assert self.acct is not None
@@ -221,6 +239,14 @@ class PerpsSession:
                 for e in events:
                     f.write(json.dumps(e, sort_keys=True) + "\n")
         return events
+
+    def _append_equity(self, points: list[dict[str, Any]]) -> None:
+        if self.equity_path is None or not points:
+            return
+        self.equity_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.equity_path.open("a", encoding="utf-8") as f:
+            for p in points:
+                f.write(json.dumps(p, sort_keys=True) + "\n")
 
     # --- one cycle -----------------------------------------------------------------------
     def due(self, now: datetime) -> bool:
@@ -292,7 +318,9 @@ class PerpsSession:
 
         Raises:
             ValueError: If a market returns no completed candles.
+            SessionStateError: If the run was archived while this session held it (ADR-041).
         """
+        self._guard_archived()
         bars = self._bars()
         trend = self._bars(self.trend_timeframe) if self.trend_timeframe else None
         step = TIMEFRAMES[self.timeframe]
@@ -322,6 +350,7 @@ class PerpsSession:
             last = datetime.fromisoformat(self.meta["last_bar"])
             new = [t for t in done if t > last]
         acct = self.acct
+        equity_points: list[dict[str, Any]] = []
         for t in new:
             closes_at = t + step
             row = {m: by_time[m][t] for m in bars}
@@ -368,6 +397,13 @@ class PerpsSession:
                     ),
                     marks={m: str(v) for m, v in fills.items()},
                 )
+                equity_points.append(
+                    {
+                        "at_utc": _iso(closes_at),
+                        "equity_usd": self.meta["equity_usd"],
+                        "peak_equity_usd": str(peak),
+                    }
+                )
             self.meta["last_bar"] = _iso(t)
             self.meta["cycles"] += 1
             first = False
@@ -376,6 +412,7 @@ class PerpsSession:
         self.meta["last_cycle_utc"] = _iso(now)
         events = self._flush_events()
         self._save()
+        self._append_equity(equity_points)
         for e in events:
             if e["event"] in NOTIFY:
                 self.notify(describe(e))

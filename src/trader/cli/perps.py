@@ -52,6 +52,16 @@ def account_paths(root: Path, account: str) -> tuple[Path, Path]:
     return root / "state" / f"{stem}.json", root / "logs" / f"{stem}-events.jsonl"
 
 
+def account_equity_path(root: Path, account: str) -> Path:
+    """Per-bar equity log of a paper perps account (ADR-041): ``logs/<stem>-equity.jsonl``."""
+    return root / "logs" / f"{ACCOUNTS[account][1]}-equity.jsonl"
+
+
+def account_archive_dir(root: Path, account: str) -> Path:
+    """Folder of an account's archived runs (ADR-041): ``archive/perps/<stem>``."""
+    return root / "archive" / "perps" / ACCOUNTS[account][1]
+
+
 def _account_or_exit(account: str) -> str:
     if account not in ACCOUNTS:
         typer.echo(f"unknown account {account!r}; choose one of {sorted(ACCOUNTS)}", err=True)
@@ -188,6 +198,7 @@ def paper_run(
             signal_name=signal_name,
             timeframe=timeframe,
             trend_timeframe="4h" if timeframe == "1h" else None,
+            equity_path=account_equity_path(data_root(), account),
         )
     except (SessionStateError, ValueError) as exc:
         typer.echo(f"perps session not started: {exc}", err=True)
@@ -215,6 +226,12 @@ def paper_run(
                 if failing:
                     alerter.send("price data is back; session continuing")
                 failing = False
+            except SessionStateError as exc:
+                # Reason: the run was archived under this process (ADR-041); exiting lets the
+                # container restart into a fresh run instead of resurrecting the old one.
+                alerter.send(f"session stopped: {exc}")
+                typer.echo(f"perps session stopped: {exc}", err=True)
+                raise typer.Exit(EXIT_INVALID) from None
             except Exception as exc:  # noqa: BLE001 - keep the loop alive; retry next tick
                 # Reason: alert once per outage, not every minute.
                 if not failing:
@@ -249,4 +266,76 @@ def paper_status(account: str = typer.Option("main", "--account", help=ACCOUNT_H
         )
     if not s["positions"]:
         typer.echo("  no open positions")
+    typer.echo("Simulated money. Results are not a forecast; profit is not guaranteed.")
+
+
+def _money(x: object) -> str:
+    return "?" if x is None else f"${Decimal(str(x)):,.2f}"
+
+
+@paper_app.command("reset")
+def paper_reset(
+    reason: str = typer.Option(..., "--reason", help="Why this run ends (kept in its summary)."),
+    account: str = typer.Option("main", "--account", help=ACCOUNT_HELP),
+) -> None:
+    """Archive the current run and start the next one fresh. Nothing is deleted (ADR-041).
+
+    Stop the account first (`docker compose stop perps`), then start it again afterwards.
+    Exit 2 if there is no saved run or the archive folder already exists.
+    """
+    from trader.perps.runs import RunArchiveError, archive_run
+
+    root = data_root()
+    state_path, events_path = account_paths(root, _account_or_exit(account))
+    try:
+        run_dir = archive_run(
+            state_path,
+            events_path,
+            account_equity_path(root, account),
+            account_archive_dir(root, account),
+            reason,
+            datetime.now(UTC),
+        )
+    except RunArchiveError as exc:
+        typer.echo(f"not reset: {exc}", err=True)
+        raise typer.Exit(EXIT_INVALID) from None
+    s = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
+    typer.echo(
+        f"archived {account} run {s['run']}: {_money(s['start_equity_usd'])} -> "
+        f"{_money(s['final_equity_usd'])} ({s['pnl_pct']}%), peak {_money(s['peak_equity_usd'])}, "
+        f"largest drop {s['max_drawdown_pct']}%"
+    )
+    typer.echo(f"saved in {run_dir}; the next start begins a fresh run.")
+
+
+@paper_app.command("runs")
+def paper_runs(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)) -> None:
+    """List an account's past runs, including state files moved aside before ADR-041."""
+    from trader.perps.runs import list_runs
+
+    root = data_root()
+    runs = list_runs(
+        account_archive_dir(root, _account_or_exit(account)),
+        root / "state",
+        ACCOUNTS[account][1],
+    )
+    if not runs:
+        typer.echo(f"no archived {account} runs yet")
+        return
+    for r in runs:
+        if "error" in r:
+            typer.echo(f"  {r['run']}: {r['error']}")
+            continue
+        trades = (
+            f", {r['trades_closed']} trades ({r['stops']} stopped, {r['liquidations']} liquidated)"
+            if "trades_closed" in r
+            else ""
+        )
+        typer.echo(
+            f"  {r['run']}{' (moved by hand, no equity curve)' if r.get('legacy') else ''}: "
+            f"{r.get('signal')} {r.get('timeframe')}, {_money(r.get('start_equity_usd'))} -> "
+            f"{_money(r.get('final_equity_usd'))} ({r.get('pnl_pct')}%), peak "
+            f"{_money(r.get('peak_equity_usd'))}, largest drop {r.get('max_drawdown_pct')}%"
+            f"{trades}" + (f"; reason: {r['reason']}" if r.get("reason") else "")
+        )
     typer.echo("Simulated money. Results are not a forecast; profit is not guaranteed.")

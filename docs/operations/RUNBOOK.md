@@ -170,13 +170,24 @@ The session follows the 1-month trend rule (`tsmom_30d`: long if the price is ab
 30 days ago, short if below; ADR-035). To run a different rule add
 `--signal consensus_sma_tsmom` or `--signal sma_stance_20_50` to the `perps` command
 in `docker-compose.yml`. A saved account will not continue under a different rule, so when you
-switch, keep the old record and start a new account:
+switch, archive the old run and start a new one (ADR-041):
 
 ```bash
 docker compose stop perps
-mv data/state/perps-paper.json data/state/perps-paper-$(date +%Y%m%d).json
+docker compose run --rm cli perps paper reset --reason "switching to consensus_sma_tsmom"
 docker compose up -d perps
+docker compose run --rm cli perps paper runs        # every past run, with its result
 ```
+
+`reset` never deletes anything. It moves the run's state, trades and per-bar equity curve
+into `data/archive/perps/perps-paper/<start>__<end>/` and writes a `summary.json` there
+(start and final equity, P&L, peak, largest drop, trades, stops, liquidations, fees, settings
+and your reason). The new run then starts with empty logs, so the dashboard shows only the
+current run. `runs` also lists any older `data/state/perps-paper-<date>.json` files moved
+aside by hand before this existed (their start, final and peak equity, without a curve).
+Always stop the account before `reset`; if you forget, the running session notices the
+archive, sends an alert and exits instead of writing the old run back, and Docker restarts it
+into a fresh run.
 
 ## 2d. Second paper account with its own settings ("degen", ADR-038)
 
@@ -212,11 +223,11 @@ To change a setting: edit its `value` in `configs/perps/jupiter-degen.yaml`, rai
 by one, set `approved_on` to today, then `docker compose restart perps-degen`. Run
 `perps validate --account degen` first; a `TBD` or out-of-range value stops the account
 (exit 3 or 2) instead of guessing. A new buffer or collateral applies to new positions only.
-To start this account over, keep the old record:
+To start this account over, archive the old run (ADR-041, as in 2c):
 
 ```bash
 docker compose stop perps-degen
-mv data/state/perps-degen.json data/state/perps-degen-$(date +%Y%m%d).json
+docker compose run --rm cli perps paper reset --account degen --reason "why it ends"
 docker compose up -d perps-degen
 ```
 

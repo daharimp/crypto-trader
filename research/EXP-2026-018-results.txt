@@ -1,0 +1,49 @@
+EXP-2026-018 spot entry rules. $2,500 paper, 1% risk, 2xATR stop on every entry,
+50 bps/side, tier caps 35/15/5%, 80% exposure cap, breaker 15% (7-day pause then reset), long only.
+Data: Coinbase 1h candles 2023-11-18..2026-11-22 built into 4h bars, BTC ETH SOL XRP SUI.
+B&H per window (dev | holdout | last 60d | live week):
+  BTC: +78% | -20% | -28% | -6%
+  ETH: -12% | -17% | -36% | -6%
+  SOL: -18% | -16% | -39% | -2%
+  XRP: +109% | -31% | -38% | -4%
+  SUI: +26% | -35% | -32% | -9%
+
+== development 2023-12-28..2026-05-26
+rule                                           trades   /mo   win  return  maxDD sharpe    PF stops trips
+A current: SMA20/50 cross bar only                300  10.4   28%   17.8%  26.9%   0.47  1.15   165     2
+B SMA20/50 stance (any uptrend bar)               485  16.8   29%  -10.5%  36.3%  -0.12  0.93   223     4
+C SMA50/200 stance                                207   7.2   18%   36.1%  30.9%   0.62  1.30   137     5
+D mean_reversion RSI<30 + lower band              303  10.5   46%  -23.1%  25.1%  -1.15  0.63   148     1
+E mean_reversion RSI<35 + lower band              478  16.5   41%  -54.8%  56.4%  -2.63  0.41   261     5
+F mean_reversion RSI<30, only above SMA200         26   0.9   35%  -10.6%  10.8%  -1.37  0.16    16     0
+G hybrid: cross + reversion<30 in downtrend       526  18.2   35%   -9.1%  36.2%  -0.09  0.95   280     4
+H hybrid: stance + reversion<30 in downtrend      733  25.4   34%  -34.7%  45.0%  -0.74  0.80   349     5
+I hybrid: stance + reversion<35 in downtrend      836  28.9   35%  -29.0%  44.2%  -0.43  0.85   402     8
+A current rule [1h bars]                         1021  35.3   17%  -78.9%  80.0%  -2.72  0.62   616    13
+C SMA50/200 stance [1h bars]                      713  24.7   18%  -44.3%  62.0%  -0.71  0.81   478    11
+
+== holdout (last 180d) 2026-05-26..2026-11-22
+A current: SMA20/50 cross bar only                 55   9.3   25%    2.5%  12.3%   0.35  1.11    30     0
+B SMA20/50 stance (any uptrend bar)                88  14.9   23%   -0.8%  14.5%   0.04  0.97    39     0
+C SMA50/200 stance                                 30   5.1   27%    5.5%   7.6%   0.57  1.53    17     0
+D mean_reversion RSI<30 + lower band               72  12.2   43%  -11.7%  14.1%  -2.53  0.39    37     0
+E mean_reversion RSI<35 + lower band              126  21.4   52%  -15.4%  15.6%  -3.61  0.37    55     1
+F mean_reversion RSI<30, only above SMA200          6   1.0   50%   -0.8%   2.2%  -0.78  0.54     2     0
+G hybrid: cross + reversion<30 in downtrend       122  20.7   35%  -11.4%  15.5%  -1.16  0.68    67     1
+H hybrid: stance + reversion<30 in downtrend      145  24.6   31%  -12.3%  20.9%  -1.00  0.70    67     1
+I hybrid: stance + reversion<35 in downtrend      186  31.6   41%  -15.0%  19.1%  -1.32  0.68    74     1
+A current rule [1h bars]                          207  35.2   18%  -34.8%  36.6%  -4.13  0.32   113     2
+C SMA50/200 stance [1h bars]                      131  22.2   15%  -13.2%  20.8%  -0.96  0.68    89     2
+
+== recent downtrend (last 60d) 2026-09-23..2026-11-22
+A current: SMA20/50 cross bar only                 15   7.7    0%   -8.8%   9.2%  -5.71  0.00    12     0
+C SMA50/200 stance                                 14   7.2   14%   -8.1%  11.2%  -2.81  0.01    10     0
+D mean_reversion RSI<30 + lower band               39  20.1   44%   -9.8%  11.1%  -4.89  0.34    22     0
+G hybrid: cross + reversion<30 in downtrend        54  27.8   35%  -12.7%  14.3%  -6.59  0.25    33     0
+(full table in research/EXP-2026-018-results.txt on branch spot-downtrend-entries)
+
+== live paper period 2026-11-15..2026-11-22
+A, B, C: 0 trades (no 4h SMA20/50 cross-up on any coin since Nov 15)
+D/G/H mean reversion: 8 trades, +0.9%
+
+4h SMA20/50 now: BTC -4.0%, ETH -4.0%, SOL -1.9%, XRP -2.2%, SUI -5.3% (all below; last crosses Oct 21 - Nov 7)

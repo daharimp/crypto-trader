@@ -360,20 +360,20 @@ to Claude (`configs/assistant.yaml` sets the model and effort per role); expect 
 under a dollar per review, billed to your Anthropic account. Without a key the commands exit 3
 and the trading bots are unaffected. AI reviewers can be wrong; one day is a small sample.
 
-**Every trade, every day (ADR-046).** The same `review` service also analyzes each closed trade
-of main, degen, spot-perps and spot (one request each), writes a daily summary of every account
-shortly after 00:00 UTC, and alerts when an account falls 5, 10 or 15 % below its peak. Turn any
+**Every trade, every day (ADR-046).** Shortly after 00:00 UTC the same `review` service makes one
+request that writes a summary of main, degen, spot-perps and spot and reviews every trade they
+closed that day, and it alerts when an account falls 5, 10 or 15 % below its peak. Turn any
 of these off, or change the accounts and levels, in `configs/assistant.yaml`, then
 `docker compose up -d --force-recreate review`.
 
 ```bash
-docker compose run --rm cli review trade --account degen --last 3   # analyze recent trades
+docker compose run --rm cli review trade --account degen --last 3   # one request per trade, now
 docker compose run --rm cli review daily --day 2026-11-22           # summary for one day
 docker compose run --rm cli review show --daily                     # newest daily summary
-docker compose run --rm cli review show --trades --account spot     # newest trade review
 ```
 
-Trade reports: `data/reports/trades/<account>/`; daily: `data/reports/daily-<day>.md`.
+Daily reports (with every trade): `data/reports/daily-<day>.md`; on-demand trade reviews:
+`data/reports/trades/<account>/`.
 
 ## 8. Changing configuration
 

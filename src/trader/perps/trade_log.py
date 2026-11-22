@@ -54,6 +54,11 @@ def perps_trades(events: list[dict[str, Any]], account: str) -> list[dict[str, A
         elif e["event"] in CLOSERS and m in open_by_market:
             o, between = open_by_market.pop(m)
             pnl, fees = num(e.get("pnl_usd")), num(e.get("fees_usd"))
+            # Reason: take-profit ladder partials (TAKE_PROFIT events) realize part of the
+            # trade before the final CLOSED, so their dollars belong to the same trade.
+            partials = [x for x in between if x["event"] == "TAKE_PROFIT"]
+            pnl = (pnl or 0.0) + sum(num(x.get("pnl_usd")) or 0.0 for x in partials)
+            fees = (fees or 0.0) + sum(num(x.get("fees_usd")) or 0.0 for x in partials)
             collateral = num(o.get("collateral_usd"))
             out.append(
                 {
@@ -70,7 +75,8 @@ def perps_trades(events: list[dict[str, Any]], account: str) -> list[dict[str, A
                     "collateral_usd": collateral,
                     "liquidation_price": num(o.get("liquidation_price")),
                     "pnl_usd_before_fees": pnl,
-                    "fees_usd": (fees or 0.0) + (num(o.get("fee_usd")) or 0.0),
+                    "fees_usd": fees + (num(o.get("fee_usd")) or 0.0),
+                    "take_profit_steps_hit": len(partials),
                     "collateral_lost_usd": num(e.get("collateral_lost_usd")),
                     "exit_reason": e.get("reason") or e["event"],
                     "events_during_trade": between,

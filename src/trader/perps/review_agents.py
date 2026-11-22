@@ -172,10 +172,14 @@ ROLES = {
     "decision process, not just the outcome: a losing trade can be a good trade. Keep each "
     "field short.",
     "daily_editor": "Role: daily editor. Summarize one UTC day across every paper account for "
-    "the owner: how each account did, which trades stood out and why (use the per-trade "
-    "analyses when given), drawdown against each account's peak, patterns across accounts, and "
-    "at most three things worth watching. Accounts that did nothing get one line. Do not "
-    "restate the numbers table; code adds it below your text.",
+    "the owner: how each account did, which trades stood out and why, drawdown against each "
+    "account's peak, patterns across accounts, and at most three things worth watching. "
+    "Accounts that did nothing get one line. Do not restate the numbers table; code adds it. "
+    "When review_each_trade is true, also return one trade_reviews entry per trade that has "
+    "measured facts (same trade_id): why it opened, why it closed (journaled reason; label any "
+    "guess), how the stop-loss and take-profit steps behaved given the measured excursions, "
+    "whether it followed its rules, a grade of the decision (not the outcome) and at most two "
+    "things to look at, each one sentence. Otherwise leave trade_reviews empty.",
     "lead_editor": "Role: lead editor. Write the owner's report in Markdown from the notes, "
     "proposals and verdicts: a one-line headline, what happened, what the bot did, risk, and what "
     "to consider. Do not restate proposal values; a table is added below your text by code. End by "

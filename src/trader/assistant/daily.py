@@ -1,23 +1,42 @@
 """Daily summary and drawdown alerts for every paper account (ADR-045).
 
 Code measures each account's day (trades closed, wins, net P&L, equity, drawdown from its
-peak) and a code-built table heads the report; one Claude request writes the narrative.
+peak) and a code-built table heads the report. ONE Claude request per day writes the
+narrative and, when ``review_every_trade`` is on, a short review of every trade closed that
+day (to save usage, trades are reviewed in this end-of-day batch, not one request each).
 Drawdown alerts are pure code: no model is asked.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
 from trader.perps.review_agents import BANNED, AssistantSettings, Client, ask
 
-from .trade_review import trade_report_path
 from .trades import closed_trades, equity_snapshot
+
+# Reason: keeps one day's request a bounded size on a busy day; the table still lists every
+# account's totals, and older trades can be reviewed with `trader review trade`.
+MAX_TRADES_REVIEWED = 40
+CANDLES_PER_TRADE = 30
+TradeEnricher = Callable[[dict[str, Any]], dict[str, Any]]
+
+
+class TradeVerdict(BaseModel):
+    """One trade's review inside the daily answer."""
+
+    trade_id: str
+    grade: Literal["good", "acceptable", "poor"]
+    entry_reason: str
+    exit_reason: str
+    stop_and_take_profit: str
+    followed_rules: bool
+    what_to_improve: list[str]
 
 
 class DailySummary(BaseModel):
@@ -26,6 +45,7 @@ class DailySummary(BaseModel):
     headline: str
     summary_markdown: str
     things_to_watch: list[str]
+    trade_reviews: list[TradeVerdict]
 
 
 def account_day(data_root: Path, account: str, day: str) -> dict[str, Any]:
@@ -67,17 +87,31 @@ def daily_facts(data_root: Path, accounts: Sequence[str], day: str) -> dict[str,
     }
 
 
-def attach_trade_analyses(facts: dict[str, Any], reports: Path) -> None:
-    """Add each saved per-trade analysis (headline, grade, what to improve) to its trade."""
+def attach_trade_facts(facts: dict[str, Any], enrich: TradeEnricher) -> int:
+    """
+    Add measured excursions and a short candle window to each of the day's trades.
+
+    Args:
+        facts (dict[str, Any]): From ``daily_facts`` (updated in place).
+        enrich (TradeEnricher): trade -> ``trade_review.build_trade_facts`` output.
+
+    Returns:
+        int: How many trades were prepared for review (at most ``MAX_TRADES_REVIEWED``).
+    """
+    n = 0
     for acct in facts["accounts"]:
         for t in acct.get("trades", []):
-            js = trade_report_path(reports, t).with_suffix(".json")
-            try:
-                a = json.loads(js.read_text(encoding="utf-8")).get("analysis")
-            except (OSError, ValueError):
+            if n >= MAX_TRADES_REVIEWED:
+                t["review"] = "skipped: daily cap reached"
                 continue
-            if a:
-                t["analysis"] = {k: a.get(k) for k in ("headline", "grade", "what_to_improve")}
+            tf = enrich(t)
+            t["measured"] = tf["measured"]
+            t["candles"] = {
+                "timeframe": tf["candles"]["timeframe"],
+                "rows": tf["candles"]["rows"][-CANDLES_PER_TRADE:],
+            }
+            n += 1
+    return n
 
 
 def _money(x: Any) -> str:
@@ -127,6 +161,7 @@ def render_daily(facts: dict[str, Any], s: DailySummary | None) -> str:
         lines += [body, ""]
         if s.things_to_watch:
             lines += ["**Worth watching**", *[f"- {x}" for x in s.things_to_watch], ""]
+        lines += render_trade_reviews(facts, s.trade_reviews)
     lines += [
         "---",
         "Simulated money. Written by an AI review assistant from measured facts; it can be wrong. "
@@ -135,8 +170,43 @@ def render_daily(facts: dict[str, Any], s: DailySummary | None) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_trade_reviews(facts: dict[str, Any], reviews: list[TradeVerdict]) -> list[str]:
+    """Markdown lines: each closed trade's code-measured line, then its review (if any)."""
+    by_id = {r.trade_id: r for r in reviews}
+    trades = [t for a in facts["accounts"] for t in a.get("trades", [])]
+    if not trades:
+        return []
+    out = ["## Trades closed today", ""]
+    for t in trades:
+        m = t.get("measured") or {}
+        out.append(
+            f"**{t['account']} {t['side']} {t['market']}** · {t.get('entry')} -> {t.get('exit')} "
+            f"· {_money(t.get('net_pnl_usd'))} · exit: {t.get('exit_reason')} · best "
+            f"{m.get('best_move_for_pct', 'n/a')}% / worst "
+            f"{m.get('worst_move_against_pct', 'n/a')}%"
+        )
+        r = by_id.get(t["trade_id"])
+        if r is None:
+            out += ["- _no review_", ""]
+            continue
+        out += [
+            f"- Grade: {r.grade} · followed its rules: {'yes' if r.followed_rules else 'no'}",
+            f"- Opened: {r.entry_reason}",
+            f"- Closed: {r.exit_reason}",
+            f"- Stop and take-profit: {r.stop_and_take_profit}",
+            *[f"- Look at: {x}" for x in r.what_to_improve],
+            "",
+        ]
+    return out
+
+
 def write_daily(
-    data_root: Path, accounts: Sequence[str], day: str, client: Client, settings: AssistantSettings
+    data_root: Path,
+    accounts: Sequence[str],
+    day: str,
+    client: Client,
+    settings: AssistantSettings,
+    enrich: TradeEnricher | None = None,
 ) -> tuple[str, Path]:
     """
     Build, ask and save one day's summary; return its headline and Markdown path.
@@ -147,13 +217,17 @@ def write_daily(
         day (str): UTC day.
         client (Client): Anthropic client.
         settings (AssistantSettings): Model and effort.
+        enrich (TradeEnricher | None): Adds measured facts to each trade so the same request
+            reviews it; None (or ``review_every_trade`` off) skips trade reviews.
 
     Returns:
         tuple[str, Path]: Headline and ``reports/daily-<day>.md``.
     """
     reports = data_root / "reports"
     facts = daily_facts(data_root, accounts, day)
-    attach_trade_analyses(facts, reports)
+    facts["review_each_trade"] = bool(enrich and settings.review_every_trade)
+    if facts["review_each_trade"] and enrich is not None:
+        attach_trade_facts(facts, enrich)
     s: DailySummary | None = ask(client, settings, "daily_editor", {"facts": facts}, DailySummary)
     md = reports / f"daily-{day}.md"
     md.parent.mkdir(parents=True, exist_ok=True)

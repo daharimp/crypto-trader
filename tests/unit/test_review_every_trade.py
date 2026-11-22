@@ -91,6 +91,44 @@ PERPS = [
 ]
 
 
+def test_take_profit_partials_count_toward_the_trade() -> None:
+    t0 = NOW - timedelta(days=1)
+    events = [
+        _ev(t0, "OPENED", market="BTC", side="long", entry="100", collateral_usd="100"),
+        _ev(
+            t0 + timedelta(hours=4),
+            "TAKE_PROFIT",
+            market="BTC",
+            side="long",
+            step=1,
+            pnl_usd="20",
+            fees_usd="0.5",
+        ),
+        _ev(
+            t0 + timedelta(hours=8),
+            "TAKE_PROFIT",
+            market="BTC",
+            side="long",
+            step=2,
+            pnl_usd="15",
+            fees_usd="0.5",
+        ),
+        _ev(
+            t0 + timedelta(hours=12),
+            "CLOSED",
+            market="BTC",
+            side="long",
+            exit="104",
+            pnl_usd="-2",
+            fees_usd="0.5",
+            reason="STOP_LOSS",
+        ),
+    ]
+    (t,) = perps_trades(events, "degen")
+    assert t["take_profit_steps_hit"] == 2 and t["exit_reason"] == "STOP_LOSS"
+    assert t["net_pnl_usd"] == 31.5 and len(t["events_during_trade"]) == 2
+
+
 def test_perps_trades_pair_opens_with_closes_and_keep_context() -> None:
     trades = perps_trades(PERPS, "main")
     assert [t["market"] for t in trades] == ["BTC", "ETH"]  # SOL still open
@@ -171,7 +209,24 @@ ANALYSIS = tr.TradeAnalysis(
     what_went_well=["rode the move"],
     what_to_improve=["gave back 3% before exit"],
 )
-SUMMARY = dl.DailySummary(headline="Quiet day", summary_markdown="Not much.", things_to_watch=[])
+NEW_OPEN, NEW_CLOSE = NOW - timedelta(hours=26), NOW - timedelta(hours=20)  # closed Nov 21
+NEW_ID = f"spot:BTC-USD:{NEW_OPEN.isoformat()}:{NEW_CLOSE.isoformat()}"
+SUMMARY = dl.DailySummary(
+    headline="Quiet day",
+    summary_markdown="Not much.",
+    things_to_watch=[],
+    trade_reviews=[
+        dl.TradeVerdict(
+            trade_id=NEW_ID,
+            grade="acceptable",
+            entry_reason="trend up",
+            exit_reason="stop likely hit (guess)",
+            stop_and_take_profit="stop sat inside normal noise",
+            followed_rules=True,
+            what_to_improve=["stop distance vs daily move"],
+        )
+    ],
+)
 
 
 class FakeMessages:
@@ -243,12 +298,12 @@ def data(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.setenv("TRADER_CONFIGS_DIR", str(SHIPPED_CONFIGS))
     monkeypatch.setattr(ui_data, "kraken_public_ohlc", _rows)
     old = _spot_trade(NOW - timedelta(days=4), NOW - timedelta(days=3), "5")
-    new = _spot_trade(NOW - timedelta(hours=9), NOW - timedelta(hours=3), "-3")
+    new = _spot_trade(NEW_OPEN, NEW_CLOSE, "-3")
     _spot_state(tmp_path, [old, new], "880", "1000")
     return tmp_path
 
 
-def test_watch_reviews_only_new_trades_writes_daily_once_and_alerts(data: Path) -> None:
+def test_watch_makes_one_request_per_day_reviewing_its_trades(data: Path) -> None:
     from trader.cli.review import _load_cursor, watch_once
 
     settings = ra.load_assistant_settings(SHIPPED_CONFIGS).model_copy(
@@ -257,16 +312,40 @@ def test_watch_reviews_only_new_trades_writes_daily_once_and_alerts(data: Path) 
     client, sent = _client(), []
     cur = _load_cursor(data / "state" / "review-assistant.json")
     watch_once(cur, client, settings, sent.append, NOW)
-    names = [c["output_format"].__name__ for c in client.beta.messages.calls]
-    assert names == ["TradeAnalysis", "DailySummary"]  # the 3-day-old trade is not reviewed
-    assert any("spot long BTC closed $-3.00: Clean trend short" in s for s in sent)
+    (call,) = client.beta.messages.calls  # one request covers the summary and every trade
+    assert call["output_format"].__name__ == "DailySummary"
+    asked = json.loads(call["messages"][0]["content"])["facts"]
+    spot = next(a for a in asked["accounts"] if a["account"] == "spot")
+    assert asked["review_each_trade"] and [t["trade_id"] for t in spot["trades"]] == [NEW_ID]
+    assert "measured" in spot["trades"][0] and spot["trades"][0]["candles"]["rows"]
     assert any(s.startswith("daily 2026-11-21: Quiet day") for s in sent)
     assert any(s.startswith("DRAWDOWN spot") for s in sent)
-    assert (data / "reports" / "daily-2026-11-21.md").exists()
-    assert list((data / "reports" / "trades" / "spot").glob("*.md"))
+    text = (data / "reports" / "daily-2026-11-21.md").read_text()
+    assert "## Trades closed today" in text and "Grade: acceptable" in text
+    assert "stop distance vs daily move" in text
     sent.clear()
     watch_once(cur, client, settings, sent.append, NOW + timedelta(minutes=1))
-    assert sent == [] and len(client.beta.messages.calls) == 2
+    assert sent == [] and len(client.beta.messages.calls) == 1
+    early = _load_cursor(data / "nope.json")
+    watch_once(early, client, settings, sent.append, NOW.replace(hour=0, minute=5))
+    assert len(client.beta.messages.calls) == 1  # waits until 00:10 UTC
+
+
+def test_daily_without_trade_reviews_or_answer(data: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = ra.load_assistant_settings(SHIPPED_CONFIGS).model_copy(
+        update={"review_every_trade": False}
+    )
+    client = _client(DailySummary="refuse")
+    _, md = dl.write_daily(data, ["spot"], "2026-11-21", client, settings, lambda t: {})
+    asked = json.loads(client.beta.messages.calls[0]["messages"][0]["content"])["facts"]
+    assert (
+        asked["review_each_trade"] is False and "measured" not in asked["accounts"][0]["trades"][0]
+    )
+    assert "declined" in md.read_text()
+    monkeypatch.setattr(dl, "MAX_TRADES_REVIEWED", 0)
+    facts = dl.daily_facts(data, ["spot"], "2026-11-21")
+    assert dl.attach_trade_facts(facts, lambda t: {}) == 0
+    assert facts["accounts"][0]["trades"][0]["review"].startswith("skipped")
 
 
 def test_cli_trade_and_daily(data: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -279,7 +358,7 @@ def test_cli_trade_and_daily(data: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     assert CliRunner().invoke(app, ["review", "trade", "--account", "spot"]).exit_code == 3
     r = CliRunner().invoke(app, ["review", "trade", "--account", "main"])
     assert "no closed trades" in r.output
-    r = CliRunner().invoke(app, ["review", "daily", "--day", "2026-11-22", "--dry-run"])
+    r = CliRunner().invoke(app, ["review", "daily", "--day", "2026-11-21", "--dry-run"])
     accts = {a["account"]: a for a in json.loads(r.output)["accounts"]}
     assert accts["spot"]["trades_closed"] == 1 and accts["main"]["ran"] is False
     assert "no matching reports" in CliRunner().invoke(app, ["review", "show", "--daily"]).output

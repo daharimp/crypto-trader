@@ -175,6 +175,15 @@ def _timeframe(account: str) -> tuple[str, str | None]:
     return str(st.get("timeframe", "4h")), st.get("signal")
 
 
+def enrich_trade(trade: dict[str, Any]) -> dict[str, Any]:
+    """Measured facts for one trade (no AI request), for the end-of-day batch review."""
+    from trader.assistant.trade_review import build_trade_facts
+    from trader.ui.data import kraken_public_ohlc
+
+    tf, rule = _timeframe(trade["account"])
+    return build_trade_facts(trade, configs_root(), kraken_public_ohlc, tf, rule)
+
+
 def review_trade(trade: dict[str, Any], client: Any, settings: Any) -> tuple[str, Path]:
     """
     Analyze one closed trade and save its report; return a one-line alert and the path.
@@ -206,7 +215,7 @@ def trade_cmd(
     last: int = typer.Option(1, "--last", min=1, max=20, help="How many recent trades."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print the trades only; no AI cost."),
 ) -> None:
-    """Analyze the most recent closed trade(s) of an account and save the reports."""
+    """Analyze recent closed trade(s) now, one AI request each (the daily batch is cheaper)."""
     if account not in ALL_ACCOUNTS:
         typer.echo(f"unknown account {account!r}; choose one of {list(ALL_ACCOUNTS)}", err=True)
         raise typer.Exit(EXIT_INVALID)
@@ -240,13 +249,15 @@ def daily_cmd(
     if dry_run:
         typer.echo(json.dumps(daily_facts(data_root(), accounts, day), indent=1, default=str))
         return
-    headline, md = write_daily(data_root(), accounts, day, _client_or_exit(), settings)
+    headline, md = write_daily(
+        data_root(), accounts, day, _client_or_exit(), settings, enrich_trade
+    )
     typer.echo(f"{headline}\nreport: {md}")
 
 
 def _load_cursor(path: Path) -> dict[str, Any]:
     d: dict[str, Any] = json.loads(path.read_text()) if path.exists() else {}
-    for k in ("done", "trades_done", "trades_seeded", "daily_done"):
+    for k in ("done", "daily_done"):
         d.setdefault(k, [])
     d.setdefault("drawdown_seen", {})
     return d
@@ -254,7 +265,7 @@ def _load_cursor(path: Path) -> dict[str, Any]:
 
 def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: datetime) -> None:
     """
-    One pass of the watcher: bad days, new closed trades, the daily summary, drawdowns.
+    One pass of the watcher: bad days, the end-of-day summary with every trade, drawdowns.
 
     Args:
         cur (dict[str, Any]): Cursor (updated in place; the caller saves it).
@@ -281,27 +292,6 @@ def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: 
                 except Exception as exc:  # noqa: BLE001 - one failed review must not stop the watcher
                     send(f"{account} {day}: review failed ({type(exc).__name__}: {exc})")
     accounts = list(settings.report_accounts)
-    if settings.review_every_trade:
-        seen = set(cur["trades_done"])
-        # Reason: on an account's first pass only the last day's trades are analyzed, so
-        # turning this on does not buy an analysis of every historical trade at once.
-        recent = (now - timedelta(days=1)).isoformat()
-        for account in accounts:
-            trades = closed_trades(data_root(), account)
-            if account not in cur["trades_seeded"]:
-                seen |= {t["trade_id"] for t in trades if t["closed_at_utc"] < recent}
-                cur["trades_seeded"].append(account)
-            for t in trades:
-                if t["trade_id"] in seen:
-                    continue
-                seen.add(t["trade_id"])
-                cur["trades_done"] = sorted(seen)
-                try:
-                    line, _ = review_trade(t, client, settings)
-                    send(line)
-                except Exception as exc:  # noqa: BLE001 - one failed analysis must not stop the watcher
-                    send(f"{account} trade review failed ({type(exc).__name__}: {exc})")
-        cur["trades_done"] = sorted(seen)
     yesterday = (now - timedelta(days=1)).date().isoformat()
     # Reason: wait 10 minutes past midnight UTC so 4h and 1h sessions finish the day's last bar.
     if (
@@ -312,7 +302,12 @@ def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: 
         cur["daily_done"] = sorted({*cur["daily_done"], yesterday})[-60:]
         try:
             headline, _ = write_daily(
-                data_root(), accounts or list(ALL_ACCOUNTS), yesterday, client, settings
+                data_root(),
+                accounts or list(ALL_ACCOUNTS),
+                yesterday,
+                client,
+                settings,
+                enrich_trade,
             )
             send(
                 f"daily {yesterday}: {headline}. Read it: docker compose run --rm cli "
@@ -328,7 +323,7 @@ def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: 
 
 @app.command("watch")
 def watch() -> None:
-    """Review bad days, every closed trade, each day and drawdowns; alert when ready (ADR-045)."""
+    """Review bad days, each day with its trades, and drawdowns; alert when ready (ADR-046)."""
     from trader.perps.review_agents import load_assistant_settings
     from trader.session.alerts import Alerter
 
@@ -338,7 +333,7 @@ def watch() -> None:
     path = data_root() / "state" / "review-assistant.json"
     cur = _load_cursor(path)
     typer.echo(
-        f"review assistant: bad days {settings.accounts}, trades/daily/drawdown "
+        f"review assistant: bad days {settings.accounts}, daily+trades/drawdown "
         f"{settings.report_accounts}"
     )
     while True:

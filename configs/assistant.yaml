@@ -16,9 +16,9 @@ effort:
 # Review automatically when an account journals a bad day (DAY_HALTED).
 review_on_bad_day: true
 accounts: [main, degen, spot-perps]
-# ADR-045: analyze every closed trade, write a daily summary (after 00:10 UTC) and alert on
-# drawdown from each account's peak, for these accounts. Alert levels are percentages; they
-# only send a message and never change trading.
+# ADR-046: once a day (after 00:10 UTC) ONE request writes the daily summary and, with
+# review_every_trade, a review of every trade closed that day (batched to save usage). Drawdown
+# alerts are code only and alert when an account falls past a level below its peak.
 review_every_trade: true
 daily_summary: true
 report_accounts: [main, degen, spot-perps, spot]

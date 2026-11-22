@@ -4,7 +4,7 @@
 # v11 (2026-11-22): owner decision UD-32: "keep both SL around 20-30% but we need to implement
 # that rule that has the TP points with the SL adjustments after each TP": a 30% stop, tightened from 50% (about 1.2 typical daily moves at the buffer of 4)
 # and a take-profit ladder (TP1 -> stop to breakeven, TP2 -> stop to TP1, TP3 closes the
-# rest; ADR-044). Placement TP 4/8/12R closing 25/25/50 was chosen in ADR-044 from
+# rest; ADR-045). Placement TP 4/8/12R closing 25/25/50 was chosen in ADR-045 from
 # EXP-2026-022 for this stop width; merging the pull request approves those numbers.
 # Venue values (costs, venue_limits) must be checked against Jupiter's current docs:
 # https://dev.jup.ag and https://station.jup.ag/guides/perpetual-exchange
@@ -32,11 +32,11 @@ risk:
   liquidation_buffer_daily_moves: {value: 4, status: approved, ref: UD-26, approved_by: owner, approved_on: "2026-11-12", note: "each new position opens at the leverage that keeps liquidation this many typical daily moves (30-day) away, never above target_leverage"}
   max_collateral_per_position_pct: {value: 10, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "% of equity posted per position"}
   stop_loss_pct_of_collateral: {value: 30, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "owner: keep both stops around 20-30% (was 50%, UD-31); with the buffer of 4 daily moves the stop sits about 1.2 typical daily moves from entry, so a losing trade costs about 3% of equity (10% collateral x 30%) plus any gap; this distance is 1R for the ladder; after a stop that market waits for the next UTC day"}
-  take_profit_1_r: {value: 4, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "owner: TP points with a stop move after each TP; placement chosen in ADR-044 (EXP-2026-022); TP1 at 4R closes 25% and moves the stop to breakeven (fees covered)"}
-  take_profit_1_close_pct: {value: 25, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "% of the opening size closed at TP1 (ADR-044)"}
-  take_profit_2_r: {value: 8, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "TP2 at 8R closes 25% and moves the stop to TP1 (ADR-044)"}
-  take_profit_2_close_pct: {value: 25, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "% of the opening size closed at TP2 (ADR-044)"}
-  take_profit_3_r: {value: 12, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "TP3 at 12R closes the remaining 50%; then the market waits for the next UTC day (ADR-044)"}
+  take_profit_1_r: {value: 4, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "owner: TP points with a stop move after each TP; placement chosen in ADR-045 (EXP-2026-022); TP1 at 4R closes 25% and moves the stop to breakeven (fees covered)"}
+  take_profit_1_close_pct: {value: 25, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "% of the opening size closed at TP1 (ADR-045)"}
+  take_profit_2_r: {value: 8, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "TP2 at 8R closes 25% and moves the stop to TP1 (ADR-045)"}
+  take_profit_2_close_pct: {value: 25, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "% of the opening size closed at TP2 (ADR-045)"}
+  take_profit_3_r: {value: 12, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "TP3 at 12R closes the remaining 50%; then the market waits for the next UTC day (ADR-045)"}
   max_total_size_pct_of_equity: {value: 400, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "sum of open position sizes as % of equity"}
   min_liquidation_distance_pct: {value: 3.5, status: approved, ref: UD-27, approved_by: owner, approved_on: "2026-11-12", note: "refuse opens whose liquidation price is closer than this; lowered from 8 so 25x (about 3.7% away) is allowed"}
   max_open_positions: {value: 3, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}

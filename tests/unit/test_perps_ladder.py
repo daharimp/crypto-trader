@@ -1,4 +1,4 @@
-"""Take-profit ladder on a paper perps account (ADR-044): TP1 -> breakeven, TP2 -> TP1, TP3.
+"""Take-profit ladder on a paper perps account (ADR-045): TP1 -> breakeven, TP2 -> TP1, TP3.
 
 Values below are TEST FIXTURES with no market meaning, except where the shipped config files
 are read on purpose.

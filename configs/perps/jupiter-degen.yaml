@@ -7,7 +7,7 @@
 # v2 (2026-11-22): owner decision UD-32: "keep both SL around 20-30% but we need to implement
 # that rule that has the TP points with the SL adjustments after each TP": a 30% stop (unchanged)
 # and a take-profit ladder (TP1 -> stop to breakeven, TP2 -> stop to TP1, TP3 closes the
-# rest; ADR-044). Placement TP 4/8/12R closing 25/25/50 was chosen in ADR-044 from
+# rest; ADR-045). Placement TP 4/8/12R closing 25/25/50 was chosen in ADR-045 from
 # EXP-2026-022 for this stop width; merging the pull request approves those numbers.
 # Every value here is adjustable: edit it, raise `version`, update the approval fields, and
 # restart the account (RUNBOOK 2d). A value set to TBD stops the account (exit 3).
@@ -35,11 +35,11 @@ risk:
   liquidation_buffer_daily_moves: {value: 3, status: approved, ref: UD-29, approved_by: owner, approved_on: "2026-11-15", note: "owner: '3 is the floor'; about 1.3x the main account's leverage (research/bigger-bets-replay-results.txt)"}
   max_collateral_per_position_pct: {value: 5, status: approved, ref: UD-29, approved_by: owner, approved_on: "2026-11-15", note: "% of equity posted per position; the guarded replay's 5% (research/confidence-replay-results.txt)"}
   stop_loss_pct_of_collateral: {value: 30, status: approved, ref: UD-29, approved_by: owner, approved_on: "2026-11-15", note: "owner: a stop so no trade loses more than 30% of what is at risk; fees included; after a stop that market waits for the next UTC day"}
-  take_profit_1_r: {value: 4, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "owner: TP points with a stop move after each TP; placement chosen in ADR-044 (EXP-2026-022); TP1 at 4R closes 25% and moves the stop to breakeven (fees covered)"}
-  take_profit_1_close_pct: {value: 25, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "% of the opening size closed at TP1 (ADR-044)"}
-  take_profit_2_r: {value: 8, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "TP2 at 8R closes 25% and moves the stop to TP1 (ADR-044)"}
-  take_profit_2_close_pct: {value: 25, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "% of the opening size closed at TP2 (ADR-044)"}
-  take_profit_3_r: {value: 12, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "TP3 at 12R closes the remaining 50%; then the market waits for the next UTC day (ADR-044)"}
+  take_profit_1_r: {value: 4, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "owner: TP points with a stop move after each TP; placement chosen in ADR-045 (EXP-2026-022); TP1 at 4R closes 25% and moves the stop to breakeven (fees covered)"}
+  take_profit_1_close_pct: {value: 25, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "% of the opening size closed at TP1 (ADR-045)"}
+  take_profit_2_r: {value: 8, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "TP2 at 8R closes 25% and moves the stop to TP1 (ADR-045)"}
+  take_profit_2_close_pct: {value: 25, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "% of the opening size closed at TP2 (ADR-045)"}
+  take_profit_3_r: {value: 12, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "TP3 at 12R closes the remaining 50%; then the market waits for the next UTC day (ADR-045)"}
   max_total_size_pct_of_equity: {value: 400, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "sum of open position sizes as % of equity"}
   min_liquidation_distance_pct: {value: 3.5, status: approved, ref: UD-27, approved_by: owner, approved_on: "2026-11-12", note: "refuse opens whose liquidation price is closer than this"}
   max_open_positions: {value: 3, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02"}

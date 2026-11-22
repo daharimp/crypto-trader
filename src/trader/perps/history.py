@@ -60,7 +60,7 @@ def read_history(events_path: Path) -> dict[str, Any]:
 
     Returns:
         dict[str, Any]: ``trades`` (newest first; ``pnl_usd`` is after closing and borrow
-        fees and includes any take-profits taken along the way (ADR-044), and a liquidation
+        fees and includes any take-profits taken along the way (ADR-045), and a liquidation
         loses the whole collateral), ``equity`` (oldest first, one
         point at the start and one per day change) and ``open`` (per market: the leverage
         and liquidation price recorded when the position opened).
@@ -82,7 +82,7 @@ def read_history(events_path: Path) -> dict[str, Any]:
                 **{k: e.get(k) for k in _OPEN_KEYS},
             }
         elif kind == "TAKE_PROFIT" and market and market in opened:
-            # ADR-044: a partial close; its net is added to the trade when the rest closes.
+            # ADR-045: a partial close; its net is added to the trade when the rest closes.
             o = opened[market]
             part = _net(e.get("pnl_usd"), e.get("fees_usd"))
             o["take_profits"] = o.get("take_profits", 0) + 1

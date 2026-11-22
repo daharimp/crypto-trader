@@ -99,7 +99,7 @@ def _load_account(params: PerpsParams, d: dict[str, Any]) -> PaperPerpsAccount:
             datetime.fromisoformat(p["opened_at"]),
             Decimal(p["borrow_fees_usd"]),
             datetime.fromisoformat(p["last_accrual"]) if p["last_accrual"] else None,
-            # Reason: state written before ADR-043 has no ladder keys.
+            # Reason: state written before ADR-044 has no ladder keys.
             None if p.get("initial_stop") is None else Decimal(p["initial_stop"]),
             int(p.get("tps_hit", 0)),
             None if p.get("moved_stop") is None else Decimal(p["moved_stop"]),

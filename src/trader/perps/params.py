@@ -106,7 +106,7 @@ class PerpsParams:
     # until the next UTC day. ``resolve`` refuses a file without it (exit 3); None remains
     # only for parameters built in code (research replays).
     stop_loss_pct_of_collateral: Decimal | None = None
-    # Optional (ADR-043, UD-32): a three-step take-profit ladder measured in R, the distance
+    # Optional (ADR-044, UD-32): a three-step take-profit ladder measured in R, the distance
     # from entry to the opening stop. Each entry is (level in R, % of the opening size
     # closed there); the last step closes whatever is left. TP1 moves the stop to breakeven
     # (fees covered), TP2 moves it to TP1. None means no ladder.
@@ -116,7 +116,7 @@ class PerpsParams:
 BUFFER_KEY = "liquidation_buffer_daily_moves"
 STOP_KEY = "stop_loss_pct_of_collateral"
 DEFAULT_FILE = "jupiter.yaml"
-# ADR-043: all five or none; the third level closes the rest of the position.
+# ADR-044: all five or none; the third level closes the rest of the position.
 LADDER_KEYS = (
     "take_profit_1_r",
     "take_profit_1_close_pct",
@@ -233,7 +233,7 @@ def _ladder(
     cfg: PerpsConfigFile, missing: list[str], refs: set[str], has_stop: bool
 ) -> tuple[tuple[Decimal, Decimal], ...] | None:
     """
-    Read the optional take-profit ladder (ADR-043).
+    Read the optional take-profit ladder (ADR-044).
 
     Args:
         cfg (PerpsConfigFile): Validated file.

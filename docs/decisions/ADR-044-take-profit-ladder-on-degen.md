@@ -1,9 +1,9 @@
-# ADR-043: A take-profit ladder on the degen paper perps account (a live paper test)
+# ADR-044: A take-profit ladder on the degen paper perps account (a live paper test)
 
 - **Status:** Accepted (2026-11-22; owner decision UD-32)
 - **Owner decision UD-32 (2026-11-22):** the owner wants every trade to keep a stop that
   moves to protect gains: "hits 1st TP > move SL, hits 2nd TP > move SL > 3rd TP".
-  EXP-2026-018 (`research/EXP-2026-018-results.txt`, past prices, not a forecast) found
+  EXP-2026-022 (`research/EXP-2026-022-results.txt`, past prices, not a forecast) found
   that on all three bots every ladder variant earned much less than a fixed stop with the
   signal exit, because the few very large trend trades make most of the profit and a TP3
   cap ends them. Shown that, the owner chose to run the ladder **on the degen account only**

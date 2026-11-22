@@ -31,7 +31,7 @@ class PerpPosition:
     opened_at: datetime
     borrow_fees_usd: Decimal = Decimal(0)
     last_accrual: datetime | None = None
-    # ADR-043 take-profit ladder: the opening stop price (R is its distance from entry), the
+    # ADR-044 take-profit ladder: the opening stop price (R is its distance from entry), the
     # number of take-profits already hit, and the stop the ladder has moved to (None until
     # TP1; the collateral-based stop applies until then).
     initial_stop: Decimal | None = None
@@ -134,7 +134,7 @@ class PaperPerpsAccount:
 
         Returns:
             Decimal | None: The stop price, or None when no stop is configured (ADR-038).
-            After a take-profit it is the stop the ladder moved to (ADR-043).
+            After a take-profit it is the stop the ladder moved to (ADR-044).
         """
         if p.moved_stop is not None:
             return p.moved_stop
@@ -168,7 +168,7 @@ class PaperPerpsAccount:
             opens (dict[str, Decimal] | None): The bar's open per market; a stop that the
                 open already gapped through fills there instead of at the stop.
             favorable (dict[str, Decimal] | None): The bar's favorable extreme per open
-                position; take-profits are checked against it (ADR-043).
+                position; take-profits are checked against it (ADR-044).
             closes (dict[str, Decimal] | None): The bar's close; after a take-profit moves
                 the stop, a close past the new stop exits there.
         """
@@ -232,7 +232,7 @@ class PaperPerpsAccount:
 
     def tp_price(self, p: PerpPosition, step: int) -> Decimal | None:
         """
-        Price of take-profit ``step`` (0-based) for ``p``, or None without a ladder (ADR-043).
+        Price of take-profit ``step`` (0-based) for ``p``, or None without a ladder (ADR-044).
 
         Args:
             p (PerpPosition): Open position.
@@ -252,7 +252,7 @@ class PaperPerpsAccount:
         self, m: str, favorable: Decimal, close: Decimal | None, now: datetime
     ) -> None:
         """
-        Fill every take-profit the bar reached and move the stop behind it (ADR-043).
+        Fill every take-profit the bar reached and move the stop behind it (ADR-044).
 
         TP1 moves the stop to breakeven (open and close fees covered), TP2 moves it to TP1,
         TP3 closes the rest. If the bar then closes past the moved stop, the rest exits at
@@ -303,7 +303,7 @@ class PaperPerpsAccount:
         self, market: str, fraction: Decimal, price: Decimal, now: datetime, step: int
     ) -> None:
         """
-        Close ``fraction`` of an open position at ``price`` (a take-profit, ADR-043).
+        Close ``fraction`` of an open position at ``price`` (a take-profit, ADR-044).
 
         Args:
             market (str): Market.

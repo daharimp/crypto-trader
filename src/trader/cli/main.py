@@ -13,6 +13,7 @@ from . import (
     journal,
     killswitch,
     live,
+    ops,
     perps,
     profile,
     report,
@@ -41,6 +42,7 @@ app.add_typer(research.app, name="research")
 app.add_typer(perps.app, name="perps")
 app.add_typer(ui.app, name="ui")
 app.add_typer(review.app, name="review")
+app.add_typer(ops.app, name="ops")
 
 
 @app.command("version")

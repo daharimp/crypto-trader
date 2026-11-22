@@ -445,6 +445,41 @@ image again. Leaving old images in place is harmless; they only use disk.
 If the update changed a profile, risk, eligibility, or authorization file, re-run
 `profile activate` first (section 8). Read `CHANGELOG.md` before updating a live bot.
 
+## 8b. Hands-off: auto-deploy, watchdog and status push (ADR-047)
+
+Once set up, merging to `main` deploys itself, the server checks the bots every 15 minutes
+and alerts your phone only when something is wrong, and scheduled reviews read the bots'
+status without logging in to the server.
+
+1. On GitHub, create an **empty private** repository named `crypto-trader-ops` (no README).
+2. On the server, after a `git pull` that brings this section:
+
+   ```bash
+   cd ~/crypto-trader && bash scripts/ops/install.sh
+   ```
+
+   It builds the image (running bots are not restarted), installs three cron jobs
+   (auto-deploy every 5 minutes, watchdog every 15, status push hourly at :20) and prints a
+   new public key. Auto-deploy starts **on hold**: release it with
+   `bash scripts/ops/hold.sh off` once the current main is fine to deploy (if main needs an
+   archive and reset of paper runs first, do that before releasing).
+3. In `crypto-trader-ops` -> Settings -> Deploy keys -> Add deploy key, paste that key and
+   **tick "Allow write access"**. This key works only for the ops repository; the server's
+   key for the bot code stays read-only.
+4. Check: `bash scripts/ops/watchdog.sh` prints `OK` or a list of findings, and
+   `bash scripts/ops/push_status.sh` makes the first commit in `crypto-trader-ops`.
+
+Alerts use the same `ALERT_WEBHOOK_URL` as the bots (section 1c), prefixed `[ops]` for
+deploys and `[watchdog]` for health problems. Logs are in `~/.local/state/crypto-trader-ops/`.
+
+Auto-deploy restarts only `paper perps perps-degen perps-spot-perps review dashboard`; it
+never starts `live`. It skips, and alerts once, if files were edited on the server
+(`git status`) or the server is not on `main`. A failed build rolls back to the previous
+commit. Pause it before merging something that needs a reset first:
+`bash scripts/ops/hold.sh on "reason"`; `hold.sh off` releases it and `hold.sh` shows the
+state. While held it alerts once per waiting commit. To remove all of
+it: delete the `crypto-trader-ops` block in `crontab -e`.
+
 ## 9. Emergency without the server
 
 Log in to Kraken, cancel the open orders, and sell manually. The bot will detect the balance

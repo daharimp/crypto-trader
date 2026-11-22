@@ -102,3 +102,27 @@ def make_signal(
         model_version=None,
         rationale_codes=[code],
     )
+
+
+def watch_line(strategy: object, features: FeatureSet | None, holding: bool, fresh: bool) -> str:
+    """
+    Plain-English status of one instrument for the dashboard (ADR-043).
+
+    Strategies may define ``watch(features, holding) -> str``; others get a generic line.
+
+    Args:
+        strategy (object): Session strategy.
+        features (FeatureSet | None): Latest features.
+        holding (bool): Whether a position is open.
+        fresh (bool): Whether the latest expected candle arrived.
+
+    Returns:
+        str: Status line.
+    """
+    if not fresh:
+        return "Waiting for the latest candle (data is late), so no new trade this check."
+    fn = getattr(strategy, "watch", None)
+    if callable(fn):
+        return str(fn(features, holding))
+    sid = getattr(strategy, "strategy_id", "strategy")
+    return f"Holding; {sid} decides the exit." if holding else f"No {sid} entry signal this check."

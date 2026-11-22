@@ -11,6 +11,7 @@ from trader.profiles.loader import load_yaml
 from .base import Strategy
 from .mean_reversion import MeanReversion
 from .random_entry import RandomEntry
+from .sma_stance import SmaStance
 from .sma_trend import SmaTrend
 from .tsmom import Tsmom
 from .volatility_breakout import VolatilityBreakout
@@ -19,6 +20,7 @@ from .volatility_breakout import VolatilityBreakout
 # modules named in configuration.
 _CLASSES: dict[str, Any] = {
     "trader.strategies.sma_trend:SmaTrend": SmaTrend,
+    "trader.strategies.sma_stance:SmaStance": SmaStance,
     "trader.strategies.tsmom:Tsmom": Tsmom,
     "trader.strategies.mean_reversion:MeanReversion": MeanReversion,
     "trader.strategies.volatility_breakout:VolatilityBreakout": VolatilityBreakout,

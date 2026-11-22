@@ -30,8 +30,10 @@ services:
   paper:
     <<: *trader
     build: .  # the only build in this file: never move it to a profile-gated service
+    # Reason: paper spot runs the 50/200 trend stance (ADR-043, EXP-2026-018). Live keeps the
+    # profile default until paper results justify switching it.
     command: ["session", "run", "--profile", "${TRADER_PROFILE:-configs/profiles/balanced-paper.yaml}",
-              "--environment", "paper"]
+              "--environment", "paper", "--strategy", "${TRADER_PAPER_STRATEGY:-sma_stance}"]
 
   # Paper-only leverage practice, long and short, on live prices (ADR-031). It has no keys
   # and cannot place a real order.

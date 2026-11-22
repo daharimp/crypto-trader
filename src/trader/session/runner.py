@@ -390,6 +390,8 @@ class SessionRunner:
     def _save(self) -> None:
         """Persist session state."""
         self.meta["environment"] = self.cfg.environment.value
+        self.meta["strategy"] = self.cfg.strategy
+        self.meta["timeframe"] = self.cfg.timeframe
         self.meta["kill_switch_engaged"] = self.state.controls.kill_switch.engaged
         save_state(self.path, self.state, self.meta)
 

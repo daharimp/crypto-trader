@@ -140,6 +140,8 @@ def status_snapshot(
                 ],
                 "breaker_open": bool(d.get("controls", {}).get("breaker_open")),
                 "stale_cycles": meta.get("stale_cycles", 0),
+                "strategy": meta.get("strategy"),
+                "watch": {str(k): str(v) for k, v in (d.get("watch") or {}).items()},
             }
         )
     return {"kill_switch": kill_switch, "sessions": sessions, "live_gate": live_gate}

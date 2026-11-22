@@ -51,7 +51,7 @@ def test_shipped_degen_config_has_the_owner_values_and_main_is_unchanged() -> No
     assert degen.stop_loss_pct_of_collateral == D(30)
     assert degen.daily_loss_limit_pct == D(15)
     main = load_perps_params(SHIPPED_CONFIGS)
-    assert main.stop_loss_pct_of_collateral == D(30)  # UD-32, ADR-044
+    assert main.stop_loss_pct_of_collateral == D(30)  # UD-32, ADR-045
     assert main.max_collateral_per_position_pct == D(10)
     assert main.liquidation_buffer_daily_moves == D(4)
     assert settings_summary(degen)["stop_pct_of_collateral"] == "30"

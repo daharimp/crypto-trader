@@ -1,4 +1,4 @@
-# ADR-044: A take-profit ladder with a stop move after each take-profit (paper perps)
+# ADR-045: A take-profit ladder with a stop move after each take-profit (paper perps)
 
 - **Status:** Accepted (2026-11-22; owner decision UD-32)
 - **Owner decision UD-32 (2026-11-22):** the owner wants every trade to keep a stop that

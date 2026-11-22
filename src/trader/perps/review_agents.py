@@ -54,7 +54,15 @@ class AssistantSettings(BaseModel):
     max_tokens: int = Field(ge=1024, le=64000)
     effort: dict[str, Effort]
     review_on_bad_day: bool
-    accounts: list[Literal["main", "degen"]]
+    accounts: list[Literal["main", "degen", "spot-perps"]]
+    # ADR-045: per-trade analysis, a daily summary and drawdown alerts for every account.
+    # Defaults keep an older assistant.yaml valid; they are alert settings, not risk values.
+    review_every_trade: bool = False
+    daily_summary: bool = False
+    report_accounts: list[Literal["main", "degen", "spot-perps", "spot"]] = Field(
+        default_factory=list
+    )
+    drawdown_alert_pct: list[float] = Field(default_factory=list)
 
     def effort_for(self, role: str) -> Effort:
         """Effort for a role (``default`` when the role has none)."""
@@ -131,11 +139,11 @@ class Report(BaseModel):
 
 # --- prompts --------------------------------------------------------------------------------
 COMMON = (
-    "You review a SIMULATED (paper) crypto perpetuals account for its owner. The user message is "
-    "a JSON fact pack computed by code; use only numbers that appear in it, say so when a fact is "
-    "missing, and never invent prices, trades or results. One day is a small sample. Past results "
-    "are not a forecast; never promise or imply profit. You cannot change anything: the owner "
-    "decides every change. Write plainly for a non-specialist."
+    "You review a SIMULATED (paper) crypto account (perpetuals or spot) for its owner. The user "
+    "message is a JSON fact pack computed by code; use only numbers that appear in it, say so "
+    "when a fact is missing, and never invent prices, trades or results. One day is a small "
+    "sample. Past results are not a forecast; never promise or imply profit. You cannot change "
+    "anything: the owner decides every change. Write plainly for a non-specialist."
 )
 ROLES = {
     "market_analyst": "Role: market analyst. Explain what BTC, ETH and SOL did on the review day "
@@ -154,6 +162,20 @@ ROLES = {
     "skeptic": "Role: skeptic. Challenge each numbered proposal independently: is the evidence "
     "more than one day of noise, could it raise losses or liquidations, would a replay on past "
     "prices be needed first? Give one verdict per proposal.",
+    # ADR-045 roles: one request per closed trade, one per daily summary.
+    "trade_analyst": "Role: trade analyst. Review ONE closed paper trade. Explain why it most "
+    "likely opened (the account's rule and the candles before entry), why it closed (the "
+    "journaled exit reason; when none is recorded, say what the candles suggest and that it is "
+    "a guess), how the stop-loss and any take-profit steps behaved (was the stop too tight or "
+    "too loose given the measured excursions, was profit given back), whether the trade "
+    "followed the account's rules, and at most three concrete things to look at. Judge the "
+    "decision process, not just the outcome: a losing trade can be a good trade. Keep each "
+    "field short.",
+    "daily_editor": "Role: daily editor. Summarize one UTC day across every paper account for "
+    "the owner: how each account did, which trades stood out and why (use the per-trade "
+    "analyses when given), drawdown against each account's peak, patterns across accounts, and "
+    "at most three things worth watching. Accounts that did nothing get one line. Do not "
+    "restate the numbers table; code adds it below your text.",
     "lead_editor": "Role: lead editor. Write the owner's report in Markdown from the notes, "
     "proposals and verdicts: a one-line headline, what happened, what the bot did, risk, and what "
     "to consider. Do not restate proposal values; a table is added below your text by code. End by "

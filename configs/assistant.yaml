@@ -11,6 +11,15 @@ effort:
   strategy_researcher: high
   skeptic: high
   lead_editor: high
+  trade_analyst: medium
+  daily_editor: medium
 # Review automatically when an account journals a bad day (DAY_HALTED).
 review_on_bad_day: true
-accounts: [main, degen]
+accounts: [main, degen, spot-perps]
+# ADR-045: analyze every closed trade, write a daily summary (after 00:10 UTC) and alert on
+# drawdown from each account's peak, for these accounts. Alert levels are percentages; they
+# only send a message and never change trading.
+review_every_trade: true
+daily_summary: true
+report_accounts: [main, degen, spot-perps, spot]
+drawdown_alert_pct: [5, 10, 15]

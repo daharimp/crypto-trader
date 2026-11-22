@@ -143,6 +143,7 @@ def compute_features(
         "sma_50": sma(closes, 50),
         "sma_20_prev": sma(closes[:-1], 20),
         "sma_50_prev": sma(closes[:-1], 50),
+        "sma_200": sma(closes, 200),
         "atr_14": wilder_atr(smooth, 14),
         "rsi_14": wilder_rsi([c.close for c in smooth], 14),
         "bb_lower_20": bb[0] if bb else None,

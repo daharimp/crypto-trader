@@ -29,7 +29,7 @@ from trader.journal.store import JournalWriteError
 from trader.regimes.null_classifier import assess
 from trader.risk.context import RiskContext
 from trader.risk.controls import Cooldowns
-from trader.strategies.base import SignalIds
+from trader.strategies.base import SignalIds, watch_line
 
 from .state import RunState
 
@@ -289,6 +289,7 @@ def run_cycle(state: RunState, t: datetime) -> None:
         for s in signals:
             _j(state, EventType.SIGNAL_GENERATED, t, s, cycle, corr)
         pos = state.ledger.positions.get(iid)
+        state.watch[iid] = watch_line(state.strategy, fs, pos is not None, snap.is_fresh)
         dec = decide(
             signals,
             regime,
@@ -310,6 +311,8 @@ def run_cycle(state: RunState, t: datetime) -> None:
         if rd.status == RiskStatus.REJECTED:
             for code in rd.reason_codes:
                 state.rejections[code.value] += 1
+            codes = ", ".join(c.value for c in rd.reason_codes)
+            state.watch[iid] = f"Signal found but the risk check blocked it ({codes})."
             continue
         intent = state.engine.build_order_intent(rd, ctx)
         if intent is not None:

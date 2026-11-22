@@ -200,7 +200,7 @@ def day_summary(events: list[dict[str, Any]], day: str) -> dict[str, Any]:
             )
         }
         for e in todays
-        if e["event"] in ("CLOSED", "LIQUIDATED")
+        if e["event"] in ("CLOSED", "LIQUIDATED", "TAKE_PROFIT")
     ]
     refused = Counter(
         r for e in todays if e["event"] == "OPEN_REJECTED" for r in e.get("reasons", [])

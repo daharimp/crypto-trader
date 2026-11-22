@@ -106,11 +106,24 @@ class PerpsParams:
     # until the next UTC day. ``resolve`` refuses a file without it (exit 3); None remains
     # only for parameters built in code (research replays).
     stop_loss_pct_of_collateral: Decimal | None = None
+    # Optional (ADR-043, UD-32): a three-step take-profit ladder measured in R, the distance
+    # from entry to the opening stop. Each entry is (level in R, % of the opening size
+    # closed there); the last step closes whatever is left. TP1 moves the stop to breakeven
+    # (fees covered), TP2 moves it to TP1. None means no ladder.
+    take_profits: tuple[tuple[Decimal, Decimal], ...] | None = None
 
 
 BUFFER_KEY = "liquidation_buffer_daily_moves"
 STOP_KEY = "stop_loss_pct_of_collateral"
 DEFAULT_FILE = "jupiter.yaml"
+# ADR-043: all five or none; the third level closes the rest of the position.
+LADDER_KEYS = (
+    "take_profit_1_r",
+    "take_profit_1_close_pct",
+    "take_profit_2_r",
+    "take_profit_2_close_pct",
+    "take_profit_3_r",
+)
 
 
 class PerpsConfigUnresolvedError(Exception):
@@ -195,6 +208,7 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
             raise ValueError(f"risk.{key} must be positive" + (f" and below {top}" if top else ""))
         else:
             values[key] = Decimal(opt.value)
+    ladder = _ladder(cfg, missing, refs, STOP_KEY in values)
     start = cfg.starting_collateral_usd
     if start.value == "TBD":
         missing.append("starting_collateral_usd")
@@ -210,8 +224,51 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
         starting_collateral_usd=Decimal(start.value),
         markets={m.market: m.price_mint for m in cfg.markets},
         max_open_positions=int(values.pop("max_open_positions")),
+        take_profits=ladder,
         **values,
     )
+
+
+def _ladder(
+    cfg: PerpsConfigFile, missing: list[str], refs: set[str], has_stop: bool
+) -> tuple[tuple[Decimal, Decimal], ...] | None:
+    """
+    Read the optional take-profit ladder (ADR-043).
+
+    Args:
+        cfg (PerpsConfigFile): Validated file.
+        missing (list[str]): Unresolved keys so far; a TBD ladder key is added here.
+        refs (set[str]): Decision IDs that resolve them.
+        has_stop (bool): Whether the stop resolved (the ladder is measured from it).
+
+    Returns:
+        tuple | None: ``((r1, pct1), (r2, pct2), (r3, rest))`` or None without a ladder.
+
+    Raises:
+        ValueError: If only some keys are present, or the values are not usable.
+    """
+    present = [k for k in LADDER_KEYS if k in cfg.risk]
+    if not present:
+        return None
+    if len(present) != len(LADDER_KEYS):
+        absent = sorted(set(LADDER_KEYS) - set(present))
+        raise ValueError(f"take-profit ladder needs all of {LADDER_KEYS}; missing {absent}")
+    pending = [k for k in LADDER_KEYS if cfg.risk[k].value == "TBD"]
+    if pending:
+        missing += [f"risk.{k}" for k in pending]
+        refs.update(cfg.risk[k].ref for k in pending)
+        return None
+    v = {k: Decimal(cfg.risk[k].value) for k in LADDER_KEYS}
+    r1, r2, r3 = v["take_profit_1_r"], v["take_profit_2_r"], v["take_profit_3_r"]
+    p1, p2 = v["take_profit_1_close_pct"], v["take_profit_2_close_pct"]
+    if not Decimal(0) < r1 < r2 < r3:
+        raise ValueError("take-profit levels must be positive and increasing")
+    if p1 <= 0 or p2 <= 0 or p1 + p2 >= 100:
+        raise ValueError("take-profit close % must be positive and leave part for TP3")
+    if not has_stop:
+        # Reason: R is the distance to the opening stop; without a stop there is no R.
+        raise ValueError("a take-profit ladder needs risk.stop_loss_pct_of_collateral")
+    return ((r1, p1), (r2, p2), (r3, Decimal(100) - p1 - p2))
 
 
 def load_perps_params(
@@ -241,8 +298,8 @@ def settings_summary(p: PerpsParams) -> dict[str, Any]:
         p (PerpsParams): Resolved parameters.
 
     Returns:
-        dict[str, Any]: Version, collateral %, buffer, leverage cap, stop %, daily limit;
-        an optional setting that is off is None.
+        dict[str, Any]: Version, collateral %, buffer, leverage cap, stop %, daily limit,
+        take-profit ladder; an optional setting that is off is None.
     """
     opt = (p.liquidation_buffer_daily_moves, p.stop_loss_pct_of_collateral)
     return {
@@ -252,4 +309,7 @@ def settings_summary(p: PerpsParams) -> dict[str, Any]:
         "max_leverage": str(p.target_leverage),
         "stop_pct_of_collateral": None if opt[1] is None else str(opt[1]),
         "daily_loss_limit_pct": str(p.daily_loss_limit_pct),
+        "take_profits": None
+        if p.take_profits is None
+        else [{"at_r": str(r), "close_pct": str(pct)} for r, pct in p.take_profits],
     }

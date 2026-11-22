@@ -31,7 +31,7 @@ from .simulator import PaperPerpsAccount, PerpPosition
 
 STATE_VERSION = 1
 TIMEFRAMES = {"1h": timedelta(hours=1), "4h": timedelta(hours=4)}
-NOTIFY = {"OPENED", "CLOSED", "LIQUIDATED", "DAY_HALTED"}
+NOTIFY = {"OPENED", "CLOSED", "LIQUIDATED", "DAY_HALTED", "TAKE_PROFIT"}
 
 # (symbol, timeframe) -> [[open_time_ms, open, high, low, close, volume], ...] oldest first;
 # the last row is the still-forming candle.
@@ -71,6 +71,9 @@ def _dump_account(acct: PaperPerpsAccount) -> dict[str, Any]:
                 "opened_at": _iso(p.opened_at),
                 "borrow_fees_usd": str(p.borrow_fees_usd),
                 "last_accrual": _iso(p.last_accrual) if p.last_accrual else None,
+                "initial_stop": None if p.initial_stop is None else str(p.initial_stop),
+                "tps_hit": p.tps_hit,
+                "moved_stop": None if p.moved_stop is None else str(p.moved_stop),
             }
             for m, p in acct.positions.items()
         },
@@ -96,6 +99,10 @@ def _load_account(params: PerpsParams, d: dict[str, Any]) -> PaperPerpsAccount:
             datetime.fromisoformat(p["opened_at"]),
             Decimal(p["borrow_fees_usd"]),
             datetime.fromisoformat(p["last_accrual"]) if p["last_accrual"] else None,
+            # Reason: state written before ADR-043 has no ladder keys.
+            None if p.get("initial_stop") is None else Decimal(p["initial_stop"]),
+            int(p.get("tps_hit", 0)),
+            None if p.get("moved_stop") is None else Decimal(p["moved_stop"]),
         )
     return acct
 
@@ -121,6 +128,12 @@ def describe(event: dict[str, Any]) -> str:
         return (
             f"closed {side} {m} at {event['exit']}: "
             f"${event['pnl_usd']} before ${event['fees_usd']} fees"
+        )
+    if kind == "TAKE_PROFIT":
+        return (
+            f"take-profit {event['step']} on {side} {m} at {event['exit']}: closed "
+            f"${event['closed_size_usd']} (${event['pnl_usd']} before ${event['fees_usd']} fees), "
+            f"${event['remaining_size_usd']} still open; stop moved up"
         )
     if kind == "DAY_HALTED":
         return (
@@ -359,10 +372,16 @@ class PerpsSession:
                     m: (row[m].low if p.side == PerpSide.LONG else row[m].high)
                     for m, p in acct.positions.items()
                 }
+                favorable = {
+                    m: (row[m].high if p.side == PerpSide.LONG else row[m].low)
+                    for m, p in acct.positions.items()
+                }
                 acct.mark(
                     {**{m: b.close for m, b in row.items()}, **adverse},
                     closes_at,
                     opens={m: b.open for m, b in row.items()},
+                    favorable=favorable,
+                    closes={m: b.close for m, b in row.items()},
                 )
             newest = t == done[-1]
             # Reason: a decision at this bar's close fills at the next bar's open; for the

@@ -14,7 +14,11 @@
      never names `live`, so automation can never start real-money trading. It skips (and
      alerts once per commit) when the server is on another branch, has edited tracked files,
      or main was rewritten. A failed build rolls back to the previous commit and that commit
-     is not retried until main moves again. It uses the existing read-only deploy key.
+     is not retried until main moves again. It uses the existing read-only deploy key. It compares
+     `origin/main` with the commit last deployed (not the checkout), so a manual `git pull`
+     still gets deployed. A **hold** (`scripts/ops/hold.sh on|off`) pauses it so a deploy that
+     needs an approved archive and reset of paper runs waits for the owner; the first install
+     starts on hold.
   2. **Watchdog** (`scripts/ops/watchdog.sh`, every 15 minutes) saves `docker compose ps` and
      the last 20 minutes of logs to `data/ops/`, then runs `trader ops health --alert` in the
      `cli` container. The checks are read-only: expected containers running (and a warning if

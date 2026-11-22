@@ -40,13 +40,15 @@ HOLDOUT_DAYS = 180
 # ---------------------------------------------------------------- data and indicators
 
 
-def load_4h(path: Path) -> pd.DataFrame:
-    """Load a 1h CSV and build complete 4h bars aligned to 00:00 UTC."""
+def load_bars(path: Path, tf: str = "4h") -> pd.DataFrame:
+    """Load a 1h CSV and build complete ``tf`` bars aligned to 00:00 UTC."""
     df = pd.read_csv(path)
     df.index = pd.to_datetime(df.pop("open_time_utc"), utc=True)
     df = df.astype(float).sort_index()
     df = df[~df.index.duplicated()]
-    g = df.resample("4h", origin="epoch")
+    if tf == "1h":
+        return df[["open", "high", "low", "close", "volume"]]
+    g = df.resample(tf, origin="epoch")
     out = pd.DataFrame(
         {
             "open": g["open"].first(),
@@ -167,6 +169,10 @@ SPECS = [
     Spec("H hybrid: stance + reversion<30 in downtrend", spec_hybrid(30, stance=True)),
     Spec("I hybrid: stance + reversion<35 in downtrend", spec_hybrid(35, stance=True)),
 ]
+SPECS_1H = [
+    Spec("A current rule", spec_current),
+    Spec("C SMA50/200 stance", spec_stance(50, 200)),
+]
 
 
 # ---------------------------------------------------------------- portfolio replay
@@ -197,14 +203,24 @@ class Trade:
 class Run:
     equity: pd.Series
     trades: list[Trade] = field(default_factory=list)
-    breaker_at: pd.Timestamp | None = None
+    breaker_trips: list[pd.Timestamp] = field(default_factory=list)
 
 
-def replay(data: dict[str, pd.DataFrame], spec: Spec, start: pd.Timestamp, end: pd.Timestamp) -> Run:
+# Reason: the live breaker needs an owner reset (UD-01). A permanent halt would freeze every
+# rule set after its first trip and hide the rest of the window, so the replay models an
+# owner review: no new entries for 7 days, then the peak resets to current equity.
+BREAKER_PAUSE = pd.Timedelta(days=7)
+
+
+def replay(
+    data: dict[str, pd.DataFrame], spec: Spec, start: pd.Timestamp, end: pd.Timestamp
+) -> Run:
     """Replay one rule set on the portfolio between ``start`` and ``end``."""
     sig = {c: spec.build(df) for c, df in data.items()}
     idx = sorted(set().union(*[df.index for df in data.values()]))
     idx = [t for t in idx if start <= t < end]
+    if not idx:
+        return Run(pd.Series([2500.0], index=[start]))
     cash, peak = 2500.0, 2500.0
     pos: dict[str, Pos] = {}
     pending: dict[str, tuple[str, float]] = {}  # coin -> ("enter", mode) / ("exit", 0)
@@ -213,7 +229,8 @@ def replay(data: dict[str, pd.DataFrame], spec: Spec, start: pd.Timestamp, end: 
     day, day_start_eq = None, cash
     trades: list[Trade] = []
     eq_curve = {}
-    halted: pd.Timestamp | None = None
+    paused_until: pd.Timestamp | None = None
+    trips: list[pd.Timestamp] = []
 
     def close(p: Pos, px: float, t: pd.Timestamp, why: str) -> None:
         nonlocal cash
@@ -264,9 +281,12 @@ def replay(data: dict[str, pd.DataFrame], spec: Spec, start: pd.Timestamp, end: 
         peak = max(peak, mtm)
         if day != t.date():
             day, day_start_eq = t.date(), mtm
+        if paused_until is not None and t >= paused_until:
+            paused_until, peak = None, mtm
         dd = 1 - mtm / peak
-        if dd >= BREAKER and halted is None:
-            halted = t
+        if dd >= BREAKER and paused_until is None:
+            trips.append(t)
+            paused_until = t + BREAKER_PAUSE
         # 4) decisions on this close
         for coin, df in data.items():
             if t not in df.index:
@@ -278,7 +298,7 @@ def replay(data: dict[str, pd.DataFrame], spec: Spec, start: pd.Timestamp, end: 
                 if ex is not None and bool(ex.get(t, False)):
                     pending[coin] = ("exit", 0)
                 continue
-            if halted is not None or mtm < day_start_eq * (1 - DAILY_LOSS):
+            if paused_until is not None or mtm < day_start_eq * (1 - DAILY_LOSS):
                 continue
             if coin in cool_until and t < cool_until[coin]:
                 continue
@@ -299,7 +319,9 @@ def replay(data: dict[str, pd.DataFrame], spec: Spec, start: pd.Timestamp, end: 
             frac = dd / BREAKER
             mult = 1.0 if frac < 1 / 3 else 0.5 if frac < 2 / 3 else 0.25
             qty = RISK * mult * mtm / (stop_frac * row["close"])
-            exposure = sum(p.qty * df_c.at[t, "close"] for c, p in pos.items() if t in (df_c := data[c]).index)
+            exposure = sum(
+                p.qty * df_c.at[t, "close"] for c, p in pos.items() if t in (df_c := data[c]).index
+            )
             cap = min(TIER_CAP[coin] * mtm, EXPOSURE_CAP * mtm - exposure)
             qty = min(qty, max(cap, 0) / row["close"])
             if qty * row["close"] < 10:
@@ -310,12 +332,16 @@ def replay(data: dict[str, pd.DataFrame], spec: Spec, start: pd.Timestamp, end: 
     for coin in list(pos):
         if last in data[coin].index:
             close(pos[coin], data[coin].at[last, "close"], last, "end")
-    return Run(pd.Series(eq_curve), trades, halted)
+    return Run(pd.Series(eq_curve), trades, trips)
 
 
 def stats(run: Run) -> dict[str, float]:
     """Summary statistics for one replay."""
     eq = run.equity
+    if len(eq) < 2:
+        return dict.fromkeys(
+            ("trades", "per_month", "win", "ret", "dd", "sharpe", "pf", "stops"), 0.0
+        )
     daily = eq.resample("1D").last().dropna()
     r = daily.pct_change().dropna()
     sharpe = float(r.mean() / r.std() * np.sqrt(365)) if r.std() > 0 else 0.0
@@ -338,37 +364,60 @@ def stats(run: Run) -> dict[str, float]:
 
 def main(folder: str) -> None:
     """Run every rule set on development, holdout and the recent downtrend window."""
-    data = {}
+    data, data_1h = {}, {}
     for c in COINS:
         p = Path(folder) / f"{c.lower()}_usd_1h.csv"
         if p.exists():
-            data[c] = add_indicators(load_4h(p))
+            data[c] = add_indicators(load_bars(p, "4h"))
+            data_1h[c] = add_indicators(load_bars(p, "1h"))
     end = min(df.index[-1] for df in data.values()) + pd.Timedelta(hours=4)
     first = max(df.index[0] for df in data.values() if len(df) > 1500) + pd.Timedelta(days=40)
     hold = end - pd.Timedelta(days=HOLDOUT_DAYS)
     recent = end - pd.Timedelta(days=60)
+    live = pd.Timestamp("2026-11-15", tz="UTC")
     windows = {
         f"development {first.date()}..{hold.date()}": (first, hold),
         f"holdout (last {HOLDOUT_DAYS}d) {hold.date()}..{end.date()}": (hold, end),
         f"recent downtrend (last 60d) {recent.date()}..{end.date()}": (recent, end),
+        f"live paper period {live.date()}..{end.date()}": (live, end),
     }
     print("EXP-2026-018 spot entry rules. $2,500 paper, 1% risk, 2xATR stop on every entry,")
     print("50 bps/side, tier caps 35/15/5%, 80% exposure cap, breaker 15%, long only.")
-    print("Coins:", ", ".join(f"{c} ({len(df)} bars from {df.index[0].date()})" for c, df in data.items()))
+    print(
+        "Coins:",
+        ", ".join(f"{c} ({len(df)} bars from {df.index[0].date()})" for c, df in data.items()),
+    )
     for c, df in data.items():
         bh = {w: df["close"].asof(b) / df["close"].asof(a) - 1 for w, (a, b) in windows.items()}
         print(f"  B&H {c}: " + " | ".join(f"{v * 100:+.0f}%" for v in bh.values()))
     for w, (a, b) in windows.items():
         print(f"\n== {w}")
-        print(f"{'rule':<46}{'trades':>7}{'/mo':>6}{'win':>6}{'return':>8}{'maxDD':>7}{'sharpe':>7}{'PF':>6}{'stops':>6}  breaker")
-        for spec in SPECS:
-            run = replay(data, spec, a, b)
+        print(
+            f"{'rule':<46}{'trades':>7}{'/mo':>6}{'win':>6}{'return':>8}{'maxDD':>7}{'sharpe':>7}{'PF':>6}{'stops':>6} trips"
+        )
+        runs = [(spec.name, replay(data, spec, a, b)) for spec in SPECS]
+        runs += [
+            (f"{n} [1h bars]", replay(data_1h, sp, a, b)) for sp in SPECS_1H for n in [sp.name]
+        ]
+        for name, run in runs:
             s = stats(run)
             print(
-                f"{spec.name:<46}{s['trades']:>7}{s['per_month']:>6.1f}{s['win'] * 100:>5.0f}%"
+                f"{name:<46}{s['trades']:>7}{s['per_month']:>6.1f}{s['win'] * 100:>5.0f}%"
                 f"{s['ret'] * 100:>7.1f}%{s['dd'] * 100:>6.1f}%{s['sharpe']:>7.2f}{s['pf']:>6.2f}"
-                f"{s['stops']:>6}  {run.breaker_at.date() if run.breaker_at else '-'}"
+                f"{s['stops']:>6} {len(run.breaker_trips):>5}"
             )
+    print(
+        "\nLive paper period: every 4h SMA20/50 cross-up bar per coin (what sma_trend would buy):"
+    )
+    for c, df in data.items():
+        cr = _cross(df)
+        hits = [t for t in df.index[cr.fillna(False).to_numpy()] if t >= live]
+        last = df.index[cr.fillna(False).to_numpy()][-1] if cr.any() else None
+        row = df.iloc[-1]
+        print(
+            f"  {c}: crosses since {live.date()}: {[str(h) for h in hits] or 'none'}; last cross {last};"
+            f" now sma20/sma50 = {row['sma20'] / row['sma50'] - 1:+.2%}"
+        )
 
 
 if __name__ == "__main__":

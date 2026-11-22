@@ -61,8 +61,8 @@ services:
     command: ["session", "run", "--profile", "${TRADER_PROFILE:-configs/profiles/balanced-paper.yaml}",
               "--environment", "live"]
 
-  # AI review assistant (ADR-039): reviews each paper account's bad day and alerts you when
-  # the report is ready. Reads state and logs; writes only data/reports and its own cursor.
+  # AI review assistant (ADR-039, ADR-046): reviews bad days, every closed trade, each day and
+  # drawdowns of the paper accounts and alerts you when a report is ready. Reads state and logs; writes only data/reports and its own cursor.
   # Needs ANTHROPIC_API_KEY in .env; without it the service exits 3 and stops retrying.
   review:
     <<: *trader

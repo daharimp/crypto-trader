@@ -59,14 +59,12 @@ def _bar(
 
 
 # --- configuration ---------------------------------------------------------------------
-def test_shipped_configs_ladder_only_on_degen() -> None:
-    degen = load_perps_params(SHIPPED_CONFIGS, "jupiter-degen.yaml")
-    main = load_perps_params(SHIPPED_CONFIGS)
-    assert degen.take_profits is not None and len(degen.take_profits) == 3
-    assert sum(pct for _, pct in degen.take_profits) == D(100)
-    assert main.take_profits is None
-    assert settings_summary(main)["take_profits"] is None
-    assert settings_summary(degen)["take_profits"][0]["close_pct"] == "25"
+def test_shipped_perps_configs_have_the_owner_ladder_on_a_30_percent_stop() -> None:
+    for name in ("jupiter.yaml", "jupiter-degen.yaml"):
+        p = load_perps_params(SHIPPED_CONFIGS, name)
+        assert p.stop_loss_pct_of_collateral == D(30)  # UD-32
+        assert p.take_profits == ((D(4), D(25)), (D(8), D(25)), (D(12), D(50)))
+        assert settings_summary(p)["take_profits"][2] == {"at_r": "12", "close_pct": "50"}
 
 
 def test_ladder_resolves_with_the_rest_closing_at_tp3() -> None:

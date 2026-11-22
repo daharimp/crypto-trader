@@ -51,11 +51,11 @@ def test_shipped_degen_config_has_the_owner_values_and_main_is_unchanged() -> No
     assert degen.stop_loss_pct_of_collateral == D(30)
     assert degen.daily_loss_limit_pct == D(15)
     main = load_perps_params(SHIPPED_CONFIGS)
-    assert main.stop_loss_pct_of_collateral == D(50)  # UD-31, ADR-042
+    assert main.stop_loss_pct_of_collateral == D(30)  # UD-32, ADR-044
     assert main.max_collateral_per_position_pct == D(10)
     assert main.liquidation_buffer_daily_moves == D(4)
     assert settings_summary(degen)["stop_pct_of_collateral"] == "30"
-    assert settings_summary(main)["stop_pct_of_collateral"] == "50"
+    assert settings_summary(main)["stop_pct_of_collateral"] == "30"
 
 
 def test_unresolved_stop_fails_closed() -> None:
@@ -169,10 +169,10 @@ def test_cli_validates_each_account_and_rejects_unknown(
     monkeypatch.setenv("TRADER_DATA_DIR", str(tmp_path))
     r = CliRunner().invoke(app, ["perps", "validate", "--account", "degen"])
     assert r.exit_code == 0, r.output
-    assert "jupiter-degen.yaml v1" in r.output and "stop 30% of collateral" in r.output
+    assert "jupiter-degen.yaml v2" in r.output and "stop 30% of collateral" in r.output
     r = CliRunner().invoke(app, ["perps", "validate"])
     assert (
-        r.exit_code == 0 and "jupiter.yaml v10" in r.output and "stop 50% of collateral" in r.output
+        r.exit_code == 0 and "jupiter.yaml v11" in r.output and "stop 30% of collateral" in r.output
     )
     assert CliRunner().invoke(app, ["perps", "validate", "--account", "yolo"]).exit_code == 2
     r = CliRunner().invoke(app, ["perps", "paper", "status", "--account", "degen"])

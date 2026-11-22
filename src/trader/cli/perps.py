@@ -86,12 +86,18 @@ def validate(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)
     """Check an account's perps config. Exit 3 lists every unresolved value."""
     params = _params_or_exit(account)
     stop = params.stop_loss_pct_of_collateral
+    tps = params.take_profits
+    ladder = (
+        "off"
+        if tps is None
+        else "/".join(f"{r}R" for r, _ in tps) + " closing " + "/".join(f"{p}%" for _, p in tps)
+    )
     typer.echo(
         f"perps config {ACCOUNTS[account][0]} v{params.version}: all values approved "
         f"(paper only); {params.max_collateral_per_position_pct}% collateral per position, "
         f"buffer {params.liquidation_buffer_daily_moves or 'off'} daily moves, "
         f"stop {f'{stop}% of collateral' if stop else 'off'}, "
-        f"daily loss limit {params.daily_loss_limit_pct}%"
+        f"daily loss limit {params.daily_loss_limit_pct}%, take-profit ladder {ladder}"
     )
 
 

@@ -7,6 +7,9 @@ so it never looks ahead.
 * ``tsmom_30d``: long if the price is above its level 30 days ago, short if below.
 * ``consensus_sma_tsmom``: takes a side only when the two rules above agree; flat when they
   disagree or either is still warming up.
+* ``trend_50_200_range_10_30`` (default, ADR-044): the shared trend rule in
+  ``trader.regimes.trend``, long in an uptrend and short in a downtrend (50/200 averages,
+  10/30 while ranging).
 """
 
 from __future__ import annotations
@@ -14,12 +17,15 @@ from __future__ import annotations
 from collections.abc import Callable
 from decimal import Decimal
 
+from trader.domain.enums import TrendState
+from trader.regimes.trend import trend_from_closes
+
 from .backtest import sma_stance
 from .math import PerpSide
 
 Signal = Callable[[list[Decimal]], PerpSide | None]
 MOMENTUM_DAYS = 30
-DEFAULT_SIGNAL = "tsmom_30d"
+DEFAULT_SIGNAL = "trend_50_200_range_10_30"
 
 
 def tsmom(closes: list[Decimal], lookback_bars: int) -> PerpSide | None:
@@ -68,14 +74,26 @@ def make_signal(name: str, bars_per_day: int) -> Signal:
         # Reason: act only on agreement; disagreement or a missing vote means stay out.
         return a if a is not None and a == b else None
 
+    def trend(closes: list[Decimal]) -> PerpSide | None:
+        state = trend_from_closes(closes)
+        if state == TrendState.TRENDING_UP:
+            return PerpSide.LONG
+        return PerpSide.SHORT if state == TrendState.TRENDING_DOWN else None
+
     table: dict[str, Signal] = {
         "sma_stance_20_50": sma,
         "tsmom_30d": momentum,
         "consensus_sma_tsmom": consensus,
+        "trend_50_200_range_10_30": trend,
     }
     if name not in table:
         raise ValueError(f"unknown signal {name!r}; choose one of {sorted(table)}")
     return table[name]
 
 
-SIGNAL_NAMES = ("sma_stance_20_50", "tsmom_30d", "consensus_sma_tsmom")
+SIGNAL_NAMES = (
+    "sma_stance_20_50",
+    "tsmom_30d",
+    "consensus_sma_tsmom",
+    "trend_50_200_range_10_30",
+)

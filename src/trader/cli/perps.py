@@ -33,8 +33,37 @@ app = typer.Typer(help="Jupiter Perps research, paper only (ADR-025).", no_args_
 ACCOUNTS = {
     "main": ("jupiter.yaml", "perps-paper", "[perps paper]"),
     "degen": ("jupiter-degen.yaml", "perps-degen", "[perps degen]"),
+    "spot-perps": ("jupiter-spot-perps.yaml", "perps-spot-perps", "[spot perps]"),
 }
-ACCOUNT_HELP = "Paper account: main (the running one) or degen (ADR-038)."
+ACCOUNT_HELP = (
+    "Paper account: main (the running one), degen (ADR-038), or spot-perps (spot's trend "
+    "rule long and short at 1x, ADR-044)."
+)
+# Reason: spot code is long-only by the safety rules, so spot's trend rule runs both ways in
+# this paper perps account (ADR-044); it must always run that rule, whatever --signal says.
+FIXED_SIGNALS = {"spot-perps": DEFAULT_SIGNAL}
+
+
+def resolve_signal(account: str, requested: str | None) -> str:
+    """
+    The signal an account runs.
+
+    Args:
+        account (str): Account name from ``ACCOUNTS``.
+        requested (str | None): ``--signal`` value, or None for the account's default.
+
+    Returns:
+        str: Signal name.
+
+    Raises:
+        ValueError: If the account has a fixed signal and another one was requested.
+    """
+    fixed = FIXED_SIGNALS.get(account)
+    if fixed is None:
+        return requested or DEFAULT_SIGNAL
+    if requested not in (None, fixed):
+        raise ValueError(f"account {account} only runs {fixed}, not {requested}")
+    return fixed
 
 
 def account_paths(root: Path, account: str) -> tuple[Path, Path]:
@@ -165,10 +194,15 @@ def paper_run(
         "--timeframe",
         help="How often to check: 4h, or 1h (the trend still comes from 4h candles).",
     ),
-    signal_name: str = typer.Option(
-        DEFAULT_SIGNAL,
+    signal_name: str | None = typer.Option(
+        None,
         "--signal",
-        help="tsmom_30d (1-month trend), sma_stance_20_50, or consensus_sma_tsmom (both agree).",
+        help=(
+            f"Default {DEFAULT_SIGNAL} (50/200 trend, 10/30 in ranges, both ways, ADR-044); "
+            "also tsmom_30d, "
+            "sma_stance_20_50, consensus_sma_tsmom. spot-perps always runs "
+            f"{DEFAULT_SIGNAL}."
+        ),
     ),
     account: str = typer.Option("main", "--account", help=ACCOUNT_HELP),
 ) -> None:
@@ -183,6 +217,11 @@ def paper_run(
     from trader.ui.data import kraken_public_ohlc
 
     params = _params_or_exit(account)
+    try:
+        signal_name = resolve_signal(account, signal_name)
+    except ValueError as exc:
+        typer.echo(f"perps session not started: {exc}", err=True)
+        raise typer.Exit(EXIT_INVALID) from None
     alerter = Alerter.from_env(ACCOUNTS[account][2])
     state_path, events_path = account_paths(data_root(), account)
     try:

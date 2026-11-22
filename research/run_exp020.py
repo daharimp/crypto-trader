@@ -37,7 +37,11 @@ def load(path: Path) -> pd.DataFrame:
 def features(df: pd.DataFrame) -> pd.DataFrame:
     c = df["close"]
     f = pd.DataFrame(index=df.index)
-    f["sma20"], f["sma50"], f["sma200"] = c.rolling(20).mean(), c.rolling(50).mean(), c.rolling(200).mean()
+    f["sma20"], f["sma50"], f["sma200"] = (
+        c.rolling(20).mean(),
+        c.rolling(50).mean(),
+        c.rolling(200).mean(),
+    )
     f["mom30"] = np.sign(c / c.shift(30 * BARS_PER_DAY) - 1)
     daily = np.log(c / c.shift(BARS_PER_DAY))
     f["dmove"] = daily.rolling(30 * BARS_PER_DAY).std()  # typical daily move (fraction)
@@ -63,8 +67,11 @@ def side_rule(name: str, f: pd.DataFrame, c: pd.Series) -> pd.Series:
         # Shared regime detector: trend up = price above SMA200 AND 30-day momentum up AND
         # SMA200 rising; trend down = all three down; anything else = range -> flat.
         slope = f["slope200"].fillna(0).to_numpy()
-        s = np.where((above == 1) & (mom == 1) & (slope == 1), 1,
-                     np.where((above == -1) & (mom == -1) & (slope == -1), -1, 0))
+        s = np.where(
+            (above == 1) & (mom == 1) & (slope == 1),
+            1,
+            np.where((above == -1) & (mom == -1) & (slope == -1), -1, 0),
+        )
     else:
         raise ValueError(name)
     s = pd.Series(s, index=f.index, dtype=float)
@@ -78,7 +85,7 @@ def side_rule(name: str, f: pd.DataFrame, c: pd.Series) -> pd.Series:
 
 def replay(df: pd.DataFrame, f: pd.DataFrame, sig: pd.Series, borrow_h: float):
     """Bar-by-bar replay. Returns per-bar return series and a trade list."""
-    o, h, l, c = (df[k].to_numpy() for k in ("open", "high", "low", "close"))
+    o, hi, lo, c = (df[k].to_numpy() for k in ("open", "high", "low", "close"))
     s, dm = sig.to_numpy(), f["dmove"].to_numpy()
     days = df.index.normalize().to_numpy()
     n = len(df)
@@ -90,7 +97,7 @@ def replay(df: pd.DataFrame, f: pd.DataFrame, sig: pd.Series, borrow_h: float):
         r = 0.0
         if pos != 0:
             # stop check within bar i (gap fills at open)
-            hit = (pos == 1 and l[i] <= stop) or (pos == -1 and h[i] >= stop)
+            hit = (pos == 1 and lo[i] <= stop) or (pos == -1 and hi[i] >= stop)
             if hit:
                 px = min(o[i], stop) if pos == 1 else max(o[i], stop)
                 r = pos * (px / c[i - 1] - 1) - FEE - borrow_bar
@@ -124,31 +131,55 @@ def stats(port: pd.Series, trades: list, start: str, end: str) -> dict:
     lsum = sum(x[2] for x in tr if x[1] == 1) / 3  # per-coin-weight contribution
     ssum = sum(x[2] for x in tr if x[1] == -1) / 3
     return {
-        "trades": len(tr), "per_mo": len(tr) / (yrs * 12), "ret": eq.iloc[-1] - 1, "cagr": cagr,
-        "dd": dd, "sharpe": sharpe, "pf": wins / losses if losses else float("inf"),
-        "nL": sum(1 for x in tr if x[1] == 1), "L": lsum,
-        "nS": sum(1 for x in tr if x[1] == -1), "S": ssum,
+        "trades": len(tr),
+        "per_mo": len(tr) / (yrs * 12),
+        "ret": eq.iloc[-1] - 1,
+        "cagr": cagr,
+        "dd": dd,
+        "sharpe": sharpe,
+        "pf": wins / losses if losses else float("inf"),
+        "nL": sum(1 for x in tr if x[1] == 1),
+        "L": lsum,
+        "nS": sum(1 for x in tr if x[1] == -1),
+        "S": ssum,
     }
 
 
 RULES = [
-    "tsmom30 L+S (perps today)", "tsmom30 L", "tsmom30 S",
-    "sma50/200 L+S", "sma50/200 L", "sma50/200 S",
+    "tsmom30 L+S (perps today)",
+    "tsmom30 L",
+    "tsmom30 S",
+    "sma50/200 L+S",
+    "sma50/200 L",
+    "sma50/200 S",
     "sma20/50 L+S",
-    "regime L+S", "regime L", "regime S",
-    "regime2 L+S", "regime2 L",
+    "regime L+S",
+    "regime L",
+    "regime S",
+    "regime2 L+S",
+    "regime2 L",
 ]
 
 
 def main(data_dir: Path) -> None:
     dfs = {k: load(data_dir / f"{k}_4h.csv") for k in COINS}
     feats = {k: features(v) for k, v in dfs.items()}
-    print("EXP-2026-020 long/short regime layer. BTC/ETH/SOL 4h (Binance spot) 1x each, equal weight.")
-    print(f"Stop {STOP_DAILY_MOVES} typical daily moves from entry on every trade; next-UTC-day wait after a stop.")
-    print(f"Fees {FEE*1e4:.0f} bps a side; borrow on both sides (spot longs would pay none).")
-    print("Return/CAGR/maxDD/Sharpe come from the per-bar equity, borrow included. trades, PF, L$ and S$")
-    print("count closed trades opened inside the window, before borrow; L$/S$ = summed trade return / 3.")
-    print(f"Data {min(d.index[0] for d in dfs.values())} .. {max(d.index[-1] for d in dfs.values())}\n")
+    print(
+        "EXP-2026-020 long/short regime layer. BTC/ETH/SOL 4h (Binance spot) 1x each, equal weight."
+    )
+    print(
+        f"Stop {STOP_DAILY_MOVES} typical daily moves from entry on every trade; next-UTC-day wait after a stop."
+    )
+    print(f"Fees {FEE * 1e4:.0f} bps a side; borrow on both sides (spot longs would pay none).")
+    print(
+        "Return/CAGR/maxDD/Sharpe come from the per-bar equity, borrow included. trades, PF, L$ and S$"
+    )
+    print(
+        "count closed trades opened inside the window, before borrow; L$/S$ = summed trade return / 3."
+    )
+    print(
+        f"Data {min(d.index[0] for d in dfs.values())} .. {max(d.index[-1] for d in dfs.values())}\n"
+    )
     for cost in ("base", "stress"):
         results = {}
         for rule in RULES:
@@ -163,12 +194,16 @@ def main(data_dir: Path) -> None:
         for pname, (a, b) in PERIODS.items():
             if cost == "stress" and pname not in ("development 2020-2023", "holdout 2024-2026"):
                 continue
-            print(f"== {pname}  [{cost} borrow {BORROW_H[cost]*100:.4f}%/h]")
-            print(f"{'rule':28s}{'trades':>7s}{'/mo':>6s}{'return':>9s}{'CAGR':>8s}{'maxDD':>7s}{'sharpe':>7s}{'PF':>6s}{'L n':>5s}{'L$':>7s}{'S n':>5s}{'S$':>7s}")
+            print(f"== {pname}  [{cost} borrow {BORROW_H[cost] * 100:.4f}%/h]")
+            print(
+                f"{'rule':28s}{'trades':>7s}{'/mo':>6s}{'return':>9s}{'CAGR':>8s}{'maxDD':>7s}{'sharpe':>7s}{'PF':>6s}{'L n':>5s}{'L$':>7s}{'S n':>5s}{'S$':>7s}"
+            )
             for rule, (port, trades) in results.items():
                 s = stats(port, trades, a, b)
-                print(f"{rule:28s}{s['trades']:7d}{s['per_mo']:6.1f}{s['ret']*100:8.1f}%{s['cagr']*100:7.1f}%{s['dd']*100:6.1f}%"
-                      f"{s['sharpe']:7.2f}{s['pf']:6.2f}{s['nL']:5d}{s['L']*100:6.0f}%{s['nS']:5d}{s['S']*100:6.0f}%")
+                print(
+                    f"{rule:28s}{s['trades']:7d}{s['per_mo']:6.1f}{s['ret'] * 100:8.1f}%{s['cagr'] * 100:7.1f}%{s['dd'] * 100:6.1f}%"
+                    f"{s['sharpe']:7.2f}{s['pf']:6.2f}{s['nL']:5d}{s['L'] * 100:6.0f}%{s['nS']:5d}{s['S'] * 100:6.0f}%"
+                )
             print()
 
 

@@ -238,6 +238,32 @@ docker compose run --rm cli perps paper reset --account degen --reason "why it e
 docker compose up -d perps-degen
 ```
 
+## 2e. Long and short on every bot, and the spot-perps account (ADR-044)
+
+Every perps account now picks its side from one shared trend rule
+(`trader/regimes/trend.py`): long while the 50-candle average of 4h closes (about 8 days)
+is above the 200-candle average (about 33 days), short while it is below. When the last 30
+days have been choppy (efficiency ratio below 0.05) the faster 10/30-candle averages decide
+instead, so expect more trades in sideways markets. Spot code stays
+long-only, so spot's rule also runs both ways in a third paper account, `spot-perps`, at 1x
+(`configs/perps/jupiter-spot-perps.yaml`).
+
+Switching an existing account to the new rule needs its old run archived first (a saved run
+with a different signal refuses to resume). Once, after pulling this change:
+
+```bash
+docker compose build
+docker compose stop perps perps-degen
+docker compose run --rm cli perps paper reset --account main --reason "switch to shared trend rule long/short (ADR-044)"
+docker compose run --rm cli perps paper reset --account degen --reason "switch to shared trend rule long/short (ADR-044)"
+docker compose run --rm cli perps validate --account spot-perps
+docker compose up -d perps perps-degen perps-spot-perps
+docker compose run --rm cli perps paper status --account spot-perps
+```
+
+Alerts from the new account start with `[spot perps]`. It always runs the shared rule;
+`--signal` with anything else exits 2.
+
 ## 3. Create the Kraken API key (owner, on kraken.com)
 
 Kraken Pro → Settings → API → Create key. Grant **only**:

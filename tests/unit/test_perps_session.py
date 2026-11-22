@@ -244,7 +244,7 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     r = CliRunner().invoke(app, ["perps", "paper", "status"])
     assert r.exit_code == 0 and "no perps paper session" in r.output
     # Reason: 30 days of 4h candles (181 closes); the shipped perps settings need that much.
-    long_down = [100 * 0.995**i for i in range(200)]
+    long_down = [100 * 0.995**i for i in range(260)]
     monkeypatch.setattr(ui_data, "kraken_public_ohlc", lambda symbol, tf: _rows(long_down))
     # The test fixture config leaves every perps value TBD: the session must fail closed.
     r = CliRunner().invoke(app, ["perps", "paper", "run", "--once"])
@@ -256,7 +256,7 @@ def test_cli_status_and_one_cycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     state = json.loads((tmp_path / "state" / "perps-paper.json").read_text())
     assert state["meta"]["markets"] == ["BTC", "ETH", "SOL"]
     r = CliRunner().invoke(app, ["perps", "paper", "status"])
-    assert "perps paper (tsmom_30d, 4h)" in r.output and "short" in r.output
+    assert "perps paper (trend_50_200_range_10_30, 4h)" in r.output and "short" in r.output
     assert "not guaranteed" in r.output
     r = CliRunner().invoke(app, ["perps", "paper", "run", "--once", "--timeframe", "5m"])
     assert r.exit_code == 2

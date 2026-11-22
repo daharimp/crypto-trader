@@ -186,7 +186,7 @@ def test_cli_degen_run_writes_its_own_state_only(
 
     monkeypatch.setenv("TRADER_CONFIGS_DIR", str(SHIPPED_CONFIGS))
     monkeypatch.setenv("TRADER_DATA_DIR", str(tmp_path))
-    closes = [100 * 0.995**i for i in range(200)]
+    closes = [100 * 0.995**i for i in range(260)]  # 50/200 needs 200+ completed bars
     rows, prev = [], closes[0]
     for i, c in enumerate(closes):
         ms = int((T0 + i * timedelta(hours=4)).timestamp() * 1000)
@@ -198,7 +198,7 @@ def test_cli_degen_run_writes_its_own_state_only(
     assert (tmp_path / "state" / "perps-degen.json").exists()
     assert not (tmp_path / "state" / "perps-paper.json").exists()
     r = CliRunner().invoke(app, ["perps", "paper", "status", "--account", "degen"])
-    assert "perps paper degen (tsmom_30d, 4h)" in r.output and "short" in r.output
+    assert "perps paper degen (trend_50_200_range_10_30, 4h)" in r.output and "short" in r.output
 
 
 # --- dashboard ------------------------------------------------------------------------------

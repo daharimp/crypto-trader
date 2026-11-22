@@ -26,6 +26,7 @@ from .session import read_status
 ACCOUNTS = {
     "main": ("jupiter.yaml", "perps-paper"),
     "degen": ("jupiter-degen.yaml", "perps-degen"),
+    "spot-perps": ("jupiter-spot-perps.yaml", "perps-spot-perps"),
 }
 # Settings a proposal may name. Costs, venue limits, markets and the starting balance are
 # facts about the venue or the account, not strategy settings, so they are never proposed.

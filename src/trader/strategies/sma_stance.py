@@ -11,11 +11,12 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from trader.domain.enums import Side
+from trader.domain.enums import Side, TrendState
 from trader.domain.features import FeatureSet
 from trader.domain.market import MarketSnapshot
 from trader.domain.regime import RegimeAssessment
 from trader.domain.signals import SignalCandidate
+from trader.regimes.trend import trend_state
 
 from .base import SignalIds, make_signal
 
@@ -70,10 +71,13 @@ class SmaStance:
         Returns:
             list[SignalCandidate]: One signal, or none during warm-up.
         """
-        gap = self._gap(features)
-        if snapshot.latest_bar is None or gap is None:
+        f, s = (features.values.get(k) for k in self._keys)
+        if snapshot.latest_bar is None or self._gap(features) is None:
             return []
-        if gap > 0:
+        # Reason: the up/down comparison lives in one place for every bot (ADR-044). Spot uses
+        # the plain 50/200 pair only: the 10/30 range switch was not backtested at spot costs.
+        trend = trend_state(f, s)
+        if trend == TrendState.TRENDING_UP:
             return [
                 make_signal(
                     self,
@@ -86,7 +90,7 @@ class SmaStance:
                     invalidation_reason="SMA50_BELOW_SMA200",
                 )
             ]
-        if gap < 0:
+        if trend == TrendState.TRENDING_DOWN:
             return [
                 make_signal(self, snapshot, features, regime, ids, Side.SELL, "SMA50_BELOW_SMA200")
             ]

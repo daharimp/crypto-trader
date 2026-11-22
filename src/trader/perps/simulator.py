@@ -31,6 +31,12 @@ class PerpPosition:
     opened_at: datetime
     borrow_fees_usd: Decimal = Decimal(0)
     last_accrual: datetime | None = None
+    # ADR-044 take-profit ladder: the opening stop price (R is its distance from entry), the
+    # number of take-profits already hit, and the stop the ladder has moved to (None until
+    # TP1; the collateral-based stop applies until then).
+    initial_stop: Decimal | None = None
+    tps_hit: int = 0
+    moved_stop: Decimal | None = None
 
 
 @dataclass
@@ -128,7 +134,10 @@ class PaperPerpsAccount:
 
         Returns:
             Decimal | None: The stop price, or None when no stop is configured (ADR-038).
+            After a take-profit it is the stop the ladder moved to (ADR-044).
         """
+        if p.moved_stop is not None:
+            return p.moved_stop
         share = self.params.stop_loss_pct_of_collateral
         if share is None:
             return None
@@ -142,7 +151,12 @@ class PaperPerpsAccount:
         return p.entry_price * (1 - sign * room / p.size_usd)
 
     def mark(
-        self, marks: dict[str, Decimal], now: datetime, opens: dict[str, Decimal] | None = None
+        self,
+        marks: dict[str, Decimal],
+        now: datetime,
+        opens: dict[str, Decimal] | None = None,
+        favorable: dict[str, Decimal] | None = None,
+        closes: dict[str, Decimal] | None = None,
     ) -> None:
         """
         Accrue borrow fees, apply stops, liquidate positions past maintenance, roll the day.
@@ -153,6 +167,10 @@ class PaperPerpsAccount:
             now (datetime): Current time (UTC).
             opens (dict[str, Decimal] | None): The bar's open per market; a stop that the
                 open already gapped through fills there instead of at the stop.
+            favorable (dict[str, Decimal] | None): The bar's favorable extreme per open
+                position; take-profits are checked against it (ADR-044).
+            closes (dict[str, Decimal] | None): The bar's close; after a take-profit moves
+                the stop, a close past the new stop exits there.
         """
         for m in list(self.positions):
             p = self.positions[m]
@@ -203,11 +221,122 @@ class PaperPerpsAccount:
                     mark=str(marks[m]),
                     collateral_lost_usd=str(p.collateral_usd),
                 )
+                continue
+            if favorable is not None and m in favorable:
+                self._take_profits(m, favorable[m], (closes or {}).get(m), now)
         today = now.date().isoformat()
         if today != self.day:
             self.day, self.day_start_equity_usd = today, self.equity(marks)
             self.stopped_today, self.day_halted = set(), False
             self._log(now, "DAY_ROLLED", day=today, equity_usd=str(self.day_start_equity_usd))
+
+    def tp_price(self, p: PerpPosition, step: int) -> Decimal | None:
+        """
+        Price of take-profit ``step`` (0-based) for ``p``, or None without a ladder (ADR-044).
+
+        Args:
+            p (PerpPosition): Open position.
+            step (int): Ladder step, 0 to 2.
+
+        Returns:
+            Decimal | None: Level; R is the distance from entry to the opening stop.
+        """
+        ladder = self.params.take_profits
+        if ladder is None or p.initial_stop is None or step >= len(ladder):
+            return None
+        sign = Decimal(1) if p.side == PerpSide.LONG else Decimal(-1)
+        r = abs(p.entry_price - p.initial_stop)
+        return p.entry_price + sign * ladder[step][0] * r
+
+    def _take_profits(
+        self, m: str, favorable: Decimal, close: Decimal | None, now: datetime
+    ) -> None:
+        """
+        Fill every take-profit the bar reached and move the stop behind it (ADR-044).
+
+        TP1 moves the stop to breakeven (open and close fees covered), TP2 moves it to TP1,
+        TP3 closes the rest. If the bar then closes past the moved stop, the rest exits at
+        the close (the order of the bar's high and low is unknown, so assume the worse).
+
+        Args:
+            m (str): Market.
+            favorable (Decimal): The bar's favorable extreme.
+            close (Decimal | None): The bar's close.
+            now (datetime): Current time (UTC).
+        """
+        ladder = self.params.take_profits
+        p = self.positions.get(m)
+        if ladder is None or p is None:
+            return
+        if p.initial_stop is None:
+            # Reason: a position opened before the ladder existed gets one from its stop.
+            p.initial_stop = self.stop_price(p)
+            if p.initial_stop is None:
+                return
+        sign = Decimal(1) if p.side == PerpSide.LONG else Decimal(-1)
+        while p.tps_hit < len(ladder):
+            level = self.tp_price(p, p.tps_hit)
+            assert level is not None
+            if (favorable - level) * sign < 0:
+                break
+            step = p.tps_hit
+            if step == len(ladder) - 1:
+                self.close(m, {m: level}, now, reason="TAKE_PROFIT_3")
+                self.stopped_today.add(m)
+                return
+            # Reason: each step closes a share of the opening size; scale it to what is left.
+            done = sum((pct for _, pct in ladder[:step]), Decimal(0))
+            self._close_part(m, ladder[step][1] / (HUNDRED - done), level, now, step + 1)
+            p.tps_hit = step + 1
+            fees = (self.params.open_fee_bps + self.params.close_fee_bps) / Decimal(10_000)
+            new = p.entry_price * (1 + sign * fees) if step == 0 else self.tp_price(p, step - 1)
+            assert new is not None
+            old = self.stop_price(p)
+            if old is None or (new - old) * sign > 0:
+                p.moved_stop = new
+        stop = self.stop_price(p)
+        if p.tps_hit and close is not None and stop is not None and (close - stop) * sign <= 0:
+            self.close(m, {m: close}, now, reason="STOP_LOSS")
+            self.stopped_today.add(m)
+
+    def _close_part(
+        self, market: str, fraction: Decimal, price: Decimal, now: datetime, step: int
+    ) -> None:
+        """
+        Close ``fraction`` of an open position at ``price`` (a take-profit, ADR-044).
+
+        Args:
+            market (str): Market.
+            fraction (Decimal): Share of the current size, between 0 and 1.
+            price (Decimal): Fill price.
+            now (datetime): Current time (UTC).
+            step (int): Ladder step (1-based), journaled.
+        """
+        p = self.positions[market]
+        size = (p.size_usd * fraction).quantize(CENT)
+        collateral = (p.collateral_usd * fraction).quantize(CENT)
+        borrow = (p.borrow_fees_usd * fraction).quantize(CENT)
+        close_fee = fee_usd(size, self.params.close_fee_bps).quantize(CENT)
+        pnl = pnl_usd(p.side, size, p.entry_price, price).quantize(CENT)
+        returned = max(collateral + pnl - close_fee - borrow, Decimal(0))
+        p.size_usd -= size
+        p.collateral_usd -= collateral
+        p.borrow_fees_usd -= borrow
+        self.cash_usd += returned
+        self.fees_paid_usd += close_fee + borrow
+        self.realized_pnl_usd += returned - collateral
+        self._log(
+            now,
+            "TAKE_PROFIT",
+            market=market,
+            side=p.side.value,
+            step=step,
+            exit=str(price),
+            closed_size_usd=str(size),
+            remaining_size_usd=str(p.size_usd),
+            pnl_usd=str(pnl),
+            fees_usd=str(close_fee + borrow),
+        )
 
     def check_day_loss(self, marks: dict[str, Decimal], now: datetime) -> bool:
         """
@@ -272,9 +401,12 @@ class PaperPerpsAccount:
         self.cash_usd -= pr.collateral_usd + open_fee
         self.fees_paid_usd += open_fee
         self.realized_pnl_usd -= open_fee
-        self.positions[market] = PerpPosition(
+        pos = PerpPosition(
             market, side, pr.size_usd, pr.collateral_usd, pr.entry_price, now, last_accrual=now
         )
+        if self.params.take_profits is not None:
+            pos.initial_stop = self.stop_price(pos)
+        self.positions[market] = pos
         self._log(
             now,
             "OPENED",

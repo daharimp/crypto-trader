@@ -47,6 +47,10 @@ def _net(pnl: Any, fees: Any) -> str | None:
         return None
 
 
+def _plus(net: str | None, partial: Decimal) -> str | None:
+    return None if net is None else str(Decimal(net) + partial) if partial else net
+
+
 def read_history(events_path: Path) -> dict[str, Any]:
     """
     Closed trades, recorded equity points and open-position details from the event log.
@@ -56,7 +60,8 @@ def read_history(events_path: Path) -> dict[str, Any]:
 
     Returns:
         dict[str, Any]: ``trades`` (newest first; ``pnl_usd`` is after closing and borrow
-        fees, and a liquidation loses the whole collateral), ``equity`` (oldest first, one
+        fees and includes any take-profits taken along the way (ADR-044), and a liquidation
+        loses the whole collateral), ``equity`` (oldest first, one
         point at the start and one per day change) and ``open`` (per market: the leverage
         and liquidation price recorded when the position opened).
     """
@@ -76,8 +81,15 @@ def read_history(events_path: Path) -> dict[str, Any]:
                 "opened_at": e["at_utc"],
                 **{k: e.get(k) for k in _OPEN_KEYS},
             }
+        elif kind == "TAKE_PROFIT" and market and market in opened:
+            # ADR-044: a partial close; its net is added to the trade when the rest closes.
+            o = opened[market]
+            part = _net(e.get("pnl_usd"), e.get("fees_usd"))
+            o["take_profits"] = o.get("take_profits", 0) + 1
+            o["_partial"] = str(Decimal(o.get("_partial", "0")) + Decimal(part or "0"))
         elif kind in ("CLOSED", "LIQUIDATED") and market:
             o = opened.pop(market, {"market": market, "side": e.get("side")})
+            partial = Decimal(o.pop("_partial", "0"))
             liquidated = kind == "LIQUIDATED"
             lost = e.get("collateral_lost_usd")
             trades.append(
@@ -85,10 +97,11 @@ def read_history(events_path: Path) -> dict[str, Any]:
                     **o,
                     "closed_at": e["at_utc"],
                     "exit": e.get("mark") if liquidated else e.get("exit"),
-                    "pnl_usd": (
+                    "pnl_usd": _plus(
                         (None if lost is None else str(-Decimal(str(lost))))
                         if liquidated
-                        else _net(e.get("pnl_usd"), e.get("fees_usd"))
+                        else _net(e.get("pnl_usd"), e.get("fees_usd")),
+                        partial,
                     ),
                     "reason": "liquidated" if liquidated else e.get("reason"),
                     "liquidated": liquidated,

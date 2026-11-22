@@ -23,8 +23,8 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_shipped_config_is_fully_approved() -> None:
     """UD-23 values (v2-v5), UD-26 assessed leverage (v7), UD-27 25x ceiling (v8), stop (v10)."""
     p = load_perps_params(ROOT / "configs")
-    assert p.version == 10
-    assert p.stop_loss_pct_of_collateral == Decimal(50)  # UD-31, ADR-042
+    assert p.version == 11
+    assert p.stop_loss_pct_of_collateral == Decimal(30)  # UD-32, ADR-044
     assert (p.open_fee_bps, p.close_fee_bps, p.maintenance_bps) == (
         Decimal(7),
         Decimal(7),

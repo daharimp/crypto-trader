@@ -108,7 +108,16 @@ def run_perps_backtest(
             m: (row[m].low if p.side == PerpSide.LONG else row[m].high)
             for m, p in acct.positions.items()
         }
-        acct.mark({**{m: b.close for m, b in row.items()}, **adverse}, t)
+        favorable = {
+            m: (row[m].high if p.side == PerpSide.LONG else row[m].low)
+            for m, p in acct.positions.items()
+        }
+        acct.mark(
+            {**{m: b.close for m, b in row.items()}, **adverse},
+            t,
+            favorable=favorable,
+            closes={m: b.close for m, b in row.items()},
+        )
         marks = {m: b.close for m, b in row.items()}
         eq = acct.equity(marks)
         peak = max(peak, eq)

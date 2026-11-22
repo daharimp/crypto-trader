@@ -1,4 +1,4 @@
-"""Shared trend direction (ADR-043): one rule every bot reads to pick a side.
+"""Shared trend direction (ADR-044): one rule every bot reads to pick a side.
 
 In a trending market: up while the 50-bar average is above the 200-bar average, down while
 it is below. In a ranging market (the last 30 days of 4h candles moved less than 5% as far
@@ -19,7 +19,7 @@ from trader.domain.enums import TrendState
 
 FAST = 50
 SLOW = 200
-# Ranging-market switch (ADR-043, EXP-2026-021). Lengths are 4h candles (6 a day).
+# Ranging-market switch (ADR-044, EXP-2026-021). Lengths are 4h candles (6 a day).
 RANGE_FAST = 10
 RANGE_SLOW = 30
 EFFICIENCY_BARS = 180  # 30 days

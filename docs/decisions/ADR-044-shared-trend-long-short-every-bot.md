@@ -1,6 +1,7 @@
-# ADR-043: One shared trend rule (50/200, 10/30 in ranges) picks long or short for every bot; spot's rule also runs both ways on 1x paper perps
+# ADR-044: One shared trend rule (50/200, 10/30 in ranges) picks long or short for every bot; spot's rule also runs both ways on 1x paper perps
 
-- **Status:** Accepted (2026-11-22; owner decisions UD-32)
+- **Status:** Accepted (2026-11-22; owner decisions UD-32). Builds on ADR-043 (spot
+  `sma_stance` 50/200).
 - **Owner decisions UD-32 (2026-11-22):** "The bot should trade in an uptrend or a
   downtrend. It needs to be adaptable ... let's make that universal." After the audit and
   EXP-2026-020 the owner chose "50/200 both ways, every bot", then asked for spot's rule to
@@ -41,8 +42,10 @@
      service `perps-spot-perps`, alerts `[spot perps]`) runs the same rule both ways at 1x,
      with no liquidation buffer, so spot's strategy can go short without spot code ever
      shorting. The CLI pins this account to `trend_50_200_range_10_30`; any other `--signal` exits 2.
-  4. Spot code is unchanged here. Its 50/200 long entry is built separately (spot thread);
-     it should read `trader.regimes.trend` once both are merged.
+  4. Spot's `sma_stance` (ADR-043) takes its up/down decision from the same `trend_state`,
+     so the comparison lives in one place. It stays long-only and keeps the plain 50/200
+     pair: the 10/30 range switch was not backtested at spot costs (EXP-2026-018 used 50 bps
+     a side), so adding it to spot needs `research/run_exp018.py` re-run with that rule.
 - **Consequences:** The running main and degen runs used `tsmom_30d`, so each must be
   archived (`perps paper reset --reason`, ADR-041) before restarting; a saved run with a
   different signal refuses to resume (RUNBOOK 2e). In trends a position is held for weeks; in

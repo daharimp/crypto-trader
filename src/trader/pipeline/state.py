@@ -60,6 +60,9 @@ class RunState:
     filled_entries: set[str] = field(default_factory=set)
     counts: Counter[str] = field(default_factory=Counter)
     rejections: Counter[str] = field(default_factory=Counter)
+    # Reason: one plain-English line per instrument on why the session is or is not trading
+    # (ADR-043). Display only; nothing reads it back into a decision.
+    watch: dict[str, str] = field(default_factory=dict)
     equity_curve: list[tuple[datetime, Decimal]] = field(default_factory=list)
     exposure_curve: list[Decimal] = field(default_factory=list)
     # Forward-session hooks (BL-027). Backtests leave them unset.

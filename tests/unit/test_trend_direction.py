@@ -1,4 +1,4 @@
-"""Shared 50/200 trend direction (ADR-043), its perps signal, and the spot-perps account."""
+"""Shared 50/200 trend direction (ADR-044), its perps signal, and the spot-perps account."""
 
 from __future__ import annotations
 

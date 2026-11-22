@@ -7,7 +7,7 @@ so it never looks ahead.
 * ``tsmom_30d``: long if the price is above its level 30 days ago, short if below.
 * ``consensus_sma_tsmom``: takes a side only when the two rules above agree; flat when they
   disagree or either is still warming up.
-* ``trend_50_200_range_10_30`` (default, ADR-043): the shared trend rule in
+* ``trend_50_200_range_10_30`` (default, ADR-044): the shared trend rule in
   ``trader.regimes.trend``, long in an uptrend and short in a downtrend (50/200 averages,
   10/30 while ranging).
 """

@@ -18,6 +18,7 @@ DEFINITIONS = {
     "sma_50": "simple mean of the last 50 closes",
     "sma_20_prev": "sma_20 at the previous bar close",
     "sma_50_prev": "sma_50 at the previous bar close",
+    "sma_200": "simple mean of the last 200 closes (ADR-043; needs the full 200-bar window)",
     "atr_14": "Wilder ATR(14) on the decision timeframe, seeded inside the last 150 bars",
     "rsi_14": "Wilder RSI(14) of closes, seeded inside the last 150 bars",
     "bb_mid_20": "SMA(20) of closes (Bollinger middle band)",

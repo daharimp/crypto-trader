@@ -37,10 +37,10 @@ ACCOUNTS = {
 }
 ACCOUNT_HELP = (
     "Paper account: main (the running one), degen (ADR-038), or spot-perps (spot's trend "
-    "rule long and short at 1x, ADR-043)."
+    "rule long and short at 1x, ADR-044)."
 )
 # Reason: spot code is long-only by the safety rules, so spot's trend rule runs both ways in
-# this paper perps account (ADR-043); it must always run that rule, whatever --signal says.
+# this paper perps account (ADR-044); it must always run that rule, whatever --signal says.
 FIXED_SIGNALS = {"spot-perps": DEFAULT_SIGNAL}
 
 
@@ -198,7 +198,7 @@ def paper_run(
         None,
         "--signal",
         help=(
-            f"Default {DEFAULT_SIGNAL} (50/200 trend, 10/30 in ranges, both ways, ADR-043); "
+            f"Default {DEFAULT_SIGNAL} (50/200 trend, 10/30 in ranges, both ways, ADR-044); "
             "also tsmom_30d, "
             "sma_stance_20_50, consensus_sma_tsmom. spot-perps always runs "
             f"{DEFAULT_SIGNAL}."

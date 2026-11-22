@@ -238,7 +238,7 @@ docker compose run --rm cli perps paper reset --account degen --reason "why it e
 docker compose up -d perps-degen
 ```
 
-## 2e. Long and short on every bot, and the spot-perps account (ADR-043)
+## 2e. Long and short on every bot, and the spot-perps account (ADR-044)
 
 Every perps account now picks its side from one shared trend rule
 (`trader/regimes/trend.py`): long while the 50-candle average of 4h closes (about 8 days)
@@ -254,8 +254,8 @@ with a different signal refuses to resume). Once, after pulling this change:
 ```bash
 docker compose build
 docker compose stop perps perps-degen
-docker compose run --rm cli perps paper reset --account main --reason "switch to shared trend rule long/short (ADR-043)"
-docker compose run --rm cli perps paper reset --account degen --reason "switch to shared trend rule long/short (ADR-043)"
+docker compose run --rm cli perps paper reset --account main --reason "switch to shared trend rule long/short (ADR-044)"
+docker compose run --rm cli perps paper reset --account degen --reason "switch to shared trend rule long/short (ADR-044)"
 docker compose run --rm cli perps validate --account spot-perps
 docker compose up -d perps perps-degen perps-spot-perps
 docker compose run --rm cli perps paper status --account spot-perps

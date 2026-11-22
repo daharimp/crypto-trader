@@ -4,7 +4,8 @@
 - [x] Test moving-average lengths and range switches (EXP-2026-021)
 - [x] Shared 50/200 trend module; perps default signal `trend_50_200_range_10_30`
 - [x] `spot-perps` 1x paper account with owner-approved values (UD-32)
-- [x] Tests, ADR-043, RUNBOOK 2e
+- [x] Tests, ADR-044, RUNBOOK 2e
 - [ ] Archive main and degen runs, deploy, start `perps-spot-perps` (after merge)
 - [ ] Show the `spot-perps` account on the dashboard (after the spot "waiting for" PR merges)
-- [ ] Spot strategy reads `trader.regimes.trend` too, once the spot 50/200 strategy is merged
+- [x] Spot `sma_stance` reads `trader.regimes.trend.trend_state`
+- [ ] Backtest the 10/30 range switch at spot costs before spot uses it

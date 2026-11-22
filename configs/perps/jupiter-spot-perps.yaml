@@ -1,4 +1,4 @@
-# Jupiter Perps "spot-perps" account, PAPER ONLY (ADR-025, ADR-043). No wallet, no keys, no
+# Jupiter Perps "spot-perps" account, PAPER ONLY (ADR-025, ADR-044). No wallet, no keys, no
 # transactions. Spot code stays long-only, so the shared trend rule (trader.regimes.trend)
 # also runs here both ways at 1x: long while the 50-bar average is above the 200-bar
 # average, short while it is below, and the 10/30 averages decide in a choppy market.

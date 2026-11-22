@@ -95,6 +95,7 @@ def save_state(path: Path, state: RunState, meta: dict[str, Any]) -> None:
         "filled_entries": sorted(state.filled_entries),
         "counts": dict(state.counts),
         "rejections": dict(state.rejections),
+        "watch": dict(state.watch),
         "ids": dict(state.ids._counters),
         "adapter": state.adapter.export_state(),
     }

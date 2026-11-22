@@ -1,9 +1,9 @@
-"""EXP-2026-018: stop-loss and take-profit ladder replay for every bot (research only).
+"""EXP-2026-022: stop-loss and take-profit ladder replay for every bot (research only).
 
 Owner request (2026-11-22): "there should always be a SL to protect every trade and then be
 moved as trades become more successful to protect gains" and "hits 1st TP > move SL, hits
 2nd TP > move SL > 3rd TP". The plan, method grid, split and selection rule are fixed in
-research/EXP-2026-018-plan.md and in this file before any result was computed.
+research/EXP-2026-022-plan.md and in this file before any result was computed.
 
 Each bot's own entry rule, one position per coin, three coins (BTC, ETH, SOL):
 - perps-main: 4h bars, 30-day trend (tsmom_30d), long or short.
@@ -337,7 +337,7 @@ def main() -> None:
                     {"bot": bot, "method": ex.name, "part": part, **stats(total, tr[part], years)}
                 )
     res = pd.DataFrame(rows)
-    out = Path(__file__).with_name("EXP-2026-018-results.csv")
+    out = Path(__file__).with_name("EXP-2026-022-results.csv")
     res.to_csv(out, index=False)
     pd.set_option("display.width", 220, "display.max_rows", 500, "display.max_colwidth", 60)
     for bot in BOTS:

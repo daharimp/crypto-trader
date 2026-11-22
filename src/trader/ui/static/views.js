@@ -74,6 +74,7 @@
     if (!live && gate?.min_paper_cycles) health.push(['Road to live', `${Math.min(s.cycles, gate.min_paper_cycles)} of ${gate.min_paper_cycles} paper cycles`]);
     return {
       kind: 'spot', equity: s.equity_usd, start: null, points: [], positions, trades, cash: s.cash_usd,
+      watch: Object.entries(s.watch || {}).map(([k, v]) => [String(k).split(/[-/]/)[0], v]), strategy: s.strategy,
       title: `Account value · ${live ? 'live' : 'paper money'}`,
       today: s.day_start_usd == null ? null : s.equity_usd - s.day_start_usd,
       stats: [['Cash', usd(s.cash_usd)], ['Highest value', usd(s.high_water_usd)], ['Fees paid', usd(s.fees_usd)]],
@@ -179,7 +180,8 @@
     const total = m.positions.reduce((a, p) => a + (p.pnl || 0), 0);
     box.append(heading(`${m.positions.length} open position${m.positions.length === 1 ? '' : 's'}`,
       m.positions.length ? el('span', `num ${tone(total)}`, `${arrow(total)}${signed(total)}`) : null));
-    if (!m.positions.length) { box.append(card(el('p', 'empty', 'No open positions right now.'))); return; }
+    if (m.watch?.length) drawWatch(box, m);
+    if (!m.positions.length) { if (!m.watch?.length) box.append(card(el('p', 'empty', 'No open positions right now.'))); return; }
     const groups = m.kind === 'all' ? [...new Set(m.positions.map((p) => p.acct))] : [null];
     groups.forEach((g) => {
       const rows = m.positions.filter((p) => g == null || p.acct === g);
@@ -190,6 +192,15 @@
       box.append(positionCards(rows));
     });
     box.append(el('p', 'note', 'Tap a position for all its details. The bar fills as the price gets closer to liquidation, and turns amber inside 15%.'));
+  }
+  // What each coin is waiting for (ADR-043): the session writes one line per coin every check.
+  function drawWatch(box, m) {
+    const c = el('div', 'card');
+    c.append(el('div', 'muted', `What it's waiting for${m.strategy ? ` · ${m.strategy}` : ''}`));
+    m.watch.forEach(([coin, text]) => {
+      const r = el('div', 'row'); r.append(el('span', 'coin', coin), el('span', null, text)); c.append(r);
+    });
+    box.append(c);
   }
   function positionCards(list) {
     const cards = el('div', 'cards');

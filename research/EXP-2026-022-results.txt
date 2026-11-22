@@ -1,0 +1,47 @@
+EXP-2026-022 results: stop-loss and take-profit ladders (2026-11-22)
+Plan: research/EXP-2026-022-plan.md. Script: research/stop_ladder_replay.py.
+Full table (every bot x method x period): research/EXP-2026-022-results.csv.
+Data: Binance spot 4h/1h, BTC ETH SOL, 2020-01 to 2026-11-21. In-sample before 2024-01-01,
+holdout 2024-01-01 on. Same entries and size for every method; only the exit differs.
+ret = % of capital per year, dd = max drawdown %, MAR = ret/dd, worst = worst trade in R.
+
+perps-main (4h, 30-day trend, long/short)          in-sample            holdout
+                                                ret   dd   MAR       ret   dd   MAR  worst
+no stop (signal exit only)                     17.2  4.9  3.50      12.3  9.4  1.31  -3.70
+fixed 2dm stop (= current 50% of collateral)   16.9  5.1  3.32      12.2  8.7  1.39  -1.06
+fixed 1dm stop                                 15.8  4.3  3.65      13.0  7.4  1.76  -1.11
+fixed 2dm + breakeven at 1R                    16.2  5.2  3.11      11.8  7.7  1.54  -1.06
+chandelier trail 3dm                           10.2  6.1  1.66       1.6  8.7  0.19  -1.04
+owner ladder 2dm, TP 1/2/3R, 33/33/33           9.2  5.4  1.69       0.3 10.9  0.03  -1.06
+best capped ladder: 2dm, TP 2/4/6R, 25/25/50   10.9  5.7  1.92       2.1  8.1  0.26  -1.06
+x: ladder TP 2/4R 25/25, hold rest to signal   10.6  4.4  2.43       5.9  8.1  0.73  -1.06
+x: stop ratchet every 2R, nothing sold         13.9  5.7  2.46       2.1  9.2  0.22  -1.06
+
+perps-degen (1h, long/short)
+no stop                                        15.6  4.4  3.53      11.8 11.1  1.06  -2.72
+current stop (30% of collateral, ~0.9dm)       14.9  4.4  3.40      12.8  8.7  1.47  -1.12
+fixed 2dm stop                                 15.8  4.2  3.80      11.6 11.1  1.04  -1.05
+owner ladder 2dm, TP 1/2/3R, 33/33/33           8.4  4.7  1.79      -0.1 12.8 -0.00  -1.05
+best capped ladder: 2dm, TP 2/4/6R, 25/25/50   10.0  4.7  2.13       1.1 11.2  0.10  -1.05
+
+spot (4h, SMA 20/50, long only)
+no stop                                        10.4 12.3  0.85       3.6  6.6  0.54  -2.68
+current stop (2 x ATR14, ~1dm)                 10.8  9.7  1.12       3.6  7.3  0.49  -1.12
+fixed 1dm stop                                 10.4  8.2  1.27       3.9  7.5  0.52  -1.10
+owner ladder 2dm, TP 1/2/3R, 33/33/33           3.9  8.2  0.47       0.7  7.2  0.09  -1.05
+best capped ladder: 2dm, TP 2/4/6R, 25/25/50    5.6  9.6  0.58       2.1  6.7  0.32  -1.05
+
+Why the ladders lose (perps-main, BTC): the top 10% of trades earn more than all trades
+combined (174% of net R); 72% of gross profit comes from trades above +4R; the best trade
+was +54R. A TP3 cap stops every trade at +4.5R or less, and stops that trail or ratchet exit
+the big trends in their normal pullbacks. Waiting (or not) for the next UTC day before
+re-entering does not change this (checked).
+
+Conclusion: a fixed hard stop placed at entry keeps the trend strategies' return and caps
+the worst trade near -1R (vs -2.7 to -5R with no stop). Every rule that moves the stop up or
+sells early (breakeven, chandelier, ratchets, the TP ladder) gave up more than it protected,
+in all three bots and in both periods, and none lowered max drawdown reliably. Consistent
+with Kaminski & Lo (2014) and Clare et al. (2013): stops help trend strategies by cutting
+losers, while trend profits come from a few uncapped winners.
+Caveats: spot candles stand in for perps prices; funding not modeled; equal size for all
+methods (a tighter stop could justify larger size); results are hypotheses, not promises.

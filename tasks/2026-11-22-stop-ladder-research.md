@@ -2,6 +2,6 @@
 
 - [x] Review how each bot handles stops today
 - [x] Research stop-loss methods from published sources (plan section "Evidence base")
-- [x] EXP-2026-018: replay fixed, breakeven, chandelier and TP-ladder exits on 2020-2026 data
+- [x] EXP-2026-022: replay fixed, breakeven, chandelier and TP-ladder exits on 2020-2026 data
 - [ ] Owner decision on which exit to build (results file, "Conclusion")
 - [ ] Build the chosen exit for every bot (separate pull request)

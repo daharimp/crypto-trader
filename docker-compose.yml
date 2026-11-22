@@ -7,6 +7,7 @@
 #   docker compose up -d dashboard                   # read-only phone dashboard (ADR-026)
 #   docker compose up -d perps                       # paper leverage practice (ADR-031)
 #   docker compose up -d perps-degen                 # second paper account, degen settings (ADR-038)
+#   docker compose up -d perps-spot-perps            # spot's trend rule both ways, 1x paper perps (ADR-043)
 # Project name keeps these containers separate from other stacks on the same server (n8n).
 name: crypto-trader
 # Reason: every service runs the same image, crypto-trader:local (ADR-036). Only `paper`
@@ -45,6 +46,12 @@ services:
     <<: *trader
     # Checks every hour; its 30-day trend and volatility come from 4h candles (ADR-040).
     command: ["perps", "paper", "run", "--account", "degen", "--timeframe", "1h"]
+
+  # Spot code stays long-only, so spot's trend rule also runs both ways, long and short, in
+  # a third paper perps account at 1x (ADR-043, configs/perps/jupiter-spot-perps.yaml).
+  perps-spot-perps:
+    <<: *trader
+    command: ["perps", "paper", "run", "--account", "spot-perps"]
 
   live:
     <<: *trader

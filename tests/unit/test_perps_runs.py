@@ -156,7 +156,7 @@ def test_cli_reset_and_runs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> 
     assert "archived main run" in r.output and "fresh run" in r.output
     assert not (tmp_path / "state" / "perps-paper.json").exists()
     r = CliRunner().invoke(app, ["perps", "paper", "runs"])
-    assert "tsmom_30d 4h" in r.output and "reason: new stop-loss" in r.output
+    assert "trend_50_200_range_10_30 4h" in r.output and "reason: new stop-loss" in r.output
     assert "not guaranteed" in r.output
     # The degen account is separate: nothing archived there.
     r = CliRunner().invoke(app, ["perps", "paper", "runs", "--account", "degen"])

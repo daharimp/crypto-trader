@@ -1,0 +1,37 @@
+# Jupiter Perps "spot-perps" account, PAPER ONLY (ADR-025, ADR-043). No wallet, no keys, no
+# transactions. Spot code stays long-only, so the shared trend rule (trader.regimes.trend)
+# also runs here both ways at 1x: long while the 50-bar average is above the 200-bar
+# average, short while it is below, and the 10/30 averages decide in a choppy market.
+# Own state file (data/state/perps-spot-perps.json) and event log.
+# v1 (2026-11-22): owner decision UD-32: spot's rule long and short as a 1x paper perps
+# account; $2,500, 15% of equity per position, a stop at a 6% move, at most 100% of equity
+# open, and a 5% bad-day stop. Costs and venue limits are copied unchanged from jupiter.yaml
+# v10 with their original approval.
+# Every value here is adjustable: edit it, raise `version`, update the approval fields, and
+# restart the account (RUNBOOK 2d). A value set to TBD stops the account (exit 3).
+schema_version: "1.0.0"
+kind: PerpsConfig
+version: 1
+venue: jupiter_perps
+mode: paper
+starting_collateral_usd: {value: 2500, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "the same paper balance as every other account"}
+markets:
+  - {market: SOL, price_mint: So11111111111111111111111111111111111111112}
+  - {market: ETH, price_mint: 7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs}
+  - {market: BTC, price_mint: 3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh}
+costs:
+  open_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
+  close_fee_bps: {value: 7, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "0.06% base + 0.01% minimum price impact (docs.jup.ag fees, 2026-11-10)"}
+  borrow_rate_pct_per_hour: {value: 0.0016, status: approved, ref: UD-28, approved_by: owner, approved_on: "2026-11-12", note: "the rate in Jupiter's documented worked example (docs.jup.ag fees, read 2026-11-12)"}
+venue_limits:
+  maintenance_bps: {value: 20, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "liquidation at size/500 (docs.jup.ag liquidation, 2026-11-10)"}
+  venue_max_leverage: {value: 250, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "trading maximum (docs.jup.ag positions, 2026-11-10)"}
+risk:
+  max_leverage: {value: 1, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "owner chose spot's rule as a 1x paper perps account; no liquidation buffer, so every position opens at 1x"}
+  target_leverage: {value: 1, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "1x, same as max_leverage"}
+  max_collateral_per_position_pct: {value: 15, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "with the 6% stop one losing trade costs about 0.9% of equity, close to spot's 1% risk per trade"}
+  stop_loss_pct_of_collateral: {value: 6, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "at 1x a 6% price move, about 2 typical daily moves (BTC 2.3%, ETH 3.0%, SOL 3.0% a day, Nov 2026), the stop EXP-2026-018 favoured; fees included; after a stop that market waits for the next UTC day"}
+  max_total_size_pct_of_equity: {value: 100, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "never more than the account's equity open (3 x 15% = 45% in practice)"}
+  min_liquidation_distance_pct: {value: 3.5, status: approved, ref: UD-27, approved_by: owner, approved_on: "2026-11-12", note: "same as the other accounts; at 1x liquidation is about 100% away"}
+  max_open_positions: {value: 3, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-02", note: "one per market, same as the other accounts"}
+  daily_loss_limit_pct: {value: 5, status: approved, ref: UD-32, approved_by: owner, approved_on: "2026-11-22", note: "alert and stop opening for the rest of the UTC day after a 5% loss"}

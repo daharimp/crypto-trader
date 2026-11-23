@@ -23,7 +23,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from trader.profiles.loader import ConfigLoadError, load_yaml
 
@@ -41,6 +41,35 @@ BANNED = re.compile(
     re.I,
 )
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
+
+
+class FreeTradeReviews(BaseModel):
+    """
+    ADR-049: per-trade reviews on a free OpenRouter model (not risk values).
+
+    Off by default so an older ``assistant.yaml`` keeps working. The key is read only from
+    ``OPENROUTER_API_KEY`` on the server; without it the reviews skip quietly.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = False
+    base_url: str = Field(default="https://openrouter.ai/api/v1", pattern=r"^https://")
+    # Reason: OpenRouter tries these in order, so a busy free model falls back to the next.
+    models: list[str] = Field(default_factory=list, max_length=3)
+    max_tokens: int = Field(default=4000, ge=512, le=32000)
+    reasoning_effort: Literal["low", "medium", "high"] = "medium"
+    retries: int = Field(default=1, ge=0, le=2)
+    # Reason: free accounts get 50 requests a day and failed ones count, so stay under it.
+    daily_call_budget: int = Field(default=45, ge=1, le=1000)
+    lookback_hours: int = Field(default=24, ge=1, le=72)
+    timeout_s: int = Field(default=120, ge=10, le=600)
+
+    @model_validator(mode="after")
+    def _models_when_enabled(self) -> FreeTradeReviews:
+        if self.enabled and not self.models:
+            raise ValueError("free_trade_reviews.enabled needs at least one model")
+        return self
 
 
 class AssistantSettings(BaseModel):
@@ -67,6 +96,7 @@ class AssistantSettings(BaseModel):
     # daily summary and trade reviews); drawdown alerts are code only and keep running. The
     # daily scheduled review on the owner's Claude plan writes the summaries instead.
     server_ai_reviews: bool = True
+    free_trade_reviews: FreeTradeReviews = Field(default_factory=FreeTradeReviews)
 
     def effort_for(self, role: str) -> Effort:
         """Effort for a role (``default`` when the role has none)."""

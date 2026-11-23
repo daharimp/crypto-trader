@@ -172,13 +172,20 @@ def analyze_trade(
     return result
 
 
-def render_trade(facts: dict[str, Any], a: TradeAnalysis | None) -> str:
+def render_trade(
+    facts: dict[str, Any],
+    a: TradeAnalysis | None,
+    reviewer: str | None = None,
+    skipped: str | None = None,
+) -> str:
     """
     Markdown for one trade: a code-built facts table, then the analyst's notes.
 
     Args:
         facts (dict[str, Any]): From ``build_trade_facts``.
-        a (TradeAnalysis | None): The analysis, or None when declined.
+        a (TradeAnalysis | None): The analysis, or None when declined or skipped.
+        reviewer (str | None): Model that wrote it, shown when not the default Claude one.
+        skipped (str | None): Why no review was written (free model, ADR-049).
 
     Returns:
         str: Report.
@@ -199,7 +206,11 @@ def render_trade(facts: dict[str, Any], a: TradeAnalysis | None) -> str:
         f"{m.get('best_move_for_pct', 'n/a')}% | {m.get('worst_move_against_pct', 'n/a')}% |",
         "",
     ]
-    if a is None:
+    if reviewer:
+        lines += [f"Reviewed by: `{reviewer}` (free model, ADR-049)", ""]
+    if a is None and skipped:
+        lines += [f"_Review skipped: {skipped}. The facts are in the JSON file._", ""]
+    elif a is None:
         lines += [
             "_The analyst declined to review this trade; the facts are in the JSON file._",
             "",
@@ -246,12 +257,20 @@ def trade_report_path(reports: Path, trade: dict[str, Any]) -> Path:
     )
 
 
-def save_trade_report(reports: Path, facts: dict[str, Any], a: TradeAnalysis | None) -> Path:
+def save_trade_report(
+    reports: Path,
+    facts: dict[str, Any],
+    a: TradeAnalysis | None,
+    reviewer: str | None = None,
+    skipped: str | None = None,
+) -> Path:
     """Write ``reports/trades/<account>/<close-time>-<market>-<side>.md`` and JSON; return md."""
     md = trade_report_path(reports, facts["trade"])
     md.parent.mkdir(parents=True, exist_ok=True)
-    md.write_text(render_trade(facts, a), encoding="utf-8")
-    payload = {"facts": facts, "analysis": a.model_dump() if a else None}
+    md.write_text(render_trade(facts, a, reviewer, skipped), encoding="utf-8")
+    payload: dict[str, Any] = {"facts": facts, "analysis": a.model_dump() if a else None}
+    if reviewer or skipped:
+        payload |= {"reviewer": reviewer, "skipped": skipped}
     md.with_suffix(".json").write_text(
         json.dumps(payload, indent=1, sort_keys=True, default=str), encoding="utf-8"
     )

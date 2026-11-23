@@ -260,10 +260,19 @@ def _load_cursor(path: Path) -> dict[str, Any]:
     for k in ("done", "daily_done"):
         d.setdefault(k, [])
     d.setdefault("drawdown_seen", {})
+    d.setdefault("free_done", [])
+    d.setdefault("free_calls", {})
     return d
 
 
-def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: datetime) -> None:
+def watch_once(
+    cur: dict[str, Any],
+    client: Any,
+    settings: Any,
+    send: Any,
+    now: datetime,
+    free: Any = None,
+) -> None:
     """
     One pass of the watcher: bad days, the end-of-day summary with every trade, drawdowns.
 
@@ -273,6 +282,7 @@ def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: 
         settings (Any): Assistant settings.
         send (Any): Alert function, text -> None.
         now (datetime): Current time (UTC).
+        free (Any): Free-model trade reviewer (ADR-049), or None when off or no key.
     """
     from trader.assistant.daily import drawdown_alerts, write_daily
 
@@ -320,6 +330,10 @@ def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: 
         data_root(), accounts, settings.drawdown_alert_pct, cur["drawdown_seen"]
     ):
         send(line)
+    if free is not None:
+        from trader.assistant.free_review import run_pass
+
+        run_pass(cur, free, data_root(), accounts or list(ALL_ACCOUNTS), now, enrich_trade, send)
 
 
 @app.command("watch")
@@ -342,8 +356,17 @@ def watch() -> None:
         )
     else:
         typer.echo(f"review assistant: drawdown alerts only {settings.report_accounts} (ADR-048)")
+    from trader.assistant.free_review import KEY_ENV as FREE_KEY
+    from trader.assistant.free_review import reviewer_from_env
+
+    free_cfg = settings.free_trade_reviews
+    free = reviewer_from_env(free_cfg)
+    if free is not None:
+        typer.echo(f"free per-trade reviews: on, models {free_cfg.models} (ADR-049)")
+    elif free_cfg.enabled:
+        typer.echo(f"free per-trade reviews: skipped until {FREE_KEY} is set in .env (ADR-049)")
     while True:
-        watch_once(cur, client, settings, alerter.send, datetime.now(UTC))
+        watch_once(cur, client, settings, alerter.send, datetime.now(UTC), free)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(cur, sort_keys=True), encoding="utf-8")
         time.sleep(60)

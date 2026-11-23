@@ -27,3 +27,19 @@ drawdown_alert_pct: [5, 10, 15]
 # scheduled review on the owner's Claude plan writes the daily summary and trade reviews to the
 # crypto-trader-ops repo; this service keeps only the drawdown alerts. true turns them back on.
 server_ai_reviews: false
+# ADR-049 (owner, 2026-11-23): a free OpenRouter model reviews each paper trade soon after it
+# closes; the daily Claude review reads those notes plus the raw facts. The key is read only
+# from OPENROUTER_API_KEY in the server's .env; without it these reviews skip quietly. Free
+# models change often: edit the list here (tried in order) when one disappears.
+free_trade_reviews:
+  enabled: true
+  models:
+    - nvidia/nemotron-3-ultra-550b-a55b:free
+    - google/gemma-4-31b-it:free
+  reasoning_effort: medium
+  max_tokens: 4000
+  retries: 1
+  # Free accounts get 50 requests a day (1,000 after a one-time $10 credit purchase) and
+  # failed requests count; raise this after the top-up.
+  daily_call_budget: 45
+  lookback_hours: 24

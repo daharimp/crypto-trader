@@ -360,6 +360,22 @@ unexpected error. Investigate, fix, then disengage the kill switch.
 > and a review of each trade closed that day to `reviews/` in the private
 > `crypto-trader-ops` repo, shortly after the status push at 00:20 UTC. Set it back to
 > `true` (with an API key in `.env`) to bring the server reviews below back.
+>
+> **Per-trade reviews on a free model (ADR-049).** The `review` service also asks a free
+> OpenRouter model to review each paper trade soon after it closes, and saves it in
+> `data/reports/trades/<account>/` (Markdown, plus JSON with the raw facts). One-time setup:
+> create a key at openrouter.ai, and in its privacy settings allow free endpoints that may
+> train on inputs (the prompts hold only simulated trade numbers). Then on the server:
+>
+> ```bash
+> nano .env                     # add: OPENROUTER_API_KEY=<your key>
+> docker compose up -d review   # recreate the container so it picks up the key
+> docker compose logs --tail 5 review   # "free per-trade reviews: on, models [...]"
+> ```
+>
+> Without the key it skips quietly. Models and the daily call budget are in
+> `configs/assistant.yaml` under `free_trade_reviews` (raise `daily_call_budget` after a
+> one-time $10 OpenRouter credit purchase lifts the free cap from 50 to 1,000 a day).
 
 When a paper perps account has a bad day (it lost the daily limit and stopped for the rest of
 the UTC day), the review assistant reads that account's record, settings and the market, and

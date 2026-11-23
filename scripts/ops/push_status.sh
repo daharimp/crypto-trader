@@ -18,7 +18,10 @@ find data/state -maxdepth 1 -name '*.json' -exec cp -f {} "$dest/state/" \; 2>/d
 find data/logs -maxdepth 1 -name '*.jsonl' -exec cp -f {} "$dest/logs/" \; 2>/dev/null || true
 git log -1 --format='%H %cI %s' >"$dest/deployed-commit.txt"
 
-cd "$dest"
+cd "$dest" || exit 1
+# Reason: the daily scheduled review commits its reports under reviews/ in the same repo
+# (ADR-048), so pick those up first; the server never writes reviews/, so this cannot conflict.
+git pull --quiet --rebase origin main 2>/dev/null || true
 git add -A
 git -c user.name="crypto-trader server" -c user.email="ops@localhost" \
   commit --quiet -m "status $(date -u +%FT%TZ)" || exit 0

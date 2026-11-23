@@ -23,3 +23,7 @@ review_every_trade: true
 daily_summary: true
 report_accounts: [main, degen, spot-perps, spot]
 drawdown_alert_pct: [5, 10, 15]
+# ADR-048 (owner, 2026-11-23): no Anthropic API calls from the server for now. The daily
+# scheduled review on the owner's Claude plan writes the daily summary and trade reviews to the
+# crypto-trader-ops repo; this service keeps only the drawdown alerts. true turns them back on.
+server_ai_reviews: false

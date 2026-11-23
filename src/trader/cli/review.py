@@ -269,7 +269,7 @@ def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: 
 
     Args:
         cur (dict[str, Any]): Cursor (updated in place; the caller saves it).
-        client (Any): Anthropic client.
+        client (Any): Anthropic client (None when ``server_ai_reviews`` is off).
         settings (Any): Assistant settings.
         send (Any): Alert function, text -> None.
         now (datetime): Current time (UTC).
@@ -278,7 +278,7 @@ def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: 
 
     today = now.date().isoformat()
     done = set(cur["done"])
-    if settings.review_on_bad_day:
+    if settings.review_on_bad_day and settings.server_ai_reviews:
         for account in settings.accounts:
             for day in due_days(account, done, today):
                 done.add(f"{account}/{day}")
@@ -296,6 +296,7 @@ def watch_once(cur: dict[str, Any], client: Any, settings: Any, send: Any, now: 
     # Reason: wait 10 minutes past midnight UTC so 4h and 1h sessions finish the day's last bar.
     if (
         settings.daily_summary
+        and settings.server_ai_reviews
         and now.hour * 60 + now.minute >= 10
         and yesterday not in cur["daily_done"]
     ):
@@ -328,14 +329,19 @@ def watch() -> None:
     from trader.session.alerts import Alerter
 
     settings = load_assistant_settings(configs_root())
-    client = _client_or_exit()
+    # Reason: with server AI reviews off (ADR-048) only the code-only drawdown alerts run, so
+    # no API key is needed.
+    client = _client_or_exit() if settings.server_ai_reviews else None
     alerter = Alerter.from_env("[review]")
     path = data_root() / "state" / "review-assistant.json"
     cur = _load_cursor(path)
-    typer.echo(
-        f"review assistant: bad days {settings.accounts}, daily+trades/drawdown "
-        f"{settings.report_accounts}"
-    )
+    if settings.server_ai_reviews:
+        typer.echo(
+            f"review assistant: bad days {settings.accounts}, daily+trades/drawdown "
+            f"{settings.report_accounts}"
+        )
+    else:
+        typer.echo(f"review assistant: drawdown alerts only {settings.report_accounts} (ADR-048)")
     while True:
         watch_once(cur, client, settings, alerter.send, datetime.now(UTC))
         path.parent.mkdir(parents=True, exist_ok=True)

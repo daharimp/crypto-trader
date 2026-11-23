@@ -17,6 +17,17 @@ cp -rf data/reports/. "$dest/reports/" 2>/dev/null || true
 find data/state -maxdepth 1 -name '*.json' -exec cp -f {} "$dest/state/" \; 2>/dev/null || true
 find data/logs -maxdepth 1 -name '*.jsonl' -exec cp -f {} "$dest/logs/" \; 2>/dev/null || true
 git log -1 --format='%H %cI %s' >"$dest/deployed-commit.txt"
+# Reason: lets scheduled reviews confirm a deploy took effect (each service's start line) and
+# that the dashboard is reachable over Tailscale, without a login to the server.
+{
+  echo "## deployed (last auto-deploy)"; cat "$OPS_STATE/deployed-sha" 2>/dev/null || echo none
+  echo; echo "## auto-deploy hold"; head -1 "$OPS_STATE/deploy-hold" 2>/dev/null || echo off
+  echo; echo "## containers"; docker compose ps --format '{{.Service}} {{.State}} {{.Status}}' 2>&1
+  echo; echo "## tailscale serve"; tailscale serve status 2>&1 | head -20 || echo "tailscale not installed"
+  for svc in "${PAPER_SERVICES[@]}"; do
+    echo; echo "## logs: $svc (last 15 lines)"; docker compose logs --no-color --tail 15 "$svc" 2>&1
+  done
+} >"$dest/server-info.txt" 2>&1
 
 cd "$dest" || exit 1
 # Reason: the daily scheduled review commits its reports under reviews/ in the same repo

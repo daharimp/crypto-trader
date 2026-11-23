@@ -354,6 +354,13 @@ unexpected error. Investigate, fix, then disengage the kill switch.
 
 ## 7a. AI review assistant for the paper accounts (ADR-039)
 
+> **Now (ADR-048, 2026-11-23): the server makes no AI calls.** `server_ai_reviews: false` in
+> `configs/assistant.yaml` keeps the `review` service to the code-only drawdown alerts (no
+> API key needed). The daily scheduled review on your Claude plan writes the daily summary
+> and a review of each trade closed that day to `reviews/` in the private
+> `crypto-trader-ops` repo, shortly after the status push at 00:20 UTC. Set it back to
+> `true` (with an API key in `.env`) to bring the server reviews below back.
+
 When a paper perps account has a bad day (it lost the daily limit and stopped for the rest of
 the UTC day), the review assistant reads that account's record, settings and the market, and
 six AI reviewers each do one job: market analyst, trade reviewer and risk officer (each on its

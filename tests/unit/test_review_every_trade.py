@@ -288,6 +288,8 @@ def test_old_assistant_settings_still_load_with_new_features_off() -> None:
     assert not s.review_every_trade and not s.daily_summary and s.drawdown_alert_pct == []
     shipped = ra.load_assistant_settings(SHIPPED_CONFIGS)
     assert shipped.review_every_trade and "spot" in shipped.report_accounts
+    # ADR-048: server API calls default on for older files; the shipped file turns them off.
+    assert s.server_ai_reviews and not shipped.server_ai_reviews
 
 
 @pytest.fixture
@@ -307,7 +309,11 @@ def test_watch_makes_one_request_per_day_reviewing_its_trades(data: Path) -> Non
     from trader.cli.review import _load_cursor, watch_once
 
     settings = ra.load_assistant_settings(SHIPPED_CONFIGS).model_copy(
-        update={"review_on_bad_day": False, "report_accounts": ["spot", "main"]}
+        update={
+            "review_on_bad_day": False,
+            "report_accounts": ["spot", "main"],
+            "server_ai_reviews": True,
+        }
     )
     client, sent = _client(), []
     cur = _load_cursor(data / "state" / "review-assistant.json")
@@ -362,3 +368,37 @@ def test_cli_trade_and_daily(data: Path, monkeypatch: pytest.MonkeyPatch) -> Non
     accts = {a["account"]: a for a in json.loads(r.output)["accounts"]}
     assert accts["spot"]["trades_closed"] == 1 and accts["main"]["ran"] is False
     assert "no matching reports" in CliRunner().invoke(app, ["review", "show", "--daily"]).output
+
+
+def test_server_ai_off_keeps_only_drawdown_alerts(data: Path) -> None:
+    """ADR-048: no API request (bad day or daily) with server AI off; drawdowns still alert."""
+    from trader.cli.review import _load_cursor, watch_once
+
+    settings = ra.load_assistant_settings(SHIPPED_CONFIGS).model_copy(
+        update={"report_accounts": ["spot", "main"]}
+    )
+    assert settings.server_ai_reviews is False
+    sent: list[str] = []
+    cur = _load_cursor(data / "state" / "review-assistant.json")
+    # Reason: None as the client proves no code path reaches the API.
+    watch_once(cur, None, settings, sent.append, NOW)
+    assert [s for s in sent if s.startswith("DRAWDOWN spot")]
+    assert not any(s.startswith("daily ") for s in sent)
+    assert not (data / "reports" / "daily-2026-11-21.md").exists()
+
+
+def test_watch_without_key_runs_when_server_ai_off(
+    data: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ADR-048: the watcher no longer exits 3 for a missing key when server AI is off."""
+    import trader.cli.review as rv
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    def stop(_: float) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(rv.time, "sleep", stop)
+    with pytest.raises(KeyboardInterrupt):
+        rv.watch()
+    assert (data / "state" / "review-assistant.json").exists()

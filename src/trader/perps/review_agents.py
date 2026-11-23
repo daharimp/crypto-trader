@@ -63,6 +63,10 @@ class AssistantSettings(BaseModel):
         default_factory=list
     )
     drawdown_alert_pct: list[float] = Field(default_factory=list)
+    # ADR-048: False turns off every Anthropic API call on the server (bad-day reviews, the
+    # daily summary and trade reviews); drawdown alerts are code only and keep running. The
+    # daily scheduled review on the owner's Claude plan writes the summaries instead.
+    server_ai_reviews: bool = True
 
     def effort_for(self, role: str) -> Effort:
         """Effort for a role (``default`` when the role has none)."""

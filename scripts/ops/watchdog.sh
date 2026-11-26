@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Watchdog (ADR-047): every 15 minutes, check the paper bots and alert only on problems.
 source "$(dirname "$0")/common.sh"
+# Reason: runs first, under its own lock, so a hung dashboard is restarted even on servers
+# whose crontab predates the 5-minute dashboard job (ADR-050).
+bash "$(dirname "$0")/dashboard_check.sh" || true
 take_lock 120
 trim_log watchdog.log
 

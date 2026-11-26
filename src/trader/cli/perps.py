@@ -147,6 +147,9 @@ def validate(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)
     params = _params_or_exit(account)
     stop = params.stop_loss_pct_of_collateral
     tps, rest = params.take_profits, params.cooldown_after_loss_hours
+    low, high = params.min_collateral_per_position_pct, params.max_collateral_per_position_pct
+    # Reason: with a size range (ADR-054) the line shows both ends and what picks between them.
+    share = f"{high}%" if low is None else f"{low}% to {high}% (chosen by confidence)"
     ladder = (
         "off"
         if tps is None
@@ -154,7 +157,7 @@ def validate(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)
     )
     typer.echo(
         f"perps config {ACCOUNTS[account][0]} v{params.version}: all values approved "
-        f"(paper only); {params.max_collateral_per_position_pct}% collateral per position, "
+        f"(paper only); {share} collateral per position, "
         f"buffer {params.liquidation_buffer_daily_moves or 'off'} daily moves, "
         f"stop {f'{stop}% of collateral' if stop else 'off'}, "
         f"daily loss limit {params.daily_loss_limit_pct}%, take-profit ladder {ladder}, "

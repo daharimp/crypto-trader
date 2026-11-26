@@ -14,6 +14,8 @@ from .math import PerpSide, fee_usd, leverage_for_buffer, liquidation_price
 from .params import PerpsParams
 
 HUNDRED = Decimal(100)
+# A collateral % is kept to four decimals, as in the experiment that tested the range.
+PCT_STEP = Decimal("0.0001")
 
 
 @dataclass(frozen=True)
@@ -39,6 +41,8 @@ class OpenProposal:
     entry_price: Decimal
     liquidation_price: Decimal
     leverage: Decimal = Decimal(0)
+    # The share of equity the position was sized at, before free cash limited it.
+    collateral_pct: Decimal = Decimal(0)
 
 
 @dataclass(frozen=True)
@@ -79,6 +83,34 @@ def opening_leverage(params: PerpsParams, daily_move: Decimal | None) -> Decimal
     )
 
 
+def collateral_pct(params: PerpsParams, confidence: Decimal | None) -> Decimal:
+    """
+    Share of equity a new position posts: the cap, or a point in the owner's range.
+
+    Without ``min_collateral_per_position_pct`` every position posts
+    ``max_collateral_per_position_pct``. With it (ADR-054) the share runs from the
+    minimum at confidence 0 to the maximum at confidence 1; when the confidence is
+    unknown the answer is 0, which sizes the position to nothing so the open is refused
+    (fail closed).
+
+    Args:
+        params (PerpsParams): Resolved parameters.
+        confidence (Decimal | None): Score from ``trader.perps.confidence`` (0 to 1).
+
+    Returns:
+        Decimal: % of equity, or 0 when it cannot be assessed.
+    """
+    low, high = params.min_collateral_per_position_pct, params.max_collateral_per_position_pct
+    if low is None:
+        return high
+    if confidence is None:
+        return Decimal(0)
+    # Reason: neither a score outside 0..1 nor the rounding to the step may carry the size
+    # past an end of the owner's range.
+    score = min(max(confidence, Decimal(0)), Decimal(1))
+    return min(max((low + (high - low) * score).quantize(PCT_STEP), low), high)
+
+
 def size_open(
     params: PerpsParams,
     account: AccountView,
@@ -86,12 +118,14 @@ def size_open(
     side: PerpSide,
     mark: Decimal,
     daily_move: Decimal | None = None,
+    confidence: Decimal | None = None,
 ) -> OpenProposal:
     """
     Size a new position deterministically.
 
-    Collateral is the per-position cap applied to equity, limited by free cash after the
-    opening fee; size is collateral times the opening leverage (see ``opening_leverage``).
+    Collateral is the per-position share of equity (see ``collateral_pct``), limited by
+    free cash after the opening fee; size is collateral times the opening leverage (see
+    ``opening_leverage``).
 
     Args:
         params (PerpsParams): Resolved parameters.
@@ -101,12 +135,15 @@ def size_open(
         mark (Decimal): Current mark price used as the entry price.
         daily_move (Decimal | None): The market's typical daily move as a fraction; needed
             only when leverage is assessed from volatility.
+        confidence (Decimal | None): Confidence score (0 to 1); needed only when the
+            account sizes inside a range.
 
     Returns:
         OpenProposal: Proposal (may still fail the checks).
     """
     lev = opening_leverage(params, daily_move)
-    cap = account.equity_usd * params.max_collateral_per_position_pct / HUNDRED
+    share = collateral_pct(params, confidence)
+    cap = account.equity_usd * share / HUNDRED
     # Reason: the opening fee is charged on size, so leave room for it in free cash.
     fee_share = lev * params.open_fee_bps / Decimal(10_000)
     affordable = account.free_cash_usd / (1 + fee_share)
@@ -120,7 +157,7 @@ def size_open(
         if size > 0
         else Decimal(0)
     )
-    return OpenProposal(market, side, collateral, size, mark, liq, lev)
+    return OpenProposal(market, side, collateral, size, mark, liq, lev, share)
 
 
 def check_open(
@@ -152,6 +189,9 @@ def check_open(
         r.append("PERP_DAILY_LOSS_LIMIT")
     if params.liquidation_buffer_daily_moves is not None and p.leverage <= 0:
         r.append("PERP_VOLATILITY_UNAVAILABLE")
+        return PerpRiskDecision(False, None, r)
+    if params.min_collateral_per_position_pct is not None and p.collateral_pct <= 0:
+        r.append("PERP_CONFIDENCE_UNAVAILABLE")
         return PerpRiskDecision(False, None, r)
     if p.collateral_usd <= 0 or p.size_usd <= 0:
         r.append("PERP_NO_COLLATERAL_AVAILABLE")

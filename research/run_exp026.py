@@ -12,13 +12,18 @@ here, also before any score was computed:
   every other step-1 or step-2 job.
 
 Usage: python research/run_exp026.py <data_dir> <cache_dir> <out_dir> <job> [configs_dir]
-Jobs: prep | check | step1-<slice> | step2-<slice> | verdict
+Jobs: prep | check | step1-<slice> | step2-<slice> | verdict | engine-<slice>
 Slices: A1 A2 A3 (main's account, 4h decisions) and B1 B2 B3 B4 (the top-ten hourly
 account on the four slices of EXP-2026-025). The balance is 100 times the configured $2,500.
+
+``engine-<slice>`` was added after the verdict, with ADR-054: it shows that the score and
+the size range built into the paper account (``trader.perps.confidence``,
+``risk.min_collateral_per_position_pct``) reproduce the composite's wide-range account.
 """
 
 from __future__ import annotations
 
+import bisect
 import dataclasses
 import json
 import random
@@ -35,6 +40,7 @@ import numpy as np
 import run_exp024 as r24
 import run_exp025 as r25
 
+from trader.perps.confidence import CLOSES_USED, confidence
 from trader.perps.math import PerpSide
 from trader.perps.params import PerpsParams
 
@@ -396,6 +402,72 @@ def check(data: Path, cache: Path, configs: Path | None) -> None:
     tamper(data, "B", ["BTC", "ETH", "XRP"])
 
 
+class Native:
+    """The account's own score (``trader.perps.confidence``) on the slice's candles."""
+
+    def __init__(self, feed: lib.Feed, sc: x.Scorer, window: int | None = None) -> None:
+        self.feed, self.coins, self.sig, self.window = feed, sc.coins, sc.sig, window
+        self.opens: dict[str, list[datetime]] = {}
+        self.closes: dict[str, list[Decimal]] = {}
+        self.day_done: dict[str, list[datetime]] = {}
+        self.day_close: dict[str, list[Decimal]] = {}
+        for m in self.coins:
+            candles = x.candles_4h(feed, m)
+            self.opens[m], self.closes[m] = [r[0] for r in candles], [r[4] for r in candles]
+            # Reason: a daily candle's close is the close of its last 4h candle.
+            days = {(r[0] + base.TREND_STEP - timedelta(seconds=1)).date(): r[4] for r in candles}
+            ends = [datetime(d.year, d.month, d.day, tzinfo=UTC) for d in sorted(days)]
+            self.day_done[m] = [d + timedelta(days=1) for d in ends]
+            self.day_close[m] = [days[d] for d in sorted(days)]
+
+    def at(self, m: str, side: PerpSide, t: datetime, decided: datetime) -> x.Scores:
+        """MC for opening ``side`` in ``m``, from candles closed at ``decided``."""
+        i = bisect.bisect_right(self.opens[m], decided - base.TREND_STEP)
+        k = bisect.bisect_right(self.day_done[m], decided)
+        # Reason: ``window`` imitates the exchange's feed, which holds only that many rows.
+        n = self.window or CLOSES_USED
+        closes, days = self.closes[m][max(0, i - n) : i], self.day_close[m][max(0, k - n) : k]
+        others = [self.sig[o].get(t) for o in self.coins if o != m and t in self.feed.rows[o]]
+        return {"MC": confidence(side, others, closes, days)}
+
+
+def engine(data: Path, cache: Path, name: str, configs: Path | None) -> None:
+    """The account's own range sizing against the research composite, wide range."""
+    kind, coins, start, end = SLICES[name]
+    c = SIZES[kind][0]
+    params = account(kind, c, configs)
+    feed, sc = load(data, cache, name)
+    low, high = D(c) * RANGES["wide"][0], D(c) * RANGES["wide"][1]
+
+    def sizer(scores: x.Scores) -> Decimal:
+        return (low + (high - low) * scores["MC"]).quantize(Q)
+
+    research, entries = x.run(params, feed, start, end, coins=coins, scorer=sc, sizer=sizer)
+    ranged = dataclasses.replace(
+        params, min_collateral_per_position_pct=low, max_collateral_per_position_pct=high
+    )
+    built, _ = x.run(ranged, feed, start, end, coins=coins, scorer=Native(feed, sc), native=True)
+    extra = ("confidence", "collateral_pct")  # what the built account also journals
+    events = [{k: v for k, v in e.items() if k not in extra} for e in built.events]
+    same = events == research.events and built.daily_equity == research.daily_equity
+    print(
+        f"{name}, {low}% to {high}% by the composite: {len(events)} events, {len(entries)} "
+        f"entries, built range sizing against research: {'identical' if same else 'DIFFERENT'}"
+    )
+    if not same:
+        raise SystemExit("the built range sizing does not match the research account")
+    # Reason: the exchange's feed holds 720 rows, the last one still forming.
+    live, step = Native(feed, sc, window=719), base.STEP[feed.tf]
+    gaps = []
+    for e in entries:
+        at = datetime.fromisoformat(e.at_utc)
+        gaps.append(abs(live.at(e.market, PerpSide(e.side), at - step, at)["MC"] - e.scores["MC"]))
+    print(
+        f"{name}, the same scores from a 719-candle feed: largest difference "
+        f"{max(gaps):.4f}, {sum(g > 0 for g in gaps)} of {len(gaps)} differ at all"
+    )
+
+
 def main() -> None:
     """Run one job."""
     data, cache, out, job = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]
@@ -414,6 +486,8 @@ def main() -> None:
         step2(data, cache, out, name, configs)
     elif job == "verdict":
         verdict(out)
+    elif kind == "engine" and name in SLICES:
+        engine(data, cache, name, configs)
     else:
         raise SystemExit(f"unknown job {job!r}")
 

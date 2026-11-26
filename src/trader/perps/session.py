@@ -24,10 +24,13 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from .account_state import dump_account as _dump_account
+from .account_state import iso as _iso
+from .account_state import load_account as _load_account
 from .backtest import Bar, sma_stance
+from .confidence import confidence_at
 from .math import PerpSide, typical_daily_move
 from .params import PerpsParams
-from .position import PerpPosition
 from .simulator import PaperPerpsAccount
 
 STATE_VERSION = 1
@@ -50,72 +53,6 @@ class SessionStateError(RuntimeError):
 def default_signal(closes: list[Decimal]) -> PerpSide | None:
     """The replay's baseline: long while SMA 20 is above SMA 50, short while below."""
     return sma_stance(closes, 20, 50)
-
-
-def _iso(t: datetime) -> str:
-    return t.astimezone(UTC).isoformat()
-
-
-def _dump_account(acct: PaperPerpsAccount) -> dict[str, Any]:
-    return {
-        "cash_usd": str(acct.cash_usd),
-        "day_start_equity_usd": str(acct.day_start_equity_usd),
-        "day": acct.day,
-        "realized_pnl_usd": str(acct.realized_pnl_usd),
-        "fees_paid_usd": str(acct.fees_paid_usd),
-        "stopped_today": sorted(acct.stopped_today),
-        "day_halted": acct.day_halted,
-        "cooldown_until": {m: _iso(t) for m, t in sorted(acct.cooldown_until.items())},
-        "positions": {
-            m: {
-                "side": p.side.value,
-                "size_usd": str(p.size_usd),
-                "collateral_usd": str(p.collateral_usd),
-                "entry_price": str(p.entry_price),
-                "opened_at": _iso(p.opened_at),
-                "borrow_fees_usd": str(p.borrow_fees_usd),
-                "last_accrual": _iso(p.last_accrual) if p.last_accrual else None,
-                "initial_stop": None if p.initial_stop is None else str(p.initial_stop),
-                "tps_hit": p.tps_hit,
-                "moved_stop": None if p.moved_stop is None else str(p.moved_stop),
-                "realized_usd": str(p.realized_usd),
-            }
-            for m, p in acct.positions.items()
-        },
-    }
-
-
-def _load_account(params: PerpsParams, d: dict[str, Any]) -> PaperPerpsAccount:
-    acct = PaperPerpsAccount(
-        params, Decimal(d["cash_usd"]), Decimal(d["day_start_equity_usd"]), d["day"]
-    )
-    acct.realized_pnl_usd = Decimal(d["realized_pnl_usd"])
-    acct.fees_paid_usd = Decimal(d["fees_paid_usd"])
-    # Reason: state files written before ADR-038 have neither key.
-    acct.stopped_today = set(d.get("stopped_today", []))
-    acct.day_halted = bool(d.get("day_halted", False))
-    if params.cooldown_after_loss_hours is not None:
-        # Reason: waits saved while the setting was on end with it; state written before
-        # ADR-053 has neither this key nor a position's ``realized_usd``.
-        waits = d.get("cooldown_until", {}).items()
-        acct.cooldown_until = {m: datetime.fromisoformat(t) for m, t in waits}
-    for m, p in d["positions"].items():
-        acct.positions[m] = PerpPosition(
-            m,
-            PerpSide(p["side"]),
-            Decimal(p["size_usd"]),
-            Decimal(p["collateral_usd"]),
-            Decimal(p["entry_price"]),
-            datetime.fromisoformat(p["opened_at"]),
-            Decimal(p["borrow_fees_usd"]),
-            datetime.fromisoformat(p["last_accrual"]) if p["last_accrual"] else None,
-            # Reason: state written before ADR-045 has no ladder keys.
-            None if p.get("initial_stop") is None else Decimal(p["initial_stop"]),
-            int(p.get("tps_hit", 0)),
-            None if p.get("moved_stop") is None else Decimal(p["moved_stop"]),
-            Decimal(p.get("realized_usd", "0")),
-        )
-    return acct
 
 
 def describe(event: dict[str, Any]) -> str:
@@ -353,6 +290,10 @@ class PerpsSession:
         self._guard_archived()
         bars = self._bars()
         trend = self._bars(self.trend_timeframe) if self.trend_timeframe else None
+        # ADR-054: an account that sizes inside a range also reads 4h and daily candles.
+        ranged = self.params.min_collateral_per_position_pct is not None
+        four = bars if self.timeframe == "4h" else trend if self.trend_timeframe == "4h" else None
+        longer = (four or self._bars("4h"), self._bars("1d")) if ranged else None
         step = TIMEFRAMES[self.timeframe]
         by_time = {m: {b.open_time_utc: b for b in bs} for m, bs in bars.items()}
         # Reason: the last row of each market is the forming candle, so it is not "completed".
@@ -414,6 +355,7 @@ class PerpsSession:
                 # from the candle's close instead, as in the replays (ADR-053).
                 at = now if newest else closes_at
                 per_day = round(timedelta(days=1) / step)
+                targets: dict[str, PerpSide | None] = {}
                 for m in bars:
                     closes = [b.close for b in bars[m] if b.open_time_utc <= t]
                     move = typical_daily_move(closes, per_day)
@@ -423,7 +365,17 @@ class PerpsSession:
                         acct.daily_moves.pop(m, None)
                     else:
                         acct.daily_moves[m] = move
-                    acct.apply_signal(m, self.signal(closes), fills, at, closes_at)
+                    targets[m] = self.signal(closes)
+                # Reason: every market's signal is read before any position moves, so
+                # the score of one can count how many of the others agree (ADR-054).
+                acct.confidence = {}
+                for m, side in targets.items():
+                    held = acct.positions.get(m)
+                    if longer and side is not None and (held is None or held.side != side):
+                        rest = [s for o, s in targets.items() if o != m]
+                        score = confidence_at(closes_at, side, rest, longer[0][m], longer[1][m])
+                        acct.confidence[m] = score
+                    acct.apply_signal(m, side, fills, at, closes_at)
                 acct.check_day_loss(fills, at)
                 equity = acct.equity(fills)
                 peak = max(Decimal(self.meta["peak_equity_usd"]), equity)

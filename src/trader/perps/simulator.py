@@ -13,6 +13,7 @@ from typing import Any
 
 from .math import PerpSide, fee_usd, is_liquidatable, pnl_usd, remaining_collateral
 from .params import PerpsParams
+from .position import PerpPosition
 from .risk import AccountView, PerpRiskDecision, check_open, size_open
 
 HUNDRED = Decimal(100)
@@ -21,26 +22,6 @@ CENT = Decimal("0.01")
 # is paid at a close. Rounding every accrual to a cent charged nothing at all on an hourly
 # position under about $300 and mis-charged small 4h ones (ADR-051).
 BORROW_UNIT = Decimal("0.000001")
-
-
-@dataclass
-class PerpPosition:
-    """An open simulated position."""
-
-    market: str
-    side: PerpSide
-    size_usd: Decimal
-    collateral_usd: Decimal
-    entry_price: Decimal
-    opened_at: datetime
-    borrow_fees_usd: Decimal = Decimal(0)
-    last_accrual: datetime | None = None
-    # ADR-045 take-profit ladder: the opening stop price (R is its distance from entry), the
-    # number of take-profits already hit, and the stop the ladder has moved to (None until
-    # TP1; the collateral-based stop applies until then).
-    initial_stop: Decimal | None = None
-    tps_hit: int = 0
-    moved_stop: Decimal | None = None
 
 
 @dataclass
@@ -63,6 +44,8 @@ class PaperPerpsAccount:
     # today's loss reached the daily loss limit (alerted once per day).
     stopped_today: set[str] = field(default_factory=set)
     day_halted: bool = False
+    # ADR-053: when each market resting after a losing trade may open again (off by default).
+    cooldown_until: dict[str, datetime] = field(default_factory=dict)
 
     @classmethod
     def start(cls, params: PerpsParams, now: datetime) -> PaperPerpsAccount:
@@ -191,29 +174,11 @@ class PaperPerpsAccount:
                 o = (opens or {}).get(m)
                 if o is not None and (o - stop) * sign < 0:
                     fill = o
-                if not is_liquidatable(
-                    p.side,
-                    p.size_usd,
-                    p.collateral_usd,
-                    p.entry_price,
-                    fill,
-                    self.params.close_fee_bps,
-                    p.borrow_fees_usd,
-                    self.params.maintenance_bps,
-                ):
+                if not self._liquidatable(p, fill):
                     self.close(m, {**marks, m: fill}, now, reason="STOP_LOSS")
                     self.stopped_today.add(m)
                     continue
-            if is_liquidatable(
-                p.side,
-                p.size_usd,
-                p.collateral_usd,
-                p.entry_price,
-                marks[m],
-                self.params.close_fee_bps,
-                p.borrow_fees_usd,
-                self.params.maintenance_bps,
-            ):
+            if self._liquidatable(p, marks[m]):
                 # Reason: conservative paper model, the whole collateral is lost on liquidation.
                 self.realized_pnl_usd -= p.collateral_usd
                 del self.positions[m]
@@ -225,6 +190,7 @@ class PaperPerpsAccount:
                     mark=str(marks[m]),
                     collateral_lost_usd=str(p.collateral_usd),
                 )
+                self._rest(m, p.realized_usd - p.collateral_usd, now, now)
                 continue
             if favorable is not None and m in favorable:
                 self._take_profits(m, favorable[m], (closes or {}).get(m), now)
@@ -233,6 +199,13 @@ class PaperPerpsAccount:
             self.day, self.day_start_equity_usd = today, self.equity(marks)
             self.stopped_today, self.day_halted = set(), False
             self._log(now, "DAY_ROLLED", day=today, equity_usd=str(self.day_start_equity_usd))
+
+    def _liquidatable(self, p: PerpPosition, px: Decimal) -> bool:
+        """Whether ``p`` is past maintenance at price ``px``, close fee and borrow included."""
+        fee, floor = self.params.close_fee_bps, self.params.maintenance_bps
+        return is_liquidatable(
+            p.side, p.size_usd, p.collateral_usd, p.entry_price, px, fee, p.borrow_fees_usd, floor
+        )
 
     def tp_price(self, p: PerpPosition, step: int) -> Decimal | None:
         """
@@ -328,6 +301,7 @@ class PaperPerpsAccount:
         p.size_usd -= size
         p.collateral_usd -= collateral
         p.borrow_fees_usd -= borrow
+        p.realized_usd += pnl - close_fee - borrow
         self.cash_usd += returned
         self.fees_paid_usd += close_fee + borrow
         self.realized_pnl_usd += returned - collateral
@@ -410,6 +384,7 @@ class PaperPerpsAccount:
         pos = PerpPosition(
             market, side, pr.size_usd, pr.collateral_usd, pr.entry_price, now, last_accrual=now
         )
+        pos.realized_usd = -open_fee
         if self.params.take_profits is not None:
             pos.initial_stop = self.stop_price(pos)
         self.positions[market] = pos
@@ -427,7 +402,14 @@ class PaperPerpsAccount:
         )
         return decision
 
-    def close(self, market: str, marks: dict[str, Decimal], now: datetime, reason: str) -> bool:
+    def close(
+        self,
+        market: str,
+        marks: dict[str, Decimal],
+        now: datetime,
+        reason: str,
+        clock: datetime | None = None,
+    ) -> bool:
         """
         Close an open position at the mark.
 
@@ -436,6 +418,8 @@ class PaperPerpsAccount:
             marks (dict[str, Decimal]): Mark prices.
             now (datetime): Current time (UTC).
             reason (str): Why it closes (journaled).
+            clock (datetime | None): The decision bar's close when ``now`` is wall time;
+                a cooldown is counted from it (ADR-053). Defaults to ``now``.
 
         Returns:
             bool: True if a position was closed.
@@ -460,10 +444,25 @@ class PaperPerpsAccount:
             fees_usd=str(close_fee + borrow),
             reason=reason,
         )
+        self._rest(market, p.realized_usd + pnl - close_fee - borrow, clock or now, now)
         return True
 
+    def _rest(self, market: str, net_usd: Decimal, clock: datetime, now: datetime) -> None:
+        """Start ``market``'s cooldown when its whole trade lost money after fees (ADR-053)."""
+        hours = self.params.cooldown_after_loss_hours
+        if hours is None or net_usd >= 0:
+            return
+        until = clock + timedelta(seconds=int(hours * 3600))
+        self.cooldown_until[market] = until
+        self._log(now, "COOLDOWN_STARTED", market=market, until_utc=until.isoformat())
+
     def apply_signal(
-        self, market: str, target: PerpSide | None, marks: dict[str, Decimal], now: datetime
+        self,
+        market: str,
+        target: PerpSide | None,
+        marks: dict[str, Decimal],
+        now: datetime,
+        decided_at: datetime | None = None,
     ) -> None:
         """
         Move toward a strategy's target: long, short, or flat (None).
@@ -475,11 +474,20 @@ class PaperPerpsAccount:
             target (PerpSide | None): Desired direction; None means flat.
             marks (dict[str, Decimal]): Mark prices.
             now (datetime): Current time (UTC).
+            decided_at (datetime | None): The decision bar's close when ``now`` is wall
+                time; the cooldown is counted in bar time (ADR-053). Defaults to ``now``.
         """
+        clock = decided_at or now
         current = self.positions.get(market)
         if current is not None and current.side != target:
-            self.close(market, marks, now, reason="SIGNAL_CHANGED")
+            self.close(market, marks, now, reason="SIGNAL_CHANGED", clock=clock)
         # Reason: after a stop the trend usually still points the same way, so without the
         # wait the next bar would reopen at once (ADR-038).
-        if target is not None and market not in self.positions and market not in self.stopped_today:
-            self.open(market, target, marks, now)
+        if target is None or market in self.positions or market in self.stopped_today:
+            return
+        # Reason: after a losing trade the market rests; a signal that flips out and back
+        # within hours would otherwise re-enter the same bet at once (ADR-053).
+        if clock < self.cooldown_until.get(market, clock):
+            return
+        self.cooldown_until.pop(market, None)
+        self.open(market, target, marks, now)

@@ -1,0 +1,169 @@
+EXP-2026-024: fresh-data test of the fixes, a top-20 account, and faster trading
+================================================================================
+Date: 2026-11-26. Research only; changes no configuration. Plan (committed before the
+new candle files were read): EXP-2026-024-plan.md. Run: research/run_exp024.py.
+Simulated results on historical data with modelled costs. Not a forecast; profit is not
+guaranteed or implied.
+
+Columns: CAGR, Sharpe (daily, 365 days), max drawdown, worst day, entries a month,
+decisions a month (coins opened on the same UTC day on the same side count once), share of
+entries closed by the opening stop, fees + borrow a year as % of average equity; then
+CAGR, Sharpe and max drawdown at twice the fees and twice the borrow rate.
+
+One deviation from the plan, made after Part A and the first rows of Part B had been seen
+at the configured $2,500: every table below runs at 100 times that balance. The paper
+account books borrow in whole cents at every accrual, which mis-charges positions of a
+few hundred dollars and charges an hourly account nothing; see the docstring of
+run_exp024.py. Part A is unchanged by it (the $2,500 table is kept at the end).
+
+Verdicts under the plan's rules
+- Part A. WIDE does not hold on F1 or F2: its drawdown is lower than LIVE's, but its
+  Sharpe is 0.15 and 0.21 lower (the rule allowed 0.1) and it does not beat HALF. On
+  2018-2019 a wider stop was a smaller bet, not a better one. The same-side caps lower
+  drawdown and Sharpe together.
+- Part B. Every setting with buffer 8 is positive at modelled costs on both fresh slices;
+  buffer 8 has the higher Sharpe than buffer 4 at every collateral level on F3, F4,
+  development and validation, so its neighbours agree. Collateral does not change Sharpe.
+  The 6% cap does not bind at 1% collateral and gives mixed results above it. Selected:
+  buffer 8 with the 5x ceiling, no cap; the collateral is the owner's choice.
+- Part C. T1 (4h) has the best Sharpe on every slice. T2 (hourly decisions, 4h trend) is
+  positive at modelled costs on every slice and lower than T1 on every slice; it adds 60%
+  more entries and 8% more decisions. T3 (the rule on hourly candles) loses on every slice
+  at modelled costs, so 15-minute candles were not tested.
+- At twice the modelled costs the twenty-coin account is about flat (F3 +3%, F4 -3% to
+  -7%, validation -3% to -7%).
+- Live cross-check: main replayed from 2026-11-22 20:00 UTC opens the same three shorts at
+  6.9x, 7.1x and 9.2x (live 7.0x, 7.1x, 9.2x), all three stop in the candle that closes
+  2026-11-23 16:00 UTC, and all three re-open at 2026-11-24 00:00 UTC, as live did.
+- Reference, same harness and files: main as configured on BTC, ETH, SOL opens 25.6 / 26.8
+  entries a month, which are 18.9 / 18.7 decisions a month (development / validation).
+
+== Part A, F1: BTC ETH LTC, 2018-02-01 to 2020-01-01
+setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+LIVE  (coll 10%, buffer 4)         |  178.6%  1.53  59% -18.2%   23.6   17.5   24%   42% |    83.1%  1.09  66%
+HALF  (coll 5%, buffer 4)          |   86.9%  1.50  35%  -9.8%   23.6   17.5   24%   22% |    50.1%  1.06  41%
+WIDE  (coll 10%, buffer 8, 5x)     |   81.5%  1.38  35% -13.4%   20.4   15.3    4%   21% |    43.7%  0.94  40%
+WIDE10 (coll 10%, buffer 10, 5x)   |   67.9%  1.35  33% -13.2%   20.4   15.2    3%   18% |    40.0%  0.95  37%
+WIDE + same-side cap 6%            |   67.7%  1.38  31% -13.4%   19.4   14.8    4%   18% |    35.4%  0.90  36%
+WIDE + same-side cap 3%            |   34.5%  1.16  16%  -9.9%   13.7   11.3    7%   12% |    24.9%  0.89  22%
+rule: WIDE holds against LIVE: False; WIDE beats HALF on Sharpe: False
+
+== Part A, F2: BTC ETH LTC BNB XRP ADA TRX XLM EOS NEO, 2018-08-01 to 2020-01-01
+setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+LIVE  (coll 3%, buffer 4)          |  122.2%  1.42  49% -14.0%   87.5   36.5   26%   43% |    29.4%  0.71  54%
+HALF  (coll 1.5%, buffer 4)        |   58.1%  1.36  28%  -7.3%   87.5   36.5   26%   22% |    20.2%  0.66  32%
+WIDE  (coll 3%, buffer 8, 5x)      |   55.0%  1.21  31% -12.1%   76.9   34.3    7%   22% |    24.1%  0.71  35%
+WIDE10 (coll 3%, buffer 10, 5x)    |   50.6%  1.29  28% -11.0%   76.0   34.0    4%   18% |    25.4%  0.79  30%
+WIDE + same-side cap 6%            |   43.5%  1.18  25% -11.4%   74.7   33.5    7%   19% |    15.9%  0.59  29%
+WIDE + same-side cap 3%            |   27.0%  1.19  13%  -8.6%   63.6   29.6    9%   13% |    11.7%  0.60  16%
+rule: WIDE holds against LIVE: False; WIDE beats HALF on Sharpe: False
+
+== Part B, F3: 17 coins, 2020-10-01 to 2026-11-25, 4h
+setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+coll 1%, buffer 4, cap none        |   22.4%  0.74  49%  -7.9%  146.3   47.4   26%   28% |    -7.6% -0.05  79%
+coll 1%, buffer 4, cap 6%          |   22.4%  0.74  49%  -7.9%  146.3   47.4   26%   28% |    -7.6% -0.05  79%
+coll 1%, buffer 8, cap none        |   17.0%  0.87  29%  -5.4%  127.8   44.8    6%   13% |     3.2%  0.26  44%
+coll 1%, buffer 8, cap 6%          |   17.0%  0.87  29%  -5.4%  127.8   44.8    6%   13% |     3.2%  0.26  44%
+coll 1.5%, buffer 4, cap none      |   29.1%  0.74  66% -11.4%  146.3   47.4   26%   41% |   -15.1% -0.06  92%
+coll 1.5%, buffer 4, cap 6%        |   29.3%  0.75  65% -11.4%  146.1   47.5   26%   41% |   -14.6% -0.05  92%
+coll 1.5%, buffer 8, cap none      |   24.4%  0.87  41%  -7.6%  127.8   44.8    6%   19% |     3.2%  0.26  59%
+coll 1.5%, buffer 8, cap 6%        |   24.6%  0.89  39%  -7.6%  127.3   44.7    6%   19% |     3.5%  0.26  57%
+coll 2.5%, buffer 4, cap none      |   32.5%  0.74  87% -17.5%  145.8   47.4   26%   66% |   -34.5% -0.08  99%
+coll 2.5%, buffer 4, cap 6%        |   23.5%  0.64  79% -17.5%  140.7   46.8   26%   55% |   -30.3% -0.20  98%
+coll 2.5%, buffer 8, cap none      |   36.7%  0.88  61% -11.5%  127.8   44.8    6%   31% |     0.5%  0.25  80%
+coll 2.5%, buffer 8, cap 6%        |   27.1%  0.87  38% -10.3%  119.6   43.2    6%   24% |     0.6%  0.19  69%
+
+== Part B, F4: 18 coins, 2020-10-01 to 2026-11-25, 4h
+setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+coll 1%, buffer 4, cap none        |    8.9%  0.41  56% -12.5%  168.1   48.4   26%   31% |   -19.9% -0.32  91%
+coll 1%, buffer 4, cap 6%          |    8.9%  0.41  56% -12.5%  168.1   48.4   26%   31% |   -19.9% -0.32  91%
+coll 1%, buffer 8, cap none        |   11.8%  0.57  30%  -8.7%  147.1   45.5    5%   15% |    -3.3% -0.01  62%
+coll 1%, buffer 8, cap 6%          |   11.8%  0.57  30%  -8.7%  147.1   45.5    5%   15% |    -3.3% -0.01  62%
+coll 1.5%, buffer 4, cap none      |    6.7%  0.41  77% -17.6%  168.1   48.4   26%   45% |   -32.5% -0.32  98%
+coll 1.5%, buffer 4, cap 6%        |    4.0%  0.36  76% -18.0%  166.9   48.4   26%   43% |   -33.3% -0.39  98%
+coll 1.5%, buffer 8, cap none      |   15.5%  0.58  42% -12.4%  147.1   45.5    5%   22% |    -7.0% -0.02  79%
+coll 1.5%, buffer 8, cap 6%        |   14.7%  0.58  40% -12.1%  144.5   45.2    6%   20% |    -6.3% -0.03  74%
+coll 2.5%, buffer 4, cap none      |   -9.4%  0.39  97% -26.2%  166.7   48.2   26%   69% |   -56.9% -0.34 100%
+coll 2.5%, buffer 4, cap 6%        |  -10.5%  0.19  90% -23.2%  158.9   47.7   27%   54% |   -46.8% -0.52  99%
+coll 2.5%, buffer 8, cap none      |   18.8%  0.58  64% -18.6%  147.1   45.5    5%   35% |   -17.1% -0.03  94%
+coll 2.5%, buffer 8, cap 6%        |    7.5%  0.38  56% -15.3%  133.5   43.0    6%   24% |   -16.5% -0.33  87%
+
+== Part B, dev: 20 coins, 2020-10-01 to 2024-01-01, 4h
+setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+coll 1%, buffer 4, cap none        |   59.9%  1.38  35%  -7.9%  161.4   47.6   25%   30% |    15.9%  0.57  52%
+coll 1%, buffer 4, cap 6%          |   59.9%  1.38  35%  -7.9%  161.4   47.6   25%   30% |    16.0%  0.57  52%
+coll 1%, buffer 8, cap none        |   34.7%  1.39  19%  -5.7%  141.9   45.1    5%   14% |    17.1%  0.79  36%
+coll 1%, buffer 8, cap 6%          |   34.7%  1.39  19%  -5.7%  141.9   45.1    5%   14% |    17.1%  0.79  36%
+coll 1.5%, buffer 4, cap none      |   90.7%  1.39  49% -11.0%  161.4   47.6   25%   44% |    18.3%  0.58  70%
+coll 1.5%, buffer 4, cap 6%        |   83.9%  1.36  46% -11.6%  160.9   47.5   25%   43% |    16.5%  0.55  69%
+coll 1.5%, buffer 8, cap none      |   52.8%  1.41  28%  -7.9%  141.9   45.1    5%   20% |    24.0%  0.80  49%
+coll 1.5%, buffer 8, cap 6%        |   47.4%  1.39  27%  -7.8%  139.9   44.6    6%   19% |    20.6%  0.75  49%
+coll 2.5%, buffer 4, cap none      |  135.4%  1.37  70% -16.0%  160.2   47.5   25%   71% |     9.7%  0.56  90%
+coll 2.5%, buffer 4, cap 6%        |   76.7%  1.17  58% -14.7%  152.6   46.6   26%   56% |    -5.2%  0.27  85%
+coll 2.5%, buffer 8, cap none      |   88.9%  1.43  44% -12.3%  141.9   45.1    5%   34% |    34.1%  0.80  70%
+coll 2.5%, buffer 8, cap 6%        |   49.8%  1.31  34%  -9.9%  128.8   42.3    6%   24% |    16.8%  0.62  58%
+
+== Part B, hold: 20 coins, 2024-01-01 to 2026-11-25, 4h
+setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+coll 1%, buffer 4, cap none        |   13.0%  0.49  52%  -8.6%  185.7   51.2   27%   37% |   -22.5% -0.37  76%
+coll 1%, buffer 4, cap 6%          |   13.1%  0.49  52%  -8.6%  185.7   51.2   27%   37% |   -22.5% -0.37  76%
+coll 1%, buffer 8, cap none        |   13.9%  0.65  32%  -5.6%  160.5   48.5    6%   17% |    -3.2% -0.01  49%
+coll 1%, buffer 8, cap 6%          |   13.9%  0.65  32%  -5.6%  160.5   48.5    6%   17% |    -3.2% -0.01  49%
+coll 1.5%, buffer 4, cap none      |   11.8%  0.49  70% -12.4%  185.7   51.2   27%   54% |   -36.3% -0.39  89%
+coll 1.5%, buffer 4, cap 6%        |   15.6%  0.53  66% -12.2%  183.6   51.2   27%   52% |   -31.4% -0.33  87%
+coll 1.5%, buffer 8, cap none      |   18.6%  0.65  46%  -7.9%  160.5   48.5    6%   25% |    -7.0% -0.02  65%
+coll 1.5%, buffer 8, cap 6%        |   19.0%  0.71  41%  -7.8%  156.1   47.9    6%   23% |    -4.4%  0.02  59%
+coll 2.5%, buffer 4, cap none      |   -2.3%  0.48  89% -19.5%  182.6   50.9   27%   85% |   -59.1% -0.35  98%
+coll 2.5%, buffer 4, cap 6%        |   21.6%  0.62  75% -16.3%  173.3   49.9   27%   65% |   -41.3% -0.40  92%
+coll 2.5%, buffer 8, cap none      |   23.1%  0.64  66% -11.7%  160.5   48.5    6%   40% |   -17.7% -0.04  83%
+coll 2.5%, buffer 8, cap 6%        |   20.2%  0.71  41%  -9.7%  143.6   46.0    6%   28% |    -7.5% -0.05  61%
+
+== Part C, F3: 17 coins, 2020-10-01 to 2026-11-25
+speed                              |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+T1 4h decisions                    |   24.4%  0.87  41%  -7.6%  127.8   44.8    6%   19% |     3.2%  0.26  59%
+T2 hourly decisions, 4h trend      |   18.6%  0.72  48%  -7.5%  203.3   48.9    3%   25% |    -6.4% -0.07  75%
+T3 rule on hourly candles          |  -10.8% -0.22  72%  -8.3%  510.5   57.9    0%   44% |   -44.4% -1.72  98%
+
+== Part C, F4: 18 coins, 2020-10-01 to 2026-11-25
+speed                              |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+T1 4h decisions                    |   15.5%  0.58  42% -12.4%  147.1   45.5    5%   22% |    -7.0% -0.02  79%
+T2 hourly decisions, 4h trend      |    7.5%  0.38  52% -12.3%  236.1   49.8    3%   28% |   -19.0% -0.40  90%
+T3 rule on hourly candles          |  -26.1% -0.63  91% -10.1%  594.7   58.2    0%   49% |   -56.4% -2.03 100%
+
+== Part C, dev: 20 coins, 2020-10-01 to 2024-01-01
+speed                              |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+T1 4h decisions                    |   52.8%  1.41  28%  -7.9%  141.9   45.1    5%   20% |    24.0%  0.80  49%
+T2 hourly decisions, 4h trend      |   48.0%  1.31  32%  -8.4%  225.3   48.9    3%   26% |    15.0%  0.58  56%
+T3 rule on hourly candles          |  -10.2% -0.13  62%  -8.5%  582.8   58.0    1%   48% |   -46.5% -1.57  90%
+
+== Part C, hold: 20 coins, 2024-01-01 to 2026-11-25
+speed                              |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+T1 4h decisions                    |   18.6%  0.65  46%  -7.9%  160.5   48.5    6%   25% |    -7.0% -0.02  65%
+T2 hourly decisions, 4h trend      |    5.4%  0.32  56%  -7.1%  255.2   52.5    3%   32% |   -24.2% -0.59  76%
+T3 rule on hourly candles          |  -11.3% -0.12  66%  -9.3%  636.1   58.4    0%   62% |   -53.2% -1.76  90%
+
+Exploratory, not in the plan (central setting on F4): the worst day, 2021-09-07 (-12.4%),
+was five opening stops plus open profits given back on the other positions; no position
+was liquidated in 10,853 entries; 14 of 18 coins were net positive (worst: XMR, AAVE, LTC,
+BCH).
+
+Part A at the configured $2,500 (the first run, before the balance multiple)
+== Part A, F1: BTC ETH LTC, 2018-02-01 to 2020-01-01
+setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+LIVE  (coll 10%, buffer 4)         |  178.7%  1.53  59% -18.2%   23.6   17.5   24%   42% |    83.2%  1.09  66%
+HALF  (coll 5%, buffer 4)          |   86.8%  1.50  35%  -9.8%   23.6   17.5   24%   22% |    50.2%  1.06  41%
+WIDE  (coll 10%, buffer 8, 5x)     |   84.0%  1.41  35% -13.4%   20.4   15.3    4%   21% |    43.8%  0.95  40%
+WIDE10 (coll 10%, buffer 10, 5x)   |   67.9%  1.35  33% -13.2%   20.4   15.2    3%   18% |    40.0%  0.95  37%
+WIDE + same-side cap 6%            |   69.9%  1.41  31% -13.4%   19.4   14.8    4%   18% |    35.2%  0.89  36%
+WIDE + same-side cap 3%            |   42.3%  1.34  18%  -9.9%   13.7   11.3    6%   12% |    22.7%  0.82  23%
+rule: WIDE holds against LIVE: False; WIDE beats HALF on Sharpe: False
+
+== Part A, F2: BTC ETH LTC BNB XRP ADA TRX XLM EOS NEO, 2018-08-01 to 2020-01-01
+setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+LIVE  (coll 3%, buffer 4)          |  123.3%  1.43  49% -14.0%   87.4   36.4   26%   43% |    30.3%  0.72  54%
+HALF  (coll 1.5%, buffer 4)        |   59.2%  1.38  28%  -7.3%   87.3   36.5   26%   22% |    20.1%  0.66  32%
+WIDE  (coll 3%, buffer 8, 5x)      |   54.5%  1.21  31% -12.1%   76.9   34.3    7%   22% |    24.0%  0.71  35%
+WIDE10 (coll 3%, buffer 10, 5x)    |   50.7%  1.29  28% -11.0%   76.0   34.0    4%   18% |    25.5%  0.80  30%
+WIDE + same-side cap 6%            |   42.4%  1.15  25% -11.4%   74.7   33.6    7%   19% |    15.8%  0.58  29%
+WIDE + same-side cap 3%            |   27.6%  1.21  13%  -8.6%   63.6   29.6    9%   13% |    11.8%  0.61  16%
+rule: WIDE holds against LIVE: False; WIDE beats HALF on Sharpe: False

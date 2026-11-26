@@ -28,8 +28,9 @@ PRE-SET RANKING: development Sharpe only (2020-10..2023-12). Holdout is printed 
 ranking and does not change it. A Sharpe gap whose 90% interval spans zero is noise.
 Disclosure: the variant table prints both windows, so the holdout of (a) and (b) had been
 seen when this file was written; neither the list nor the ranking rule depends on it. The
-"signal held between 4h closes" rows under Q4 were added after Q2 showed where the hourly
-loss comes from; they are a reference, not ranked and not part of the pre-set list.
+Q2 diagnostic rows and the "signal held between 4h closes" rows under Q4 were added after
+the eight-combination table had shown where the hourly loss comes from (both windows
+seen); they explain the result, are not ranked and are not part of the pre-set list.
 
 Usage: python research/exp023_degen.py <data_dir> <cache_dir>
 """
@@ -118,11 +119,6 @@ def months(w: str) -> float:
     """Length of a window in months."""
     start, end = lib.WINDOWS[w]
     return (end - start).days / 365.25 * 12
-
-
-def cells(runs: Runs) -> str:
-    """The harness's standard numbers for both windows."""
-    return " | ".join(lib.cell(runs[w].stats) for w in WIN)
 
 
 MECH = (
@@ -241,20 +237,18 @@ def overlap(a: Book, b: Book, na: str, nb: str) -> None:
     # Reason: a 4h account's stops are journaled at the 4h close, so in/out is compared
     # only at 4h closes; opposite sides cannot come from that lag and are counted hourly.
     same = [a[i] == b[i] for i in range(0, n, 4)]
-    opp = [any(p and q and p != q for p, q in zip(x, y, strict=True)) for x, y in zip(a, b)]
+    opp = [any(p and q and p != q for p, q in zip(a[i], b[i], strict=True)) for i in range(n)]
     same_days = sum(all(same[i : i + 6]) for i in range(0, len(same), 6))
     opp_days = sum(any(opp[i : i + 24]) for i in range(0, n, 24))
     kinds = Counter(cell(a[i][k], b[i][k]) for i in range(0, n, 4) for k in range(3))
+    per = ", ".join(f"{k} {100 * v / (3 * len(same)):.1f}%" for k, v in kinds.most_common())
     print(
         f"  {na} vs {nb}: identical books at {100 * sum(same) / len(same):.1f}% of 4h closes and "
         f"at all six closes on {100 * same_days / days:.1f}% of UTC days; opposite sides in some "
         f"coin at {sum(opp[0::4])} of {len(same)} 4h closes, in {100 * sum(opp) / n:.1f}% of all "
         f"hours, at some hour on {100 * opp_days / days:.1f}% of days"
     )
-    print(
-        "    coin by coin at 4h closes: "
-        + ", ".join(f"{k} {100 * v / (3 * len(same)):.1f}%" for k, v in kinds.most_common())
-    )
+    print(f"    coin by coin at 4h closes: {per}")
 
 
 def day(t: datetime) -> date:
@@ -305,10 +299,10 @@ def stop_study(dg: list[Trade], mn: list[Trade], feed: lib.Feed, w: str) -> None
     }
     for k, line in text.items():
         print(f"    {len(gap[k]):4d} ({100 * len(gap[k]) / n:4.1f}%)  {line}")
+    ends = ", ".join(f"{k} {v}" for k, v in main_end.most_common())
     print(
-        "  after a degen-only stop main's trade ended by: "
-        + ", ".join(f"{k} {v}" for k, v in main_end.most_common())
-        + f"; median {np.median(days_on):.1f} days later"
+        f"  after a degen-only stop main's trade ended by: {ends}; median "
+        f"{np.median(days_on):.1f} days later"
     )
     print(
         "    the degen trade held to main's final exit instead (no ladder, before costs), in "
@@ -345,9 +339,8 @@ def main() -> None:
     hdr = f"{lib.HEADER} | {lib.HEADER}"
     print("EXP-2026-023 degen slice (paper replay, research only). Left block development")
     print("2020-10..2023-12, right block holdout 2024-01..2026-11-21; each run starts fresh at")
-    print("$2,500. Columns as in run_exp023.py: return per year, Sharpe, max drawdown, entries a")
-    print("month, share of entries closed by a stop (the opening stop or one a take-profit had")
-    print("moved), fees per year as % of average equity, worst day.")
+    print("$2,500. Columns as in run_exp023.py; 'stop%' counts every entry closed by a stop, the")
+    print("opening stop or one a take-profit had moved. 1R = 30% of a position's collateral.")
     print(f"Settings that differ between degen and main (degen vs main): {differ}")
 
     # ---- Q2: all eight combinations of collateral, buffer and feed ---------------------
@@ -364,9 +357,9 @@ def main() -> None:
         tf: both(degen, feeds[tf], signals=feeds[tf].signals("plain-50-200", lib.plain_50_200))
         for tf in ("1h", "4h")
     }
-    tag = {(5, 3, "1h"): " = live degen", (10, 4, "4h"): " = live main"}
+    tag = {"5 3 1h": " = live degen", "10 4 4h": " = live main", "10 4 1h": " = main on 1h"}
     rows = [
-        (f"coll {c:2d}%, buffer {b}, {tf}{tag.get((c, b, tf), '')}", r)
+        (f"coll {c:2d}%, buffer {b}, {tf}{tag.get(f'{c} {b} {tf}', '')}", r)
         for (c, b, tf), r in cube.items()
     ]
     rows.append(("diag: degen, 1h marks, signal held to 4h", held))
@@ -374,7 +367,7 @@ def main() -> None:
     print("\n== Q2. Does hourly execution earn its keep?")
     print(f"{'setting':42} | {hdr}")
     for label, r in rows:
-        print(f"{label:42} | {cells(r)}")
+        print(f"{label:42} | " + " | ".join(lib.cell(r[w].stats) for w in WIN))
     print("\nSharpe gap with a 90% interval (paired block bootstrap of daily returns), dev | hold:")
     gaps = [
         (f"1h minus 4h, coll {c:2d}%, buffer {b}", cube[c, b, "1h"], cube[c, b, "4h"])
@@ -396,29 +389,25 @@ def main() -> None:
     for name, axis, hi, lo in zip(names, (2, 1, 0), ("1h", 4, 10), ("4h", 3, 5), strict=True):
         parts = []
         for key in ("sharpe", "cagr", "dd", "trades_mo", "fee_drag"):
-            vals = []
+            fmt, vals = "+.2f" if key == "sharpe" else "+.1f", []
             for w in WIN:
                 up = [r[w].stats[key] for k, r in cube.items() if k[axis] == hi]
                 down = [r[w].stats[key] for k, r in cube.items() if k[axis] == lo]
-                vals.append(
-                    format(sum(up) / 4 - sum(down) / 4, "+.2f" if key == "sharpe" else "+.1f")
-                )
+                vals.append(format(sum(up) / 4 - sum(down) / 4, fmt))
             parts.append(f"{key} {vals[0]} / {vals[1]}")
         print(f"  {name:28}: " + "   ".join(parts))
     print(
         "\nHow the entries ended: entries a month; share opened off the 4h grid; share closed by "
         "a signal\nchange / the opening stop / a stop after a take-profit / TP3; mean net result "
-        "per entry in R\n(1R = 30% of collateral); R a month; mean leverage; median hours held."
+        "per entry in R;\nR a month; mean leverage; median hours held."
     )
     print(f"{'setting':42} | {MECH} | {MECH}")
     for label, r in rows:
         print(f"{label:42} | {mechanics(r)}")
-    for tf, how in (
-        ("1h", "every hour (4h candles + latest hourly close)"),
-        ("4h", "on 4h closes"),
-    ):
+    how = {"1h": "every hour (4h candles + latest hourly close)", "4h": "on 4h closes"}
+    for tf, text in how.items():
         n = " / ".join(f"{signal_changes(feeds[tf], w):.1f}" for w in WIN)
-        print(f"Signal changes a month over the three coins, read {how}: {n} (dev / hold)")
+        print(f"Signal changes a month over the three coins, read {text}: {n} (dev / hold)")
     for w in WIN:
         ts = trades(live_degen[w].events)
         quick = [t.r for t in ts if t.end == "signal" and t.closed - t.opened < H4]
@@ -479,15 +468,12 @@ def main() -> None:
     cands["(c) entries on 4h closes only"] = both(degen, f1, gate=on_4h_close)
     ranked = sorted(cands, key=lambda k: -cands[k]["dev"].stats["sharpe"])
     print("\n== Q4. The pre-set list on 1h bars, ranked on development Sharpe only")
-    for w, title in (
-        ("dev", "DEVELOPMENT (decides the rank)"),
-        ("hold", "HOLDOUT (after ranking)"),
-    ):
+    titles = {"dev": "DEVELOPMENT (decides the rank)", "hold": "HOLDOUT (after ranking)"}
+    for w, title in titles.items():
         print(f"{title}\n{'rank, variant':33} | {lib.HEADER} | against live main (4h)")
         for i, k in enumerate(ranked, 1):
-            print(
-                f"{i}. {k:30} | {lib.cell(cands[k][w].stats)} | {corr(cands[k][w], live_main[w])}"
-            )
+            r = cands[k][w]
+            print(f"{i}. {k:30} | {lib.cell(r.stats)} | {corr(r, live_main[w])}")
     print("Sharpe minus (a) with a 90% interval, dev | hold:")
     for k in ranked:
         if k != "(a) degen as is":
@@ -501,9 +487,9 @@ def main() -> None:
     print(f"{'variant':33} | {hdr}")
     for k, p in variants.items():
         if k[:3] != "(c)":
-            r = held if k[:3] == "(a)" else both(p, f1, signals=held_sig)
-            print(f"{k:33} | {cells(r)}")
-            print(f"{'  Sharpe minus hourly decisions':33} : {sharpe_gap(r, cands[k])}")
+            runs = held if k[:3] == "(a)" else both(p, f1, signals=held_sig)
+            print(f"{k:33} | " + " | ".join(lib.cell(runs[w].stats) for w in WIN))
+            print(f"{'  Sharpe minus hourly decisions':33} : {sharpe_gap(runs, cands[k])}")
 
 
 if __name__ == "__main__":

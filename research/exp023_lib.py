@@ -32,8 +32,11 @@ from __future__ import annotations
 
 import bisect
 import dataclasses
+import hashlib
 import math
+import os
 import pickle
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
@@ -128,18 +131,38 @@ class Feed:
             out.append((closes, done))
         return out
 
+    def _fingerprint(self) -> str:
+        """Hash of everything a cached series depends on: candles, time axis, KEEP, coins."""
+        if "fp" not in self._mem:
+            h = hashlib.sha256(f"{self.tf}|{KEEP}|{COINS}|{len(self.times)}".encode())
+            for m in COINS:
+                for t in self.times:
+                    h.update(f"{t.isoformat()}{self.rows[m][t][4]}".encode())
+                for r in (self.trend or {}).get(m, []):
+                    h.update(f"{r[0].isoformat()}{r[4]}".encode())
+            self._mem["fp"] = h.hexdigest()[:16]
+        return str(self._mem["fp"])
+
     def _cached(self, name: str, build: Callable[[], Any]) -> Any:
         if name in self._mem:
             return self._mem[name]
-        path = self.cache_dir / f"{self.tf}-{name}.pkl" if self.cache_dir else None
+        # Reason: (audit 1.1) a cache keyed by timeframe and label alone is silently wrong
+        # once the candle files change; the fingerprint makes a changed feed rebuild.
+        path = (
+            self.cache_dir / f"{self.tf}-{name}-{self._fingerprint()}.pkl"
+            if self.cache_dir
+            else None
+        )
         if path is not None and path.exists():
             with open(path, "rb") as f:
                 value = pickle.load(f)  # noqa: S301 - our own cache file
+            if any(len(v) != len(self.times) for v in value.values()):
+                raise ValueError(f"{path}: cached series do not match this feed's bars")
         else:
             value = build()
             if path is not None:
                 path.parent.mkdir(parents=True, exist_ok=True)
-                tmp = path.with_suffix(f".{id(self)}.tmp")
+                tmp = path.with_suffix(f".{os.getpid()}.{uuid.uuid4().hex}.tmp")
                 with open(tmp, "wb") as f:
                     pickle.dump(value, f)
                 tmp.replace(path)
@@ -168,7 +191,14 @@ class Feed:
                 out[m] = [fn(closes) for closes, _ in self.views(m)]
             return out
 
-        return self._cached(f"sig-{label}", build)
+        # Reason: the factory's name is part of the key, so one label cannot hide two named
+        # signals. Lambdas share a name, so parameters still belong in the label.
+        made_by = (
+            getattr(factory, "__qualname__", type(factory).__name__)
+            .replace("<", "")
+            .replace(">", "")
+        )
+        return self._cached(f"sig-{label}-{made_by}", build)
 
     def moves(self) -> dict[str, list[Decimal | None]]:
         """Typical daily move per coin per bar (ADR-032), aligned with ``times``."""

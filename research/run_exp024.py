@@ -4,10 +4,20 @@ Fresh-data test of the EXP-2026-023 fixes (Part A), a top-20 account (Part B) an
 trading (Part C). Every setting, slice and pass rule was fixed in the plan before the
 candle files were read; this script only runs them.
 
-Usage: python research/run_exp024.py <data_dir> <cache_dir> <job>
+Usage: python research/run_exp024.py <data_dir> <cache_dir> <job> [balance_multiple]
 Jobs: A | B-F3 | B-F4 | B-dev | B-hold | C-F3 | C-F4 | C-dev | C-hold | live
 (one job per process, so several can run side by side; build the caches first with
 ``python research/exp024_lib.py <data_dir> <cache_dir> <tf> COIN...``).
+
+``balance_multiple`` (default 100) multiplies the paper balance. Reason: the paper account
+books borrow in whole cents at every accrual (``simulator.py``, ``fee.quantize(CENT)``).
+A twenty-coin account on $2,500 holds positions of $75 to $500, whose borrow for four
+hours is 0.5 to 3 cents and for one hour is under half a cent, so at $2,500 the 4h tables
+book borrow up to 56% too high or 22% too low depending on the setting, and an hourly
+account books none at all. At 100 times the balance the rounding is immaterial and
+nothing else changes (no rule in the risk code has a fixed dollar amount). This was found
+after the first Part A table and the first rows of Part B had been seen at $2,500; those
+are kept in the results file. ``live`` always runs at the real balance.
 """
 
 from __future__ import annotations
@@ -50,6 +60,17 @@ SLICES: dict[str, tuple[list[str], datetime, datetime]] = {
     "dev": (TOP20, _day(2020, 10, 1), _day(2024, 1, 1)),
     "hold": (TOP20, _day(2024, 1, 1), _day(2026, 11, 25)),
 }
+SCALE = [D(100)]  # balance multiple, set from the command line
+
+
+def main_account() -> PerpsParams:
+    """Main's live settings at ``SCALE`` times its paper balance."""
+    live, _ = base.account("main")
+    return dataclasses.replace(
+        live, starting_collateral_usd=live.starting_collateral_usd * SCALE[0]
+    )
+
+
 HEAD = (
     f"{'CAGR':>7} {'Shrp':>5} {'DD':>4} {'wDay':>6} {'en/mo':>6} {'dec/mo':>6} "
     f"{'stop%':>5} {'fee/y':>5} | {'2x: CAGR':>8} {'Shrp':>5} {'DD':>4}"
@@ -122,7 +143,7 @@ def row(
 
 def part_a(data: Path, cache: Path) -> None:
     """Do the wider stop and the caps hold on 2018-2019?"""
-    live, _ = base.account("main")
+    live = main_account()
     for name, coll, half, positions in (("F1", "10", "5", 3), ("F2", "3", "1.5", 10)):
         coins, start, end = SLICES[name]
         feed = lib.build_feed(data, "4h", coins, cache)
@@ -156,7 +177,7 @@ def part_a(data: Path, cache: Path) -> None:
 
 def part_b(data: Path, cache: Path, name: str) -> None:
     """The top-20 account grid on one slice (4h decisions)."""
-    live, _ = base.account("main")
+    live = main_account()
     coins, start, end = SLICES[name]
     feed = lib.build_feed(data, "4h", coins, cache)
     print(f"\n== Part B, {name}: {len(coins)} coins, {start:%Y-%m-%d} to {end:%Y-%m-%d}, 4h")
@@ -171,7 +192,7 @@ def part_b(data: Path, cache: Path, name: str) -> None:
 
 def part_c(data: Path, cache: Path, name: str) -> None:
     """Three speeds at the central setting (collateral 1.5%, buffer 8, 5x, no cap)."""
-    live, _ = base.account("main")
+    live = main_account()
     coins, start, end = SLICES[name]
     central = setting(live, "1.5", 8, 20, cap5=True)
     print(f"\n== Part C, {name}: {len(coins)} coins, {start:%Y-%m-%d} to {end:%Y-%m-%d}")
@@ -202,6 +223,9 @@ def live_check(data: Path, cache: Path) -> None:
 def main() -> None:
     """Run one job."""
     data, cache, job = Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3]
+    if len(sys.argv) > 4:
+        SCALE[0] = D(sys.argv[4])
+    print(f"paper balance: {SCALE[0]} x the configured $2,500 (except the live check)")
     if job == "A":
         part_a(data, cache)
     elif job == "live":

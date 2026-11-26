@@ -177,6 +177,7 @@ def render_trade(
     a: TradeAnalysis | None,
     reviewer: str | None = None,
     skipped: str | None = None,
+    extra_md: str | None = None,
 ) -> str:
     """
     Markdown for one trade: a code-built facts table, then the analyst's notes.
@@ -186,6 +187,7 @@ def render_trade(
         a (TradeAnalysis | None): The analysis, or None when declined or skipped.
         reviewer (str | None): Model that wrote it, shown when not the default Claude one.
         skipped (str | None): Why no review was written (free model, ADR-049).
+        extra_md (str | None): More Markdown under the notes (the debate, ADR-052).
 
     Returns:
         str: Report.
@@ -241,6 +243,8 @@ def render_trade(
                 "",
             ]
         lines += [body, ""]
+    if extra_md:
+        lines += [extra_md.strip(), ""]
     lines += [
         "---",
         "Simulated money. Written by an AI review assistant from measured facts; it can be wrong. "
@@ -263,14 +267,18 @@ def save_trade_report(
     a: TradeAnalysis | None,
     reviewer: str | None = None,
     skipped: str | None = None,
+    extra_md: str | None = None,
+    extra: dict[str, Any] | None = None,
 ) -> Path:
     """Write ``reports/trades/<account>/<close-time>-<market>-<side>.md`` and JSON; return md."""
     md = trade_report_path(reports, facts["trade"])
     md.parent.mkdir(parents=True, exist_ok=True)
-    md.write_text(render_trade(facts, a, reviewer, skipped), encoding="utf-8")
+    md.write_text(render_trade(facts, a, reviewer, skipped, extra_md), encoding="utf-8")
     payload: dict[str, Any] = {"facts": facts, "analysis": a.model_dump() if a else None}
     if reviewer or skipped:
         payload |= {"reviewer": reviewer, "skipped": skipped}
+    if extra:
+        payload |= extra
     md.with_suffix(".json").write_text(
         json.dumps(payload, indent=1, sort_keys=True, default=str), encoding="utf-8"
     )

@@ -102,7 +102,9 @@ def test_watch_reviews_each_new_trade_once_and_saves_it(data: Path) -> None:  # 
     post, sent = FakePost(GOOD), []  # type: FakePost, list[str]
     cur = _load_cursor(data / "state" / "review-assistant.json")
     # Reason: None as the Claude client proves the free path never reaches Anthropic.
-    watch_once(cur, None, settings, sent.append, NOW, fr.FreeReviewer("k", _cfg(), post))
+    # Reason: this is the single-model path (ADR-049); the debate has its own tests.
+    single = _cfg(debate=False)
+    watch_once(cur, None, settings, sent.append, NOW, fr.FreeReviewer("k", single, post))
     assert len(post.calls) == 1  # only the trade closed in the last 24 h
     assert cur["free_done"] == [f"spot/{NEW_ID}"] and cur["free_calls"] == {"2026-11-22": 1}
     assert any(s.endswith("[free model]") and f"({ANALYSIS.grade})" in s for s in sent)
@@ -116,7 +118,7 @@ def test_watch_reviews_each_new_trade_once_and_saves_it(data: Path) -> None:  # 
         settings,
         sent.append,
         NOW + timedelta(minutes=1),
-        fr.FreeReviewer("k", _cfg(), post),
+        fr.FreeReviewer("k", single, post),
     )
     assert len(post.calls) == 1  # never twice
 
@@ -124,7 +126,7 @@ def test_watch_reviews_each_new_trade_once_and_saves_it(data: Path) -> None:  # 
 def test_skipped_review_saves_facts_and_budget_stops_calls(data: Path) -> None:  # noqa: F811
     post, sent = FakePost("junk", "junk"), []  # type: FakePost, list[str]
     cur: dict[str, Any] = {"free_done": [], "free_calls": {"2026-11-22": 40}}
-    rv = fr.FreeReviewer("k", _cfg(), post)
+    rv = fr.FreeReviewer("k", _cfg(debate=False), post)
     n = fr.run_pass(
         cur, rv, data, ["spot"], NOW, lambda t: {"trade": t, "measured": {}}, sent.append
     )

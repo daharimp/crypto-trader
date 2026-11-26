@@ -1,0 +1,66 @@
+## no ladder 2020-10..2023-12
+trades: ours 909, freqtrade 921; same coin+side+entry bar: 896 (99% of ours, 97% of freqtrade's)
+matched trades: same leverage 100%; result within 1 point of collateral 99%; median gap -0.00 pts, mean gap -0.01 pts
+mean result per trade (% of collateral): ours +12.76, freqtrade +12.33
+exits ours: {'SIGNAL_CHANGED': 686, 'STOP_LOSS': 220, 'END_OF_REPLAY': 3}
+exits freqtrade: {'exit_signal': 692, 'stop_loss': 226, 'force_exit': 3}
+  biggest gap ('BTC', 'long', '2020-10-18T16:00') ours +2380.8 (SIGNAL_CHANGED) ft +2377.5 (exit_signal)
+  biggest gap ('SOL', 'long', '2023-09-29T08:00') ours +2029.7 (SIGNAL_CHANGED) ft +2026.9 (exit_signal)
+  biggest gap ('SOL', 'long', '2021-01-07T12:00') ours +1411.3 (SIGNAL_CHANGED) ft +1409.3 (exit_signal)
+  unmatched ours by exit of the trade: {'STOP_LOSS': 5, 'SIGNAL_CHANGED': 8}
+
+## no ladder 2024-01..2026-11-21
+trades: ours 873, freqtrade 876; same coin+side+entry bar: 866 (99% of ours, 99% of freqtrade's)
+matched trades: same leverage 100%; result within 1 point of collateral 100%; median gap +0.00 pts, mean gap +0.00 pts
+mean result per trade (% of collateral): ours +5.77, freqtrade +5.75
+exits ours: {'SIGNAL_CHANGED': 681, 'STOP_LOSS': 189, 'END_OF_REPLAY': 3}
+exits freqtrade: {'exit_signal': 683, 'stop_loss': 190, 'force_exit': 3}
+  biggest gap ('BTC', 'long', '2024-10-27T20:00') ours +586.4 (SIGNAL_CHANGED) ft +585.6 (exit_signal)
+  biggest gap ('SOL', 'long', '2026-08-18T08:00') ours +582.6 (SIGNAL_CHANGED) ft +581.8 (exit_signal)
+  biggest gap ('BTC', 'long', '2024-02-07T16:00') ours +563.7 (SIGNAL_CHANGED) ft +562.9 (exit_signal)
+  unmatched ours by exit of the trade: {'SIGNAL_CHANGED': 4, 'STOP_LOSS': 3}
+
+## live ladder 2020-10..2023-12
+trades: ours 995, freqtrade 1007; same coin+side+entry bar: 982 (99% of ours, 98% of freqtrade's)
+matched trades: same leverage 100%; result within 1 point of collateral 93%; median gap +0.00 pts, mean gap -0.80 pts
+mean result per trade (% of collateral): ours +6.17, freqtrade +5.38
+exits ours: {'SIGNAL_CHANGED': 686, 'STOP_LOSS': 284, 'TAKE_PROFIT_3': 22, 'END_OF_REPLAY': 3}
+exits freqtrade: {'exit_signal': 690, 'stop_loss': 292, 'tp3': 22, 'force_exit': 3}
+  biggest gap ('SOL', 'long', '2023-11-03T00:00') ours +262.7 (TAKE_PROFIT_3) ft -29.9 (stop_loss)
+  biggest gap ('BTC', 'long', '2023-10-15T20:00') ours +246.3 (TAKE_PROFIT_3) ft +205.7 (tp3)
+  biggest gap ('SOL', 'long', '2023-10-23T00:00') ours +260.2 (TAKE_PROFIT_3) ft +220.3 (tp3)
+  unmatched ours by exit of the trade: {'STOP_LOSS': 5, 'SIGNAL_CHANGED': 8}
+
+## live ladder 2024-01..2026-11-21
+trades: ours 918, freqtrade 919; same coin+side+entry bar: 909 (99% of ours, 99% of freqtrade's)
+matched trades: same leverage 100%; result within 1 point of collateral 94%; median gap -0.00 pts, mean gap -0.31 pts
+mean result per trade (% of collateral): ours +4.20, freqtrade +3.89
+exits ours: {'SIGNAL_CHANGED': 674, 'STOP_LOSS': 227, 'TAKE_PROFIT_3': 14, 'END_OF_REPLAY': 3}
+exits freqtrade: {'exit_signal': 676, 'stop_loss': 228, 'tp3': 14, 'force_exit': 1}
+  biggest gap ('SOL', 'long', '2026-08-18T08:00') ours +250.8 (TAKE_PROFIT_3) ft +215.9 (tp3)
+  biggest gap ('BTC', 'short', '2026-05-27T12:00') ours +249.7 (TAKE_PROFIT_3) ft +218.5 (tp3)
+  biggest gap ('SOL', 'short', '2026-01-30T00:00') ours +258.0 (TAKE_PROFIT_3) ft +233.1 (tp3)
+  unmatched ours by exit of the trade: {'SIGNAL_CHANGED': 4, 'STOP_LOSS': 3, 'END_OF_REPLAY': 2}
+
+## live ladder 2020-10..2023-12 (1h detail)
+trades: ours 995, freqtrade 998; same coin+side+entry bar: 992 (100% of ours, 99% of freqtrade's)
+matched trades: same leverage 100%; result within 1 point of collateral 94%; median gap +0.00 pts, mean gap -0.67 pts
+mean result per trade (% of collateral): ours +6.17, freqtrade +5.66
+exits ours: {'SIGNAL_CHANGED': 686, 'STOP_LOSS': 284, 'TAKE_PROFIT_3': 22, 'END_OF_REPLAY': 3}
+exits freqtrade: {'exit_signal': 685, 'stop_loss': 288, 'tp3': 22, 'force_exit': 3}
+  biggest gap ('SOL', 'long', '2023-11-03T00:00') ours +262.7 (TAKE_PROFIT_3) ft -29.9 (stop_loss)
+  biggest gap ('SOL', 'long', '2023-01-08T20:00') ours +263.6 (TAKE_PROFIT_3) ft +223.6 (tp3)
+  biggest gap ('BTC', 'long', '2023-10-15T20:00') ours +246.3 (TAKE_PROFIT_3) ft +207.2 (tp3)
+  unmatched ours by exit of the trade: {'SIGNAL_CHANGED': 2, 'STOP_LOSS': 1}
+
+## live ladder 2024-01..2026-11-21 (1h detail)
+trades: ours 918, freqtrade 916; same coin+side+entry bar: 915 (100% of ours, 100% of freqtrade's)
+matched trades: same leverage 100%; result within 1 point of collateral 95%; median gap -0.00 pts, mean gap -0.22 pts
+mean result per trade (% of collateral): ours +4.20, freqtrade +4.00
+exits ours: {'SIGNAL_CHANGED': 674, 'STOP_LOSS': 227, 'TAKE_PROFIT_3': 14, 'END_OF_REPLAY': 3}
+exits freqtrade: {'exit_signal': 674, 'stop_loss': 227, 'tp3': 14, 'force_exit': 1}
+  biggest gap ('SOL', 'short', '2026-01-30T00:00') ours +258.0 (TAKE_PROFIT_3) ft +230.3 (tp3)
+  biggest gap ('BTC', 'short', '2026-05-27T12:00') ours +249.7 (TAKE_PROFIT_3) ft +223.7 (tp3)
+  biggest gap ('ETH', 'short', '2026-01-31T00:00') ours +256.0 (TAKE_PROFIT_3) ft +241.3 (tp3)
+  unmatched ours by exit of the trade: {'SIGNAL_CHANGED': 1, 'END_OF_REPLAY': 2}
+

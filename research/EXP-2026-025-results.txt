@@ -1,0 +1,230 @@
+EXP-2026-025: three add-ons for the top-ten hourly account
+================================================================================
+Date: 2026-11-26. Research only; changes no configuration. Plan (committed before any
+add-on was run): EXP-2026-025-plan.md. Run: research/run_exp025.py; harness:
+research/exp025_lib.py. Simulated results on historical data with modelled costs. Not a
+forecast; profit is not guaranteed or implied.
+
+B0 is the account the owner chose (ten coins, hourly decisions, 1% of equity posted per
+position, buffer 8, 5x ceiling, 30% stop, 4/8/12R ladder), at 100 times its $2,500 balance.
+Engine: the one merged with PR 69 (borrow accrues exactly).
+
+Columns: CAGR, Sharpe (daily, 365 days), max drawdown, worst day, entries a month,
+decisions a month (coins opened on the same UTC day on the same side count once), share of
+entries closed by the opening stop, fees + borrow a year as % of average equity, how often
+the add-on acted a month (a waiting window that refused an open, a time-limit exit, or a
+position sized below full); the Sharpe difference from B0 with a 90% interval (paired
+block bootstrap of daily returns, 10-day blocks, 2,000 draws); then CAGR, Sharpe and max
+drawdown at twice the fees and twice the borrow rate.
+
+How the rule was applied (fixed in run_exp025.py before any add-on row was read): a
+setting's neighbours are the settings next to it in its own grid (an edge setting has one,
+the central setting has two; the two correlation modes are each other's). "Agree in sign"
+on a slice means every neighbour moved Sharpe the same way as the setting did.
+
+Verdicts under the plan's rule
+- Cooldown after a losing trade (CD): HELPS at 4, 12 and 24 hours. Sharpe is higher than
+  B0's on 4, 3 and 4 of the four slices; the one lower cell is 12 hours on 2018-2019
+  (-0.04, inside the 0.05 the rule allows). The gain is largest at 24 hours on three
+  slices and about zero on 2018-2019. On the 2024-2026 slice and on the ten other majors
+  the interval excludes zero at every length.
+  FLAG: it removes more than a quarter of the entries at every length: 26% at 4 hours, 38%
+  at 12, 46% at 24. Separate decisions fall less: 8%, 13% and 19%. The owner asked for
+  more trades, so the length is the owner's call.
+  At twice the costs it adds 2 to 9 points a year on every slice (CAGR, B0 / 4h / 12h /
+  24h: S1 5.3 / 8.3 / 9.0 / 10.6; S2 -2.0 / 2.2 / 3.9 / 6.6; S3 -6.8 / -3.4 / -1.6 / 0.0;
+  S4 3.8 / 6.3 / 5.7 / 7.2). Fees and borrow fall from 9-11% of equity a year to 8-9% at
+  4 hours, 7-8% at 12 and 6-8% at 24.
+- Stop guard (SG): NO BENEFIT. It acts once every one to two months. The central
+  setting (2 stops in 7 days, pause 7 days) is lower than B0 on all four slices (-0.00 to
+  -0.07; the rule's label is "hurts" because of -0.07 on 2018-2019); the two neighbours
+  are within 0.05 everywhere ("does no harm"). Not recommended: the account already makes
+  a stopped coin wait until the next UTC day, and an opening stop ends only 3% to 4% of
+  its entries.
+- Correlation sizing (VC): DOES NOT PASS. Volatility sizing is already how the account
+  works (every position risks the same 0.3% of equity at its stop).
+  VC-tiers has a higher Sharpe than B0 on all four slices (+0.00 to +0.06), but every 90%
+  interval includes zero and its neighbour VC-root agrees on only two slices, so it is not
+  "helps". The rule then labels it "hurts" only because its gain on 2018-2019 (+0.057) is
+  outside the 0.05 band that "does no harm" was written with; that band should have been
+  one-sided. Read plainly: no reliable effect on Sharpe. Against a flat account of the same
+  average size (0.95% to 0.96%) it lowers the worst day on every slice (-3.2 vs -3.8,
+  -2.1 vs -2.2, -4.5 vs -5.0, -4.0 vs -4.1) and the largest drop on two (14 vs 15, 21 vs
+  23). It never changes the number of trades. Optional: it goes in only if the owner still
+  wants it.
+  VC-root (the stronger form) is lower on two slices, by 0.27 on the ten other majors with
+  an interval that excludes zero: it hurts. Not recommended.
+- Time limit (TL): HURTS at 24, 72 and 168 hours on three of four slices (Sharpe -0.83 to
+  -0.07; at 24 hours the interval excludes zero on all three). It helps only on 2018-2019.
+  This agrees with EXP-2026-023: the profit of a trend rule comes from trades held longer
+  than a week, and many of those are under water after a day or three. Recommended
+  against.
+- Combination: only the cooldown helps, so the combination the plan asks for is the
+  cooldown alone; there is nothing further to run.
+
+What the cooldown changes (exploratory: measured after the tables were read; the table
+is at the end). In B0 about 63% of entries open within 4 hours of a losing exit on the
+same coin, and the median trade lasts 8 hours: the hourly account re-reads the unfinished
+4h candle every hour, so a signal can flip out and back within hours. These re-entries are
+not losers on average (mean result 0.02R to 0.04R, against -0.01R to 0.03R for the other
+entries), but only 29% to 31% of them win, against 40% to 45% of the others. They are
+chains of quick in-and-out trades that end with the one entry that catches the move. A
+cooldown waits out the chain and enters once, later. So "the entries it removes lose
+money" would be the wrong reading; what it saves is the chain's fees and small losses,
+and what it risks is a later entry into a real move. The tables show the net: higher
+Sharpe on three slices and no change on 2018-2019. This is the same effect EXP-2026-024
+measured from the other side (hourly decisions add 60% more entries and lower the return
+on every slice): a longer cooldown moves the hourly account back toward the 4h one.
+For the purpose of gathering data, most of the entries a cooldown removes repeat a bet
+the account had just made on that coin; the count of separate decisions falls far less.
+
+Self-checks (run_exp025.py check)
+equivalence on S1: exp025 with every switch off against exp024_lib.run: 10414 events, 1187 days, identical
+equivalence on S3: exp025 with every switch off against exp024_lib.run: 21683 events, 2246 days, identical
+rule audit on S4, CD12: {'open while waiting': 0, 'time limit too early or after a take-profit': 0} (acts 760)
+  control, B0's events against CD12's rule: {'open while waiting': 1494, 'time limit too early or after a take-profit': 0}
+rule audit on S4, SG277: {'open while waiting': 0, 'time limit too early or after a take-profit': 0} (acts 19)
+  control, B0's events against SG277's rule: {'open while waiting': 92, 'time limit too early or after a take-profit': 0}
+rule audit on S4, TL72: {'open while waiting': 0, 'time limit too early or after a take-profit': 0} (acts 203)
+  control, B0's events against TL72's rule: {'open while waiting': 0, 'time limit too early or after a take-profit': 0}
+correlation look-ahead test: 37/37 unchanged when unseen candles change
+control (also changing the last two candles it may read): 37/37 moved
+
+The built setting (added 2026-11-26 with ADR-053; run_exp025.py engine-S1 to engine-S4).
+The cooldown was then built into the paper account as risk.cooldown_after_loss_hours, off
+unless a settings file sets it. Replayed with that setting, the account takes exactly the
+trades the research cooldown took in the tables below (events and daily equity compared;
+the built setting also journals when each wait starts):
+S1, cooldown 4h: 8068 events, 2053 waits started, built setting against research add-on: identical
+S1, cooldown 12h: 7021 events, 1719 waits started, built setting against research add-on: identical
+S1, cooldown 24h: 6209 events, 1490 waits started, built setting against research add-on: identical
+S2, cooldown 4h: 7030 events, 1904 waits started, built setting against research add-on: identical
+S2, cooldown 12h: 6058 events, 1554 waits started, built setting against research add-on: identical
+S2, cooldown 24h: 5371 events, 1330 waits started, built setting against research add-on: identical
+S3, cooldown 4h: 16601 events, 4396 waits started, built setting against research add-on: identical
+S3, cooldown 12h: 14230 events, 3609 waits started, built setting against research add-on: identical
+S3, cooldown 24h: 12574 events, 3073 waits started, built setting against research add-on: identical
+S4, cooldown 4h: 3567 events, 945 waits started, built setting against research add-on: identical
+S4, cooldown 12h: 3126 events, 801 waits started, built setting against research add-on: identical
+S4, cooldown 24h: 2760 events, 675 waits started, built setting against research add-on: identical
+
+== S1: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2020-10-01 to 2024-01-01, hourly
+setting                                |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y acts/mo |  dShrp  [90% interval] | 2x: CAGR  Shrp   DD
+B0 the chosen account                  |   15.9%  1.19  18%  -3.9%  116.9   39.6    3%   10%     0.0 |                        |     5.3%  0.46  31%
+CD cooldown 4h                         |   17.5%  1.31  17%  -3.7%   86.9   36.6    4%    8%    49.3 |   +0.12 [-0.02, +0.24] |     8.3%  0.68  29%
+CD cooldown 12h (central)              |   16.9%  1.30  17%  -3.7%   73.4   34.7    5%    7%    42.2 |   +0.11 [-0.05, +0.27] |     9.0%  0.75  27%
+CD cooldown 24h                        |   17.7%  1.37  16%  -3.6%   63.0   32.4    5%    6%    38.2 |   +0.18 [-0.04, +0.38] |    10.6%  0.87  25%
+SG 2 stops in 7d, pause 7d (central)   |   15.7%  1.18  20%  -3.9%  115.1   39.4    3%   10%     0.5 |   -0.00 [-0.08, +0.06] |     5.1%  0.44  32%
+SG 2 stops in 7d, pause 3d             |   15.7%  1.18  19%  -3.9%  115.7   39.6    3%   10%     0.6 |   -0.01 [-0.07, +0.03] |     5.2%  0.45  32%
+SG 3 stops in 14d, pause 7d            |   15.9%  1.20  18%  -3.9%  116.4   39.6    3%   10%     0.2 |   +0.01 [-0.02, +0.03] |     5.4%  0.47  31%
+VC-tiers                               |   15.2%  1.23  17%  -3.2%  116.9   39.6    3%    9%    22.2 |   +0.04 [-0.02, +0.09] |     5.1%  0.47  30%
+  same size: collateral 0.9623%        |   15.3%  1.19  17%  -3.8%  116.9   39.6    3%    9%     0.0 |   -0.00 [-0.00, +0.00] |     5.1%  0.46  30%
+VC-root                                |   11.0%  1.25  13%  -2.2%  116.9   39.6    3%    7%    59.1 |   +0.06 [-0.17, +0.26] |     3.0%  0.39  25%
+  same size: collateral 0.7848%        |   12.5%  1.19  14%  -3.1%  116.9   39.6    3%    8%     0.0 |   -0.00 [-0.01, +0.00] |     4.3%  0.46  26%
+TL time limit 24h                      |    2.6%  0.36  19%  -2.4%  115.9   39.3    1%    8%    28.3 |   -0.83 [-1.31, -0.36] |    -5.9% -0.75  32%
+TL time limit 72h (central)            |    9.0%  0.83  19%  -3.5%  116.5   39.5    2%    9%    10.1 |   -0.36 [-0.62, -0.09] |    -0.2%  0.04  32%
+TL time limit 168h                     |   12.8%  1.03  18%  -3.9%  116.6   39.5    3%    9%     1.8 |   -0.16 [-0.33, -0.01] |     3.1%  0.31  31%
+
+== S2: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2024-01-01 to 2026-11-25, hourly
+setting                                |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y acts/mo |  dShrp  [90% interval] | 2x: CAGR  Shrp   DD
+B0 the chosen account                  |    9.3%  0.78  15%  -2.3%  113.8   41.2    3%   11%     0.0 |                        |    -2.0% -0.10  29%
+CD cooldown 4h                         |   11.8%  0.97  13%  -2.3%   84.5   37.6    4%    9%    52.4 |   +0.19 [+0.08, +0.30] |     2.2%  0.24  24%
+CD cooldown 12h (central)              |   13.6%  1.11  12%  -2.4%   70.6   35.3    4%    8%    43.6 |   +0.33 [+0.15, +0.52] |     3.9%  0.38  20%
+CD cooldown 24h                        |   14.3%  1.18  12%  -2.4%   60.8   32.7    5%    8%    38.2 |   +0.40 [+0.11, +0.64] |     6.6%  0.60  15%
+SG 2 stops in 7d, pause 7d (central)   |    9.2%  0.78  15%  -2.3%  112.9   41.1    3%   11%     0.5 |   -0.00 [-0.09, +0.07] |    -2.0% -0.11  30%
+SG 2 stops in 7d, pause 3d             |    8.9%  0.75  15%  -2.3%  113.4   41.2    3%   11%     0.5 |   -0.03 [-0.12, +0.05] |    -2.0% -0.11  30%
+SG 3 stops in 14d, pause 7d            |    9.4%  0.78  15%  -2.3%  113.8   41.2    3%   11%     0.1 |   +0.00 [-0.01, +0.02] |    -2.1% -0.11  29%
+VC-tiers                               |    9.3%  0.81  14%  -2.1%  113.8   41.2    3%   11%    22.0 |   +0.04 [-0.00, +0.08] |    -1.6% -0.08  28%
+  same size: collateral 0.9627%        |    9.0%  0.78  15%  -2.2%  113.8   41.2    3%   11%     0.0 |   +0.00 [-0.00, +0.00] |    -1.9% -0.10  29%
+VC-root                                |    6.0%  0.73  11%  -1.5%  113.8   41.2    3%    9%    57.5 |   -0.05 [-0.26, +0.16] |    -2.8% -0.29  22%
+  same size: collateral 0.7853%        |    7.5%  0.78  12%  -1.8%  113.8   41.2    3%    9%     0.0 |   +0.00 [-0.00, +0.01] |    -1.4% -0.10  24%
+TL time limit 24h                      |    0.8%  0.14  16%  -1.8%  112.8   40.8    1%   10%    28.9 |   -0.64 [-1.16, -0.12] |    -9.7% -1.27  30%
+TL time limit 72h (central)            |    6.6%  0.61  14%  -2.1%  113.4   41.0    2%   11%    11.0 |   -0.17 [-0.39, +0.05] |    -4.6% -0.36  28%
+TL time limit 168h                     |    7.9%  0.68  15%  -2.1%  113.7   41.1    2%   11%     1.9 |   -0.10 [-0.26, +0.06] |    -3.5% -0.24  30%
+
+== S3: LTC BCH ADA DOT XLM XMR EOS XTZ THETA UNI, 2020-10-01 to 2026-11-25, hourly
+setting                                |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y acts/mo |  dShrp  [90% interval] | 2x: CAGR  Shrp   DD
+B0 the chosen account                  |    3.4%  0.30  24%  -5.3%  130.5   41.4    3%   10%     0.0 |                        |    -6.8% -0.42  54%
+CD cooldown 4h                         |    5.6%  0.45  24%  -5.2%   96.1   38.0    4%    8%    56.4 |   +0.15 [+0.07, +0.23] |    -3.4% -0.17  46%
+CD cooldown 12h (central)              |    5.8%  0.47  21%  -5.1%   80.1   35.7    5%    7%    47.2 |   +0.17 [+0.03, +0.31] |    -1.6% -0.04  42%
+CD cooldown 24h                        |    6.6%  0.54  21%  -5.3%   68.9   33.6    5%    7%    41.6 |   +0.23 [+0.06, +0.42] |     0.0%  0.07  36%
+SG 2 stops in 7d, pause 7d (central)   |    3.2%  0.29  24%  -5.3%  128.0   41.2    3%   10%     0.5 |   -0.01 [-0.07, +0.05] |    -6.7% -0.41  54%
+SG 2 stops in 7d, pause 3d             |    3.1%  0.29  24%  -5.3%  128.9   41.2    3%   10%     0.6 |   -0.02 [-0.06, +0.03] |    -6.9% -0.42  54%
+SG 3 stops in 14d, pause 7d            |    3.2%  0.29  23%  -5.3%  130.0   41.3    3%   10%     0.2 |   -0.01 [-0.05, +0.02] |    -7.0% -0.43  55%
+VC-tiers                               |    3.2%  0.30  21%  -4.5%  130.5   41.4    3%   10%    28.0 |   +0.00 [-0.04, +0.04] |    -6.6% -0.44  52%
+  same size: collateral 0.9552%        |    3.3%  0.30  23%  -5.0%  130.5   41.4    3%   10%     0.0 |   -0.00 [-0.00, +0.00] |    -6.5% -0.42  53%
+VC-root                                |   -0.1%  0.03  22%  -2.7%  130.5   41.4    3%    8%    65.8 |   -0.27 [-0.42, -0.12] |    -7.8% -0.82  49%
+  same size: collateral 0.7758%        |    2.8%  0.30  19%  -4.1%  130.5   41.4    3%    8%     0.0 |   -0.00 [-0.00, +0.00] |    -5.2% -0.41  45%
+TL time limit 24h                      |   -3.3% -0.33  29%  -2.5%  129.5   41.0    1%    9%    31.0 |   -0.63 [-1.04, -0.26] |   -11.4% -1.36  57%
+TL time limit 72h (central)            |    1.9%  0.22  20%  -4.0%  130.2   41.3    2%   10%    12.4 |   -0.09 [-0.28, +0.09] |    -7.4% -0.55  52%
+TL time limit 168h                     |    2.2%  0.23  22%  -4.6%  130.4   41.3    3%   10%     2.4 |   -0.07 [-0.18, +0.03] |    -7.3% -0.47  55%
+
+== S4: BTC ETH LTC BNB XRP ADA TRX XLM EOS NEO, 2018-08-01 to 2020-01-01, hourly
+setting                                |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y acts/mo |  dShrp  [90% interval] | 2x: CAGR  Shrp   DD
+B0 the chosen account                  |   14.0%  0.93  12%  -4.3%  119.5   38.7    4%    9%     0.0 |                        |     3.8%  0.32  14%
+CD cooldown 4h                         |   14.5%  0.96  12%  -4.2%   88.1   35.7    6%    8%    50.8 |   +0.03 [-0.12, +0.17] |     6.3%  0.48  14%
+CD cooldown 12h (central)              |   13.1%  0.89  13%  -4.2%   75.3   33.7    6%    7%    44.7 |   -0.04 [-0.27, +0.18] |     5.7%  0.44  14%
+CD cooldown 24h                        |   14.3%  0.97  13%  -3.3%   64.5   31.8    7%    6%    39.6 |   +0.04 [-0.30, +0.34] |     7.2%  0.54  14%
+SG 2 stops in 7d, pause 7d (central)   |   12.4%  0.86  11%  -4.3%  115.5   38.5    4%    9%     1.1 |   -0.07 [-0.22, +0.07] |     2.6%  0.25  14%
+SG 2 stops in 7d, pause 3d             |   14.5%  0.97  11%  -4.3%  117.5   38.7    4%    9%     1.3 |   +0.03 [-0.03, +0.10] |     4.2%  0.35  14%
+SG 3 stops in 14d, pause 7d            |   14.7%  0.97  11%  -4.3%  118.8   38.6    4%    9%     0.3 |   +0.04 [-0.02, +0.11] |     4.5%  0.37  14%
+VC-tiers                               |   13.9%  0.99  11%  -4.0%  119.5   38.7    4%    9%    28.0 |   +0.06 [-0.01, +0.13] |     4.1%  0.35  13%
+  same size: collateral 0.9511%        |   13.3%  0.93  11%  -4.1%  119.5   38.7    4%    9%     0.0 |   -0.00 [-0.00, -0.00] |     3.7%  0.32  14%
+VC-root                                |   10.5%  1.04   7%  -3.0%  119.5   38.7    4%    7%    59.9 |   +0.11 [-0.14, +0.40] |     2.9%  0.33   9%
+  same size: collateral 0.7655%        |   10.7%  0.92   9%  -3.3%  119.5   38.7    4%    7%     0.0 |   -0.01 [-0.01, -0.00] |     3.1%  0.32  11%
+TL time limit 24h                      |    9.2%  0.96   6%  -3.1%  119.4   38.7    2%    8%    29.0 |   +0.02 [-0.63, +0.75] |    -3.4% -0.34   9%
+TL time limit 72h (central)            |   15.0%  1.14   9%  -3.7%  119.7   38.7    3%    9%    11.9 |   +0.21 [-0.12, +0.60] |     5.1%  0.45  11%
+TL time limit 168h                     |   16.4%  1.10  11%  -4.3%  119.5   38.7    4%    9%     2.6 |   +0.16 [+0.02, +0.32] |     5.9%  0.46  14%
+
+== Verdicts under the plan's rule (Sharpe at modelled costs, setting minus B0)
+setting                                |      S1      S2      S3      S4 | higher  agree | verdict
+CD cooldown 4h                         |  +0.116  +0.188  +0.147  +0.033 | 4/4     3/4   | helps
+CD cooldown 12h (central)              |  +0.109  +0.326  +0.166  -0.043 | 3/4     3/4   | helps
+CD cooldown 24h                        |  +0.185  +0.398  +0.235  +0.038 | 4/4     3/4   | helps
+SG 2 stops in 7d, pause 7d (central)   |  -0.005  -0.000  -0.007  -0.074 | 0/4     1/4   | hurts
+SG 2 stops in 7d, pause 3d             |  -0.012  -0.027  -0.016  +0.033 | 1/4     3/4   | does no harm
+SG 3 stops in 14d, pause 7d            |  +0.010  +0.003  -0.014  +0.041 | 3/4     1/4   | does no harm
+VC-tiers                               |  +0.036  +0.036  +0.000  +0.057 | 4/4     2/4   | hurts
+VC-root                                |  +0.057  -0.051  -0.269  +0.107 | 2/4     2/4   | hurts
+TL time limit 24h                      |  -0.830  -0.644  -0.632  +0.024 | 1/4     4/4   | hurts
+TL time limit 72h (central)            |  -0.356  -0.173  -0.086  +0.209 | 1/4     4/4   | hurts
+TL time limit 168h                     |  -0.160  -0.095  -0.072  +0.163 | 1/4     4/4   | hurts
+
+== Entries a month against B0 (a setting that removes more than a quarter is flagged)
+setting                                |     S1     S2     S3     S4 |
+B0 the chosen account                  |  116.9  113.8  130.5  119.5 |
+CD cooldown 4h                         |   86.9   84.5   96.1   88.1 | -26% to -26%  FLAG: removes more than a quarter
+CD cooldown 12h (central)              |   73.4   70.6   80.1   75.3 | -39% to -37%  FLAG: removes more than a quarter
+CD cooldown 24h                        |   63.0   60.8   68.9   64.5 | -47% to -46%  FLAG: removes more than a quarter
+SG 2 stops in 7d, pause 7d (central)   |  115.1  112.9  128.0  115.5 | -3% to -1%
+SG 2 stops in 7d, pause 3d             |  115.7  113.4  128.9  117.5 | -2% to -0%
+SG 3 stops in 14d, pause 7d            |  116.4  113.8  130.0  118.8 | -1% to -0%
+VC-tiers                               |  116.9  113.8  130.5  119.5 | +0% to +0%
+VC-root                                |  116.9  113.8  130.5  119.5 | +0% to +0%
+TL time limit 24h                      |  115.9  112.8  129.5  119.4 | -1% to -0%
+TL time limit 72h (central)            |  116.5  113.4  130.2  119.7 | -0% to +0%
+TL time limit 168h                     |  116.6  113.7  130.4  119.5 | -0% to -0%
+
+== By add-on
+CD: CD12 helps, CD4 helps, CD24 helps
+SG: SG277 hurts, SG273 does no harm, SG3147 does no harm
+VC: VCT hurts, VCR hurts
+TL: TL72 hurts, TL24 hurts, TL168 hurts
+settings that help (one per add-on, for the combination): {'CD': 'CD12'}
+
+== Exploratory: entries of B0 that open within a wait of a losing exit on the same coin
+(re-entries), against all other entries. R is the whole trade's result after fees over the
+planned loss at the opening stop. Script kept with the run outputs, not in the repository.
+slice  wait | entries re-entries  share | mean R: re-entries  others | winners: re  others | median hours held: re  others
+S1       4h |    4559       2809    62% |              0.041   0.032 |         31%     43% |                     8       8
+S1      12h |    4559       2858    63% |              0.044   0.027 |         31%     43% |                     8       8
+S1      24h |    4559       2930    64% |              0.048   0.020 |         31%     43% |                     8       7
+S2       4h |    3960       2584    65% |              0.029   0.016 |         29%     40% |                     8       8
+S2      12h |    3960       2621    66% |              0.031   0.012 |         29%     40% |                     8       8
+S2      24h |    3960       2664    67% |              0.038  -0.004 |         29%     39% |                     9       7
+S3       4h |    9630       6089    63% |              0.017  -0.005 |         29%     44% |                     7       7
+S3      12h |    9630       6174    64% |              0.017  -0.004 |         29%     44% |                     7       6
+S3      24h |    9630       6304    65% |              0.019  -0.008 |         29%     45% |                     8       6
+S4       4h |    2034       1268    62% |              0.044   0.014 |         28%     43% |                     8       8
+S4      12h |    2034       1308    64% |              0.043   0.015 |         29%     42% |                     8       7
+S4      24h |    2034       1345    66% |              0.042   0.015 |         29%     42% |                     9       7

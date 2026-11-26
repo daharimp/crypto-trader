@@ -17,10 +17,11 @@ mkdir -p "$OPS_STATE"
 cd "$REPO"
 
 # Send one line to the owner's phone through the same webhook the bots use (.env).
+# Reason: reads $REPO/.env by full path, because callers may have cd-ed elsewhere.
 notify() {
   local url kind
-  url="$(grep -E '^ALERT_WEBHOOK_URL=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d "\"'" || true)"
-  kind="$(grep -E '^ALERT_WEBHOOK_KIND=' .env 2>/dev/null | tail -1 | cut -d= -f2- | tr -d "\"'" || true)"
+  url="$(grep -E '^ALERT_WEBHOOK_URL=' "$REPO/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d "\"'" || true)"
+  kind="$(grep -E '^ALERT_WEBHOOK_KIND=' "$REPO/.env" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d "\"'" || true)"
   echo "$(date -u +%FT%TZ) $*"
   [ -n "$url" ] || return 0
   case "${kind:-ntfy}" in

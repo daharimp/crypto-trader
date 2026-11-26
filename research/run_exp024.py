@@ -5,7 +5,9 @@ trading (Part C). Every setting, slice and pass rule was fixed in the plan befor
 candle files were read; this script only runs them.
 
 Usage: python research/run_exp024.py <data_dir> <cache_dir> <job> [balance_multiple]
-Jobs: A | B-F3 | B-F4 | B-dev | B-hold | C-F3 | C-F4 | C-dev | C-hold | live
+Jobs: A | B-F3 | B-F4 | B-dev | B-hold | C-F3 | C-F4 | C-dev | C-hold | live |
+      X-<slice>  (exploratory, added after the owner chose the account; slices F3, F4,
+      dev, hold for twenty coins and F2, F3-10, F4-10, dev10, hold10 for ten)
 (one job per process, so several can run side by side; build the caches first with
 ``python research/exp024_lib.py <data_dir> <cache_dir> <tf> COIN...``).
 
@@ -45,6 +47,9 @@ F1 = ["BTC", "ETH", "LTC"]
 F2 = ["BTC", "ETH", "LTC", "BNB", "XRP", "ADA", "TRX", "XLM", "EOS", "NEO"]
 F3 = [c for c in TOP20 if c not in ("BTC", "ETH", "SOL")]
 F4 = [c for c in MAJORS_2021 if c not in ("BTC", "ETH")]
+# Reason: the owner narrowed the account to the top ten on 2026-11-26, after the plan; both
+# lists are in rank order, so the ten-coin versions are simply their first ten.
+TOP10 = TOP20[:10]
 
 
 def _day(y: int, m: int, d: int) -> datetime:
@@ -52,6 +57,7 @@ def _day(y: int, m: int, d: int) -> datetime:
 
 
 # Reason: ends are exclusive; the files run to the 4h candle that opens 2026-11-24 20:00.
+_SPAN = (_day(2020, 10, 1), _day(2026, 11, 25))
 SLICES: dict[str, tuple[list[str], datetime, datetime]] = {
     "F1": (F1, _day(2018, 2, 1), _day(2020, 1, 1)),
     "F2": (F2, _day(2018, 8, 1), _day(2020, 1, 1)),
@@ -59,6 +65,10 @@ SLICES: dict[str, tuple[list[str], datetime, datetime]] = {
     "F4": (F4, _day(2020, 10, 1), _day(2026, 11, 25)),
     "dev": (TOP20, _day(2020, 10, 1), _day(2024, 1, 1)),
     "hold": (TOP20, _day(2024, 1, 1), _day(2026, 11, 25)),
+    "F3-10": ([c for c in TOP10 if c not in ("BTC", "ETH", "SOL")], *_SPAN),
+    "F4-10": ([c for c in MAJORS_2021[:10] if c not in ("BTC", "ETH")], *_SPAN),
+    "dev10": (TOP10, _day(2020, 10, 1), _day(2024, 1, 1)),
+    "hold10": (TOP10, _day(2024, 1, 1), _day(2026, 11, 25)),
 }
 SCALE = [D(100)]  # balance multiple, set from the command line
 
@@ -203,6 +213,27 @@ def part_c(data: Path, cache: Path, name: str) -> None:
     row("T3 rule on hourly candles", central, hourly, name, signals=hourly.native_signals())
 
 
+def chosen(data: Path, cache: Path, name: str) -> None:
+    """Exploratory: the account the owner chose on 2026-11-26, on one slice.
+
+    Not in the plan. The owner picked hourly decisions with the trend from 4h candles (T2)
+    at collateral 1%, then narrowed the twenty coins to the top ten; Part C ran T2 on
+    twenty coins at the central 1.5% only. Ten-coin slices also show 2% collateral, the
+    size that puts the same share of the account at risk as 1% does on twenty coins.
+    """
+    live = main_account()
+    coins, start, end = SLICES[name]
+    positions = 20 if len(coins) > 10 else 10
+    picked = setting(live, "1", 8, positions, cap5=True)
+    print(f"\n== Chosen account, {name}: {' '.join(coins)}, {start:%Y-%m-%d} to {end:%Y-%m-%d}")
+    print(f"{'buffer 8, 5x':34} | {HEAD}")
+    row("4h decisions, coll 1% (reference)", picked, lib.build_feed(data, "4h", coins, cache), name)
+    hourly = lib.build_feed(data, "1h", coins, cache)
+    row("hourly decisions, coll 1%", picked, hourly, name)
+    if positions == 10:
+        row("hourly decisions, coll 2%", setting(live, "2", 8, 10, cap5=True), hourly, name)
+
+
 def live_check(data: Path, cache: Path) -> None:
     """Replay main from the live start (2026-11-22) and print what it did."""
     live, _ = base.account("main")
@@ -234,6 +265,8 @@ def main() -> None:
         part_b(data, cache, job[2:])
     elif job.startswith("C-"):
         part_c(data, cache, job[2:])
+    elif job.startswith("X-"):
+        chosen(data, cache, job[2:])
     else:
         raise SystemExit(f"unknown job {job!r}")
 

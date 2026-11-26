@@ -147,6 +147,69 @@ was five opening stops plus open profits given back on the other positions; no p
 was liquidated in 10,853 entries; 14 of 18 coins were net positive (worst: XMR, AAVE, LTC,
 BCH).
 
+Exploratory, not in the plan: the account the owner chose (jobs X-<slice>)
+On 2026-11-26 02:11 UTC the owner chose hourly decisions with the 4h trend (T2), at 1%
+collateral, and at 02:13 narrowed the universe to the top ten: BTC, ETH, BNB, XRP, SOL,
+TRX, HYPE, ZEC, DOGE, LINK. Part C ran T2 on twenty coins at 1.5% only, so the exact
+account was replayed afterwards. F3-10 is the top ten without BTC, ETH and SOL; F4-10 is
+the first ten majors of January 2021 without BTC and ETH; F2 is the ten majors of 2018.
+On ten coins the hourly account opens about 115 entries a month (about 40 decisions) and
+is positive at modelled costs on all five slices; at twice the costs it is between -5% and
++5% a year. The 2% rows show the size that risks the same share of the account as 1% does
+on twenty coins.
+
+== Chosen account, dev10: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2020-10-01 to 2024-01-01
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   17.9%  1.33  14%  -3.8%   74.6   35.5    5%    8% |     9.1%  0.74  26%
+hourly decisions, coll 1%          |   15.9%  1.19  18%  -3.9%  116.9   39.6    3%   10% |     5.3%  0.46  31%
+hourly decisions, coll 2%          |   31.6%  1.20  33%  -7.1%  116.9   39.6    3%   19% |     8.8%  0.46  54%
+
+== Chosen account, hold10: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2024-01-01 to 2026-11-25
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   13.9%  1.11  12%  -2.8%   72.6   35.9    5%    9% |     4.8%  0.44  19%
+hourly decisions, coll 1%          |    9.3%  0.78  15%  -2.3%  113.8   41.2    3%   11% |    -2.0% -0.10  29%
+hourly decisions, coll 2%          |   17.2%  0.77  28%  -4.4%  113.8   41.2    3%   23% |    -5.7% -0.12  51%
+
+== Chosen account, F3-10: BNB XRP TRX HYPE ZEC DOGE LINK, 2020-10-01 to 2026-11-25
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |    8.4%  0.94  15%  -3.4%   50.9   30.1    5%    5% |     2.7%  0.34  22%
+hourly decisions, coll 1%          |    7.1%  0.80  15%  -3.5%   79.4   35.0    3%    7% |     0.1%  0.06  30%
+hourly decisions, coll 2%          |   13.6%  0.81  28%  -6.6%   79.4   35.0    3%   14% |    -0.5%  0.06  52%
+
+== Chosen account, F4-10: XRP LTC BCH BNB ADA DOT LINK XLM, 2020-10-01 to 2026-11-25
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |    7.0%  0.60  18%  -3.9%   69.0   33.5    6%    7% |    -0.4%  0.03  37%
+hourly decisions, coll 1%          |    4.3%  0.40  28%  -4.1%  110.2   39.0    3%    9% |    -4.8% -0.32  51%
+hourly decisions, coll 2%          |    7.0%  0.40  48%  -7.8%  110.2   39.0    3%   19% |   -10.6% -0.33  77%
+
+== Chosen account, F2: BTC ETH LTC BNB XRP ADA TRX XLM EOS NEO, 2018-08-01 to 2020-01-01
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   17.7%  1.14  12%  -4.2%   76.9   34.3    7%    7% |     9.2%  0.65  13%
+hourly decisions, coll 1%          |   14.0%  0.93  12%  -4.3%  119.5   38.7    4%    9% |     3.8%  0.32  14%
+hourly decisions, coll 2%          |   27.6%  0.96  22%  -8.3%  119.5   38.7    4%   19% |     6.0%  0.34  27%
+
+The same account on twenty coins, for comparison:
+
+== Chosen account, dev: 20 coins, 2020-10-01 to 2024-01-01
+collateral 1%, buffer 8, 5x        |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions (reference)           |   34.7%  1.39  19%  -5.7%  141.9   45.1    5%   14% |    17.1%  0.79  36%
+hourly decisions, 4h trend         |   32.0%  1.30  22%  -5.8%  225.3   48.9    3%   18% |    11.4%  0.58  41%
+
+== Chosen account, hold: 20 coins, 2024-01-01 to 2026-11-25
+collateral 1%, buffer 8, 5x        |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions (reference)           |   13.9%  0.65  32%  -5.6%  160.5   48.5    6%   17% |    -3.2% -0.01  49%
+hourly decisions, 4h trend         |    5.3%  0.33  42%  -5.1%  255.2   52.5    3%   22% |   -15.6% -0.58  60%
+
+== Chosen account, F3: 17 coins, 2020-10-01 to 2026-11-25
+collateral 1%, buffer 8, 5x        |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions (reference)           |   17.0%  0.87  29%  -5.4%  127.8   44.8    6%   13% |     3.2%  0.26  44%
+hourly decisions, 4h trend         |   13.3%  0.72  35%  -5.3%  203.3   48.9    3%   16% |    -3.3% -0.06  59%
+
+== Chosen account, F4: 18 coins, 2020-10-01 to 2026-11-25
+collateral 1%, buffer 8, 5x        |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions (reference)           |   11.8%  0.57  30%  -8.7%  147.1   45.5    5%   15% |    -3.3% -0.01  62%
+hourly decisions, 4h trend         |    6.5%  0.38  35%  -8.6%  236.1   49.8    3%   19% |   -11.9% -0.39  76%
+
 Part A at the configured $2,500 (the first run, before the balance multiple)
 == Part A, F1: BTC ETH LTC, 2018-02-01 to 2020-01-01
 setting                            |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD

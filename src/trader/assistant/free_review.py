@@ -254,7 +254,9 @@ def _review_one(
     pnl = t.get("net_pnl_usd")
     past = past_for_prompt(memory, str(t.get("account")), reviewer.cfg.memory_reviews)
     d = run_debate(reviewer, facts, past)
-    extra: dict[str, Any] = {"debate": debate_payload(d)}
+    # Reason: the daily Claude review reads these JSON files, so the judge's track record
+    # (lessons.md in short) travels with every trade it reviews.
+    extra: dict[str, Any] = {"debate": debate_payload(d), "past_reviews": past}
     if d.verdict is None:
         return None, d.skipped or "no verdict", d.calls, render_debate(d, pnl), extra
     record = verdict_record(d, pnl)

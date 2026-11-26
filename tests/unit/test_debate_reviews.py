@@ -75,6 +75,7 @@ def test_debate_runs_bull_bear_judge_and_remembers_the_verdict(data: Path) -> No
     saved = json.loads(md.with_suffix(".json").read_text())
     assert saved["verdict"]["quadrant"] == "sound process, bad luck"
     assert saved["debate"]["arguments"]["bear"] == "1. stop too close"
+    assert saved["past_reviews"]["scorecard"]["stop_call"] == {"checked": 0, "right": 0}
     (entry,) = rm.load_memory(data / "reports")
     assert entry["key"] == f"spot/{NEW_ID}" and entry["stop_call"] == "too_tight"
     assert entry["follow_up"] is None

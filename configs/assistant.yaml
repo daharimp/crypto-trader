@@ -15,13 +15,13 @@ effort:
   daily_editor: medium
 # Review automatically when an account journals a bad day (DAY_HALTED).
 review_on_bad_day: true
-accounts: [main, degen, spot-perps]
+accounts: [main, degen, spot-perps, top10]
 # ADR-046: once a day (after 00:10 UTC) ONE request writes the daily summary and, with
 # review_every_trade, a review of every trade closed that day (batched to save usage). Drawdown
 # alerts are code only and alert when an account falls past a level below its peak.
 review_every_trade: true
 daily_summary: true
-report_accounts: [main, degen, spot-perps, spot]
+report_accounts: [main, degen, spot-perps, top10, spot]
 drawdown_alert_pct: [5, 10, 15]
 # ADR-048 (owner, 2026-11-23): no Anthropic API calls from the server for now. The daily
 # scheduled review on the owner's Claude plan writes the daily summary and trade reviews to the

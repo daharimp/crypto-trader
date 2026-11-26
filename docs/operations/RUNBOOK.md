@@ -270,6 +270,50 @@ docker compose run --rm cli perps paper status --account spot-perps
 Alerts from the new account start with `[spot perps]`. It always runs the shared rule;
 `--signal` with anything else exits 2.
 
+## 2f. Ten coins, hourly, small positions: the top10 account (ADR-051)
+
+A fourth paper perps account beside the others, with its own simulated $2,500, its own
+settings (`configs/perps/top10.yaml`) and its own record (`data/state/perps-top10.json`).
+It runs the shared trend rule on BTC, ETH, BNB, XRP, SOL, TRX, HYPE, ZEC, DOGE and LINK,
+decides every hour (the trend still comes from 4-hour candles), and posts 1% of the account
+per position at 5x or less, so a stopped trade costs about 0.3% of the account. It models no
+exchange, has no keys and cannot place a real order. Starting, stopping or resetting it
+never touches the other accounts.
+
+With auto-deploy (8b) it starts by itself: the deploy that brings this code restarts the
+existing bots, and the next watchdog run (within 15 minutes) creates the new service and
+sends `[ops] started the new service perps-top10`. By hand:
+
+```bash
+git pull && docker compose build                     # section 8a, if the image is older
+docker compose run --rm cli perps validate --account top10
+docker compose up -d perps-top10
+docker compose run --rm cli perps paper status --account top10
+docker compose logs --tail 20 perps-top10
+```
+
+Check: `validate` lists 1% collateral, buffer 8, stop 30% of collateral, the 15% daily limit
+and the 4R/8R/12R ladder; `status` shows `bars processed` rising every hour, about four
+minutes after the hour (it waits for the other accounts' price requests to finish and spaces
+its own twenty a second apart). Alerts start with `[perps top10]`; expect about 8 to 10 a day.
+It always runs on 1h: `--timeframe 4h` exits 2. The dashboard does not show this account yet;
+use `status`, the alerts, or the hourly snapshot in `crypto-trader-ops`.
+
+If one coin's prices cannot be read, the whole account waits and alerts once
+(`cycle failed, will retry`), then says when prices are back. To drop or swap a coin: edit
+`markets` in `configs/perps/top10.yaml`, raise `version`, then archive the run and restart
+(a saved run with a different coin list refuses to resume):
+
+```bash
+docker compose stop perps-top10
+docker compose run --rm cli perps paper reset --account top10 --reason "why it ends"
+docker compose up -d perps-top10
+```
+
+A coin needs a Kraken pair in `_KRAKEN_PAIRS` (`src/trader/ui/data.py`); without one the
+account refuses to start (exit 2) and names the coin. To change a setting, follow 2d with
+`--account top10` and `perps-top10`.
+
 ## 3. Create the Kraken API key (owner, on kraken.com)
 
 Kraken Pro → Settings → API → Create key. Grant **only**:
@@ -416,8 +460,8 @@ under a dollar per review, billed to your Anthropic account. Without a key the c
 and the trading bots are unaffected. AI reviewers can be wrong; one day is a small sample.
 
 **Every trade, every day (ADR-046).** Shortly after 00:00 UTC the same `review` service makes one
-request that writes a summary of main, degen, spot-perps and spot and reviews every trade they
-closed that day, and it alerts when an account falls 5, 10 or 15 % below its peak. Turn any
+request that writes a summary of main, degen, spot-perps, top10 and spot and reviews every
+trade they closed that day, and it alerts when an account falls 5, 10 or 15 % below its peak. Turn any
 of these off, or change the accounts and levels, in `configs/assistant.yaml`, then
 `docker compose up -d --force-recreate review`.
 
@@ -501,8 +545,11 @@ status without logging in to the server.
 Alerts use the same `ALERT_WEBHOOK_URL` as the bots (section 1c), prefixed `[ops]` for
 deploys and `[watchdog]` for health problems. Logs are in `~/.local/state/crypto-trader-ops/`.
 
-Auto-deploy restarts only `paper perps perps-degen perps-spot-perps review dashboard`; it
-never starts `live`. It skips, and alerts once, if files were edited on the server
+Auto-deploy restarts only `paper perps perps-degen perps-spot-perps perps-top10 review
+dashboard`; it never starts `live`. A service that a deploy adds is created by the next
+watchdog run (`scripts/ops/start_new.sh`, ADR-051), because the deploy reads its service
+list before it pulls; that script never builds, never touches an existing container, and
+does nothing after `docker compose down`. It skips, and alerts once, if files were edited on the server
 (`git status`) or the server is not on `main`. A failed build rolls back to the previous
 commit. Pause it before merging something that needs a reset first:
 `bash scripts/ops/hold.sh on "reason"`; `hold.sh off` releases it and `hold.sh` shows the

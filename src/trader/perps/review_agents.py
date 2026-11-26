@@ -83,12 +83,12 @@ class AssistantSettings(BaseModel):
     max_tokens: int = Field(ge=1024, le=64000)
     effort: dict[str, Effort]
     review_on_bad_day: bool
-    accounts: list[Literal["main", "degen", "spot-perps"]]
+    accounts: list[Literal["main", "degen", "spot-perps", "top10"]]
     # ADR-045: per-trade analysis, a daily summary and drawdown alerts for every account.
     # Defaults keep an older assistant.yaml valid; they are alert settings, not risk values.
     review_every_trade: bool = False
     daily_summary: bool = False
-    report_accounts: list[Literal["main", "degen", "spot-perps", "spot"]] = Field(
+    report_accounts: list[Literal["main", "degen", "spot-perps", "top10", "spot"]] = Field(
         default_factory=list
     )
     drawdown_alert_pct: list[float] = Field(default_factory=list)

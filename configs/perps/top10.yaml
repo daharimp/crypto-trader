@@ -1,0 +1,64 @@
+# "top10" account, PAPER ONLY (ADR-025, ADR-051). No wallet, no keys, no transactions. A
+# fourth, separate paper account next to jupiter.yaml, with its own state file
+# (data/state/perps-top10.json) and event log. Starting it never touches the other accounts.
+# It models no venue (venue: generic_perps): ten large coins priced from public Kraken
+# candles, at the main account's cost and liquidation model. Jupiter Perps lists only SOL,
+# ETH and BTC, so this account could not go live there; a live version needs a venue that
+# lists these coins, that venue's real fees and funding, its own ADR and the owner's yes.
+# v1 (2026-11-26): owner decision UD-33. Asked "Start a top-20 paper bot beside the existing
+# ones, at which speed?", the owner chose "Hourly decisions only" (02:11 UTC), which approved
+# the values of the write-up (EXP-2026-024): $2,500, 1% of equity posted per position, a 30%
+# stop with the 4/8/12R ladder, a buffer of 8 daily moves, at most 5x, the main account's
+# costs and its 15% bad-day stop. Then "correct from top 20 to top 10" (02:13 UTC): the first
+# ten coins of that list, one position each, still 1% per position (2% was offered, not
+# chosen). Hourly decisions are set where the account is started (docker-compose.yml) and
+# enforced by the command line; the trend is still read from 4h candles (ADR-040).
+# What it risks: a stopped trade loses about 0.3% of equity (30% of the 1% posted), about 3%
+# if all ten stop together. The replay of exactly this account is in
+# research/EXP-2026-024-results.txt; it is a simulation of past prices, not a forecast.
+# Every value here is adjustable: edit it, raise `version`, update the approval fields, and
+# restart the account (RUNBOOK 2f). A value set to TBD stops the account (exit 3).
+schema_version: "1.0.0"
+kind: PerpsConfig
+version: 1
+venue: generic_perps
+mode: paper
+starting_collateral_usd: {value: 2500, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "same paper starting balance as the other accounts"}
+markets:
+  # Largest coins by market value on 2026-11-24, stablecoins and wrapped coins left out
+  # (research/EXP-2026-024-plan.md). Decisions are taken in this order. No price mints:
+  # nothing is read on-chain; prices are public Kraken candles (trader/ui/data.py).
+  - {market: BTC}
+  - {market: ETH}
+  - {market: BNB}
+  - {market: XRP}
+  - {market: SOL}
+  - {market: TRX}
+  - {market: HYPE}
+  - {market: ZEC}
+  - {market: DOGE}
+  - {market: LINK}
+costs:
+  open_fee_bps: {value: 7, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "the main account's cost model (UD-23), a model for this account and not any venue's fee schedule"}
+  close_fee_bps: {value: 7, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "the main account's cost model (UD-23), a model for this account and not any venue's fee schedule"}
+  borrow_rate_pct_per_hour: {value: 0.0016, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "the main account's borrow model (UD-28), about 14% of position size a year; funding payments are not modelled"}
+venue_limits:
+  # Copied unchanged from jupiter.yaml with their original approval: the liquidation model
+  # the replay used. At 5x or less with a 30% stop, a position is stopped long before it.
+  maintenance_bps: {value: 20, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "liquidation at size/500, the main account's model"}
+  venue_max_leverage: {value: 250, status: approved, ref: UD-23, approved_by: owner, approved_on: "2026-11-10", note: "the main account's model; this account's own ceiling is risk.max_leverage"}
+risk:
+  max_leverage: {value: 5, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "owner: at most 5x"}
+  target_leverage: {value: 5, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "ceiling for the assessed opening leverage"}
+  liquidation_buffer_daily_moves: {value: 8, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "each position opens at the leverage that keeps liquidation 8 typical daily moves away, so the 30% stop sits about 2.4 daily moves from entry (the wider stop of EXP-2026-024)"}
+  max_collateral_per_position_pct: {value: 1, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "% of equity posted per position; a stopped trade loses about 0.3% of equity"}
+  stop_loss_pct_of_collateral: {value: 30, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "owner rule: every trade has a stop, 20-30% of collateral; fees included; after a stop that market waits for the next UTC day"}
+  take_profit_1_r: {value: 4, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "the ladder of UD-32 (ADR-045): TP1 at 4R closes 25% and moves the stop to breakeven (fees covered)"}
+  take_profit_1_close_pct: {value: 25, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "% of the opening size closed at TP1 (ADR-045)"}
+  take_profit_2_r: {value: 8, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "TP2 at 8R closes 25% and moves the stop to TP1 (ADR-045)"}
+  take_profit_2_close_pct: {value: 25, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "% of the opening size closed at TP2 (ADR-045)"}
+  take_profit_3_r: {value: 12, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "TP3 at 12R closes the remaining 50%; then the market waits for the next UTC day (ADR-045)"}
+  max_total_size_pct_of_equity: {value: 400, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "as the main account; ten positions of at most 5% of equity each cannot pass 50%, so this cap does not bind here"}
+  min_liquidation_distance_pct: {value: 3.5, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "as the main account; at 5x liquidation is about 20% away"}
+  max_open_positions: {value: 10, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "one position per coin"}
+  daily_loss_limit_pct: {value: 15, status: approved, ref: UD-33, approved_by: owner, approved_on: "2026-11-26", note: "as the main account: past this loss in a UTC day, alert and open nothing more that day"}

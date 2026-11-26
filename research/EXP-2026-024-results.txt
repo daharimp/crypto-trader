@@ -230,3 +230,76 @@ WIDE10 (coll 3%, buffer 10, 5x)    |   50.7%  1.29  28% -11.0%   76.0   34.0    
 WIDE + same-side cap 6%            |   42.4%  1.15  25% -11.4%   74.7   33.6    7%   19% |    15.8%  0.58  29%
 WIDE + same-side cap 3%            |   27.6%  1.21  13%  -8.6%   63.6   29.6    9%   13% |    11.8%  0.61  16%
 rule: WIDE holds against LIVE: False; WIDE beats HALF on Sharpe: False
+
+
+====================================================================================================
+Borrow accrual check for ADR-051 (2026-11-26 06:00 UTC). Exploratory; not in any plan.
+The engine rounded borrow to a whole cent at every accrual. On the chosen ten-coin hourly account a
+position is about $125 and owes $0.002 an hour, so at the real $2,500 balance it paid no borrow at
+all, which is why the tables above were run at 100 times the balance. ADR-051 accrues borrow exactly
+and pays it in whole cents at a close. Same replay, same data, three ways:
+
+--- OLD engine (cent rounding per accrual), real $2,500 balance
+paper balance: 1 x the configured $2,500 (except the live check)
+== Chosen account, dev10: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2020-10-01 to 2024-01-01
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   17.9%  1.33  15%  -3.8%   74.6   35.5    5%    7% |     9.1%  0.74  26%
+hourly decisions, coll 1%          |   20.2%  1.47  16%  -3.9%  116.8   39.6    3%    6% |     9.5%  0.76  26%
+hourly decisions, coll 2%          |   32.4%  1.22  34%  -7.0%  116.9   39.6    3%   19% |     8.6%  0.45  55%
+paper balance: 1 x the configured $2,500 (except the live check)
+== Chosen account, hold10: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2024-01-01 to 2026-11-25
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   13.5%  1.08  12%  -2.8%   72.6   35.9    5%    9% |     4.2%  0.39  20%
+hourly decisions, coll 1%          |   14.3%  1.13  13%  -2.3%  113.8   41.2    3%    7% |     6.7%  0.58  19%
+hourly decisions, coll 2%          |   21.0%  0.90  28%  -4.4%  113.8   41.2    3%   20% |    -7.2% -0.19  52%
+
+--- NEW engine (exact accrual), real $2,500 balance
+paper balance: 1 x the configured $2,500 (except the live check)
+== Chosen account, dev10: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2020-10-01 to 2024-01-01
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   17.9%  1.33  14%  -3.8%   74.6   35.5    5%    8% |     9.1%  0.73  26%
+hourly decisions, coll 1%          |   15.9%  1.19  18%  -3.9%  116.9   39.6    3%   10% |     5.3%  0.46  31%
+hourly decisions, coll 2%          |   31.6%  1.20  33%  -7.1%  116.9   39.6    3%   19% |     8.8%  0.46  54%
+paper balance: 1 x the configured $2,500 (except the live check)
+== Chosen account, hold10: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2024-01-01 to 2026-11-25
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   13.9%  1.11  12%  -2.8%   72.6   35.9    5%    9% |     4.8%  0.44  20%
+hourly decisions, coll 1%          |    9.4%  0.78  15%  -2.3%  113.8   41.2    3%   11% |    -2.0% -0.10  29%
+hourly decisions, coll 2%          |   17.2%  0.77  28%  -4.4%  113.8   41.2    3%   23% |    -5.7% -0.12  51%
+
+--- NEW engine, 100 times the balance (must equal the tables above; it does)
+paper balance: 100 x the configured $2,500 (except the live check)
+== Chosen account, dev10: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2020-10-01 to 2024-01-01
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   17.9%  1.33  14%  -3.8%   74.6   35.5    5%    8% |     9.1%  0.74  26%
+hourly decisions, coll 1%          |   15.9%  1.19  18%  -3.9%  116.9   39.6    3%   10% |     5.3%  0.46  31%
+hourly decisions, coll 2%          |   31.6%  1.20  33%  -7.1%  116.9   39.6    3%   19% |     8.8%  0.46  54%
+paper balance: 100 x the configured $2,500 (except the live check)
+== Chosen account, hold10: BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2024-01-01 to 2026-11-25
+buffer 8, 5x                       |    CAGR  Shrp   DD   wDay  en/mo dec/mo stop% fee/y | 2x: CAGR  Shrp   DD
+4h decisions, coll 1% (reference)  |   13.9%  1.11  12%  -2.8%   72.6   35.9    5%    9% |     4.8%  0.44  19%
+hourly decisions, coll 1%          |    9.3%  0.78  15%  -2.3%  113.8   41.2    3%   11% |    -2.0% -0.10  29%
+hourly decisions, coll 2%          |   17.2%  0.77  28%  -4.4%  113.8   41.2    3%   23% |    -5.7% -0.12  51%
+
+Reading: hourly at 1% collateral, 2020-23 / 2024-26. Old engine at $2,500: 20.2% / 14.3% a year with
+fees of 6% / 7% of equity a year. New engine at $2,500: 15.9% / 9.4% with fees of 10% / 11%, the same
+as at 100 times the balance (15.9% / 9.3%). Cent rounding flattered this account by 4 to 5 points a
+year. The 4h rows barely move (their accruals are four times larger).
+
+The three existing accounts as configured, real $2,500 balance (research/exp023_lib.py; dev = 2020-10
+to 2023-12, hold = 2024-01 on). They barely move, in either direction:
+--- OLD engine
+main       dev  fees $   45735.53  CAGR  207.15%  DD  56.6%  Sharpe  1.70  end $     95884.50
+main       hold fees $   13347.68  CAGR   60.97%  DD  74.2%  Sharpe  0.96  end $      9901.72
+degen      dev  fees $   13017.17  CAGR   79.80%  DD  56.6%  Sharpe  1.29  end $     16824.31
+degen      hold fees $    5687.57  CAGR    9.89%  DD  76.5%  Sharpe  0.46  end $      3283.41
+spot-perps dev  fees $    3687.91  CAGR   82.71%  DD  29.2%  Sharpe  1.86  end $     17726.59
+spot-perps hold fees $    1095.37  CAGR   14.78%  DD  23.7%  Sharpe  0.72  end $      3724.10
+--- NEW engine
+main       dev  fees $   45751.35  CAGR  207.19%  DD  56.6%  Sharpe  1.70  end $     95920.30
+main       hold fees $   13353.65  CAGR   61.02%  DD  74.2%  Sharpe  0.96  end $      9909.44
+degen      dev  fees $   13032.71  CAGR   79.92%  DD  56.6%  Sharpe  1.29  end $     16862.22
+degen      hold fees $    5763.22  CAGR   10.44%  DD  76.5%  Sharpe  0.46  end $      3331.64
+spot-perps dev  fees $    3685.54  CAGR   82.64%  DD  29.2%  Sharpe  1.86  end $     17704.83
+spot-perps hold fees $    1103.95  CAGR   14.68%  DD  23.9%  Sharpe  0.71  end $      3715.08
+Largest change: degen 2024-26, 9.9% to 10.4% a year. Everywhere else 0.1 point or less.

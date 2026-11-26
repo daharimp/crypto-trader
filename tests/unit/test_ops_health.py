@@ -27,7 +27,7 @@ def _running(*services: str) -> list[dict[str, str]]:
     return [{"Service": s, "State": "running"} for s in services]
 
 
-ALL = ("paper", "perps", "perps-degen", "perps-spot-perps", "review", "dashboard")
+ALL = ("paper", "perps", "perps-degen", "perps-spot-perps", "perps-top10", "review", "dashboard")
 
 
 def test_parse_compose_ps_both_shapes() -> None:

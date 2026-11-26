@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import Any
 
 from .math import PerpSide, fee_usd, is_liquidatable, pnl_usd, remaining_collateral
@@ -17,6 +17,10 @@ from .risk import AccountView, PerpRiskDecision, check_open, size_open
 
 HUNDRED = Decimal(100)
 CENT = Decimal("0.01")
+# Reason: borrow is accrued to a millionth of a dollar and only becomes whole cents when it
+# is paid at a close. Rounding every accrual to a cent charged nothing at all on an hourly
+# position under about $300 and mis-charged small 4h ones (ADR-051).
+BORROW_UNIT = Decimal("0.000001")
 
 
 @dataclass
@@ -178,7 +182,7 @@ class PaperPerpsAccount:
             hours = Decimal(int((now - since) / timedelta(seconds=1))) / Decimal(3600)
             if hours > 0:
                 fee = p.size_usd * self.params.borrow_rate_pct_per_hour / HUNDRED * hours
-                p.borrow_fees_usd += fee.quantize(CENT)
+                p.borrow_fees_usd += fee.quantize(BORROW_UNIT)
                 p.last_accrual = now
             stop = self.stop_price(p)
             sign = Decimal(1) if p.side == PerpSide.LONG else Decimal(-1)
@@ -315,7 +319,9 @@ class PaperPerpsAccount:
         p = self.positions[market]
         size = (p.size_usd * fraction).quantize(CENT)
         collateral = (p.collateral_usd * fraction).quantize(CENT)
-        borrow = (p.borrow_fees_usd * fraction).quantize(CENT)
+        # Reason: never pay more whole cents than have accrued, so the rest stays >= 0.
+        accrued = p.borrow_fees_usd.quantize(CENT, ROUND_DOWN)
+        borrow = min((p.borrow_fees_usd * fraction).quantize(CENT), accrued)
         close_fee = fee_usd(size, self.params.close_fee_bps).quantize(CENT)
         pnl = pnl_usd(p.side, size, p.entry_price, price).quantize(CENT)
         returned = max(collateral + pnl - close_fee - borrow, Decimal(0))
@@ -438,10 +444,11 @@ class PaperPerpsAccount:
         if p is None:
             return False
         close_fee = fee_usd(p.size_usd, self.params.close_fee_bps).quantize(CENT)
+        borrow = p.borrow_fees_usd.quantize(CENT)
         pnl = pnl_usd(p.side, p.size_usd, p.entry_price, marks[market]).quantize(CENT)
-        returned = max(p.collateral_usd + pnl - close_fee - p.borrow_fees_usd, Decimal(0))
+        returned = max(p.collateral_usd + pnl - close_fee - borrow, Decimal(0))
         self.cash_usd += returned
-        self.fees_paid_usd += close_fee + p.borrow_fees_usd
+        self.fees_paid_usd += close_fee + borrow
         self.realized_pnl_usd += returned - p.collateral_usd
         self._log(
             now,
@@ -450,7 +457,7 @@ class PaperPerpsAccount:
             side=p.side.value,
             exit=str(marks[market]),
             pnl_usd=str(pnl),
-            fees_usd=str(close_fee + p.borrow_fees_usd),
+            fees_usd=str(close_fee + borrow),
             reason=reason,
         )
         return True

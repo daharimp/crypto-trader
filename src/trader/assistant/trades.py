@@ -2,9 +2,10 @@
 
 Accounts:
 
-- ``main``, ``degen``, ``spot-perps``: paper perps accounts. A trade is an ``OPENED`` event
-  paired with the next ``CLOSED`` or ``LIQUIDATED`` event of the same market; every other
-  event of that market in between (stop moves, take-profit partials, ...) is kept as context.
+- ``main``, ``degen``, ``spot-perps``, ``top10``: paper perps accounts. A trade is an
+  ``OPENED`` event paired with the next ``CLOSED`` or ``LIQUIDATED`` event of the same
+  market; every other event of that market in between (stop moves, take-profit partials,
+  ...) is kept as context.
 - ``spot``: the paper spot session(s), ``data/state/session-paper-*.json``. Trades come from
   the ledger's closed round trips, which do not record why they closed.
 

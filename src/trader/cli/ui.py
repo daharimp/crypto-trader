@@ -76,7 +76,7 @@ def serve_cmd(
     """Serve the dashboard. GET only; it cannot trade or change settings."""
 
     def prices() -> dict[str, Any]:
-        markets: dict[str, str] = {m.market: m.price_mint for m in load_perps_file().markets}
+        markets = load_perps_file().price_mints()
         return {k: float(v) for k, v in fetch_prices(markets).items()}
 
     src = Sources(

@@ -343,9 +343,7 @@ def _path(daily: dict[date, float], until: date | None = None) -> tuple[float, f
 def _spread(xs: list[float]) -> str:
     """min, 10th percentile, median, 90th percentile, max."""
     q = statistics.quantiles(xs, n=10, method="inclusive")
-    return (
-        f"{min(xs):7.1f} {q[0]:7.1f} {statistics.median(xs):7.1f} {q[8]:7.1f} {max(xs):7.1f}"
-    )
+    return " ".join(f"{x:7.1f}" for x in (min(xs), q[0], statistics.median(xs), q[8], max(xs)))
 
 
 def _share(flags: list[bool]) -> str:
@@ -354,6 +352,7 @@ def _share(flags: list[bool]) -> str:
 
 SPREAD_HEAD = f"{'min':>7} {'p10':>7} {'median':>7} {'p90':>7} {'max':>7}"
 Picks = list[tuple[str, Setting]]
+Test = tuple[float, float, float, float, datetime]  # days, return %, max DD %, Sharpe, start
 
 
 def by_year(lab: Lab, picks: Picks) -> None:
@@ -399,7 +398,7 @@ def first_hundred(lab: Lab, picks: Picks) -> None:
     print("\n(c) a fresh account every quarter, cut at the end of the UTC day of the 100th entry:")
     print("    days needed, return %, max drawdown % (day-end equity), '+' = Sharpe above 0")
     print(f"{'start':8} | " + " | ".join(f"{name:^27}" for name, _ in picks))
-    found: dict[str, list[tuple[float, float, float, float, datetime]]] = {n: [] for n, _ in picks}
+    found: dict[str, list[Test]] = {n: [] for n, _ in picks}
     for q in quarters:
         cells = []
         for name, s in picks:
@@ -424,16 +423,10 @@ def first_hundred(lab: Lab, picks: Picks) -> None:
             f"{_share([g[2] > GO_LIVE_DD for g in got])}"
         )
         print(f"{'':14} met the bar (DD under 15% and Sharpe above 0): {_share(passed)}")
-        _what_follows(lab, name, s, got, passed)
+        _what_follows(lab, s, got, passed)
 
 
-def _what_follows(
-    lab: Lab,
-    name: str,
-    s: Setting,
-    got: list[tuple[float, float, float, float, datetime]],
-    passed: list[bool],
-) -> None:
+def _what_follows(lab: Lab, s: Setting, got: list[Test], passed: list[bool]) -> None:
     """Compare each 100-entry test with the 12 months that start the month after it ends."""
     pairs: list[tuple[float, float, float, bool]] = []
     for (days, ret, _, _, q), ok in zip(got, passed, strict=True):
@@ -490,7 +483,7 @@ def main() -> None:
     print(f"under-15 pick (highest development return with development DD under 15%): {best.label}")
     print(LINE_HEAD)
     for name, s in picks:
-        print(_line(f"{name}: {s.label}", lab.row(s)))
+        print(_line(name, lab.row(s)))
     by_year(lab, picks)
     rolling(lab, picks)
     first_hundred(lab, picks)

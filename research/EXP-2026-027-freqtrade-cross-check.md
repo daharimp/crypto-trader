@@ -1,4 +1,4 @@
-# EXP-2026-025: freqtrade cross-check of the main bot's replay (research only)
+# EXP-2026-027: freqtrade cross-check of the main bot's replay (research only)
 
 - **Asked:** owner, 2026-11-26 ("run our strategy through its backtester as a second opinion.
   It also catches strategies that accidentally peek at future prices").

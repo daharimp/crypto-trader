@@ -332,8 +332,18 @@ def watch_once(
         send(line)
     if free is not None:
         from trader.assistant.free_review import run_pass
+        from trader.ui.data import kraken_public_ohlc
 
-        run_pass(cur, free, data_root(), accounts or list(ALL_ACCOUNTS), now, enrich_trade, send)
+        run_pass(
+            cur,
+            free,
+            data_root(),
+            accounts or list(ALL_ACCOUNTS),
+            now,
+            enrich_trade,
+            send,
+            kraken_public_ohlc,
+        )
 
 
 @app.command("watch")

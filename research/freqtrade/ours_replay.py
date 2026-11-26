@@ -1,4 +1,4 @@
-"""EXP-2026-025: our paper engine on the same windows as the freqtrade runs (no borrow).
+"""EXP-2026-027: our paper engine on the same windows as the freqtrade runs (no borrow).
 
 Needs ``research/exp023_lib.py`` (the EXP-2026-023 replay harness) next to it or on the path.
 Usage: uv run python research/freqtrade/ours_replay.py <candle dir> <cache dir> <out dir>

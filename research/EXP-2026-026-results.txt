@@ -360,3 +360,36 @@ B1    |  36% /  34% | +0.36 / +0.76 | -0.20 / -0.21 |  +0.114 |                 
 B2    |  32% /  31% | +0.44 / +0.70 | -0.20 / -0.24 |  +0.045 |                           +0.005 |                              243%
 B3    |  35% /  32% | +0.36 / +0.59 | -0.20 / -0.23 |  +0.034 |                           -0.001 |                              544%
 B4    |  35% /  33% | +0.43 / +0.47 | -0.18 / -0.24 |  -0.037 |                           -0.051 |                              169%
+
+
+The built setting (added with ADR-054, after the verdict; not part of the rule).
+`run_exp026.py engine-<slice>` replays the composite's wide-range account twice: once
+with the research harness choosing every size, and once with the paper account's own
+optional setting (risk.min_collateral_per_position_pct with the score from
+trader.perps.confidence) choosing them. The second line of each pair recomputes every
+score from the last 719 completed candles only, which is what the exchange's feed
+gives the bot (the experiment had the whole history).
+A3, 5.0% to 15.0% by the composite: 1859 events, 542 entries, built range sizing against research: identical
+A3, the same scores from a 719-candle feed: largest difference 0.0012, 522 of 542 differ at all
+B4, 0.5% to 1.5% by the composite: 4637 events, 2034 entries, built range sizing against research: identical
+B4, the same scores from a 719-candle feed: largest difference 0.0012, 1889 of 2034 differ at all
+With the setting absent, `step2-A1` re-run on the changed engine is identical to the
+run above, every number.
+
+The real bot loop (`research/live_path_range.py`): PerpsSession, the code the server
+runs, driven hour by hour over the last 30 days of candles (to 2026-11-24) for the
+ten-coin account with a 0.5% to 1.5% range held in memory, fed like the exchange (719
+completed candles and the forming one, for 1h, 4h and 1d), against the research replay
+of the same window at the $2,500 balance. Money differences are in dollars; an entry's
+collateral differs by at most three cents because a score from 719 candles differs
+from the research score in the third decimal.
+live path: 720 hourly cycles, 30 candle requests a cycle
+events: live path 144, replay 144; same sequence: True
+  entry: 74 compared, largest difference $0.0000, 74 equal
+  size_usd: 74 compared, largest difference $0.1500, 27 equal
+  collateral_usd: 74 compared, largest difference $0.0300, 27 equal
+  fee_usd: 74 compared, largest difference $0.0000, 74 equal
+  exit: 70 compared, largest difference $0.0014, 64 equal
+  pnl_usd: 70 compared, largest difference $0.0100, 60 equal
+  fees_usd: 70 compared, largest difference $0.0000, 70 equal
+scores: 74 opens, largest difference 0.0011; sizes used 0.61% to 1.42% of equity, mean 0.98%

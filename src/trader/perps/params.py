@@ -143,11 +143,16 @@ class PerpsParams:
     # opens nothing for this many hours, counted from the candle that closed it. None
     # means no cooldown.
     cooldown_after_loss_hours: Decimal | None = None
+    # Optional (ADR-054): the smallest share of equity a position posts. When set, each new
+    # position is sized between this and ``max_collateral_per_position_pct`` by its
+    # confidence score; None means every position posts the maximum.
+    min_collateral_per_position_pct: Decimal | None = None
 
 
 BUFFER_KEY = "liquidation_buffer_daily_moves"
 STOP_KEY = "stop_loss_pct_of_collateral"
 COOLDOWN_KEY = "cooldown_after_loss_hours"
+MIN_SIZE_KEY = "min_collateral_per_position_pct"
 # Reason: a wait longer than a week is almost certainly a typing mistake.
 COOLDOWN_MAX_HOURS = Decimal(168)
 DEFAULT_FILE = "jupiter.yaml"
@@ -227,7 +232,12 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
                 refs.add(pv.ref if pv else "UD-23")
             else:
                 values[k] = Decimal(pv.value)
-    for key, top in ((BUFFER_KEY, None), (STOP_KEY, Decimal(100)), (COOLDOWN_KEY, None)):
+    for key, top in (
+        (BUFFER_KEY, None),
+        (STOP_KEY, Decimal(100)),
+        (COOLDOWN_KEY, None),
+        (MIN_SIZE_KEY, None),
+    ):
         opt = cfg.risk.get(key)
         if opt is None:
             if key == STOP_KEY:
@@ -245,7 +255,7 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
             values[key] = Decimal(opt.value)
     if values.get(COOLDOWN_KEY, Decimal(0)) > COOLDOWN_MAX_HOURS:
         raise ValueError(f"risk.{COOLDOWN_KEY} must be at most {COOLDOWN_MAX_HOURS} hours")
-    known = {*RISK_KEYS, *LADDER_KEYS, BUFFER_KEY, STOP_KEY, COOLDOWN_KEY}
+    known = {*RISK_KEYS, *LADDER_KEYS, BUFFER_KEY, STOP_KEY, COOLDOWN_KEY, MIN_SIZE_KEY}
     if unknown := sorted(set(cfg.risk) - known):
         # Reason: a misspelled optional key would otherwise switch its protection off
         # without a word; refuse the file instead (ADR-053).
@@ -261,6 +271,8 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
         raise ValueError("risk.max_leverage must not exceed venue_limits.venue_max_leverage")
     if not Decimal(1) <= values["target_leverage"] <= values["max_leverage"]:
         raise ValueError("risk.target_leverage must be between 1 and risk.max_leverage")
+    if values.get(MIN_SIZE_KEY, Decimal(0)) > values["max_collateral_per_position_pct"]:
+        raise ValueError(f"risk.{MIN_SIZE_KEY} must not exceed max_collateral_per_position_pct")
     return PerpsParams(
         version=cfg.version,
         starting_collateral_usd=Decimal(start.value),
@@ -341,10 +353,11 @@ def settings_summary(p: PerpsParams) -> dict[str, Any]:
 
     Returns:
         dict[str, Any]: Version, collateral %, buffer, leverage cap, stop %, daily limit,
-        take-profit ladder, cooldown; an optional setting that is off is None.
+        take-profit ladder, cooldown, smallest size; an optional setting that is off is
+        None.
     """
     opt = (p.liquidation_buffer_daily_moves, p.stop_loss_pct_of_collateral)
-    cooldown = p.cooldown_after_loss_hours
+    cooldown, low = p.cooldown_after_loss_hours, p.min_collateral_per_position_pct
     return {
         "config_version": p.version,
         "collateral_pct": str(p.max_collateral_per_position_pct),
@@ -356,4 +369,5 @@ def settings_summary(p: PerpsParams) -> dict[str, Any]:
         if p.take_profits is None
         else [{"at_r": str(r), "close_pct": str(pct)} for r, pct in p.take_profits],
         "cooldown_after_loss_hours": None if cooldown is None else str(cooldown),
+        "min_collateral_pct": None if low is None else str(low),
     }

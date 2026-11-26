@@ -46,6 +46,8 @@ class PaperPerpsAccount:
     day_halted: bool = False
     # ADR-053: when each market resting after a losing trade may open again (off by default).
     cooldown_until: dict[str, datetime] = field(default_factory=dict)
+    # ADR-054: each market's confidence at this decision (0 to 1), set by the caller.
+    confidence: dict[str, Decimal] = field(default_factory=dict)
 
     @classmethod
     def start(cls, params: PerpsParams, now: datetime) -> PaperPerpsAccount:
@@ -366,11 +368,9 @@ class PaperPerpsAccount:
             PerpRiskDecision: The decision.
         """
         view = self.view(marks)
-        decision = check_open(
-            self.params,
-            view,
-            size_open(self.params, view, market, side, marks[market], self.daily_moves.get(market)),
-        )
+        move, score = self.daily_moves.get(market), self.confidence.get(market)
+        proposal = size_open(self.params, view, market, side, marks[market], move, score)
+        decision = check_open(self.params, view, proposal)
         if not decision.approved or decision.proposal is None:
             self._log(
                 now, "OPEN_REJECTED", market=market, side=side.value, reasons=decision.reasons
@@ -388,6 +388,10 @@ class PaperPerpsAccount:
         if self.params.take_profits is not None:
             pos.initial_stop = self.stop_price(pos)
         self.positions[market] = pos
+        sized: dict[str, str] = {}
+        if score is not None and self.params.min_collateral_per_position_pct is not None:
+            # Reason: only an account that sizes inside a range journals what chose the size.
+            sized = {"confidence": f"{score:.4f}", "collateral_pct": str(pr.collateral_pct)}
         self._log(
             now,
             "OPENED",
@@ -399,6 +403,7 @@ class PaperPerpsAccount:
             leverage=str(pr.leverage),
             liquidation_price=str(pr.liquidation_price.quantize(CENT)),
             fee_usd=str(open_fee),
+            **sized,
         )
         return decision
 

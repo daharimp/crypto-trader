@@ -334,6 +334,37 @@ account (exit 3); a misspelled key is refused (exit 2). Each wait is written to 
 log as `COOLDOWN_STARTED` with the time it ends; it is not a phone alert. To switch it off,
 remove the line, raise `version` and restart: waits already running end with it.
 
+### Optional: a size range per trade, chosen inside by confidence (ADR-054)
+
+Off in every account until the owner picks a range. Without it every position posts
+`max_collateral_per_position_pct`. With it, that number becomes the largest size and a
+second one the smallest, and each new position is sized between them by a score from 0 to 1
+computed from candles alone: how many of the account's other coins point the same way, how
+straight the coin's trend is compared with its own last 90 days, and whether the 4h and
+daily views agree with the trade. In the replays the score did not pick winners more often;
+its high-score trades won bigger, and the largest positions made the worst days worse
+(`research/EXP-2026-026-results.txt`; a simulation of past prices, not a forecast).
+
+To switch it on, add the smallest size under `risk:` in the account's settings file, set
+the largest size on the existing line, raise `version`, and restart the account; the saved
+run continues, open positions keep their size, nothing is reset. Both numbers are risk
+values and need the owner's approval fields:
+
+```yaml
+  min_collateral_per_position_pct: {value: <smallest %>, status: approved, ref: UD-35, approved_by: owner, approved_on: "YYYY-MM-DD", note: "smallest size per trade"}
+  max_collateral_per_position_pct: {value: <largest %>, status: approved, ref: UD-35, approved_by: owner, approved_on: "YYYY-MM-DD", note: "largest size per trade"}
+```
+
+Check: `perps validate --account <name>` shows `<smallest>% to <largest>% (chosen by
+confidence) collateral per position`. The smallest must be above 0 and not above the
+largest (exit 2); `TBD` stops the account (exit 3). Smallest equal to largest keeps the
+size fixed and only records the score. Each `OPENED` line in the event log then carries
+`confidence` and `collateral_pct`. An open that arrives without a score is refused with
+`PERP_CONFIDENCE_UNAVAILABLE`; it never falls back to a default size. With a range on, the
+account also asks Kraken for daily candles, one more request per coin each cycle. To switch
+it off, remove the `min_collateral_per_position_pct` line, set the one size you want on the
+other line, raise `version` and restart.
+
 ## 3. Create the Kraken API key (owner, on kraken.com)
 
 Kraken Pro → Settings → API → Create key. Grant **only**:

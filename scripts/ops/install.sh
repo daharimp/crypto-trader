@@ -29,6 +29,7 @@ scripts="$REPO/scripts/ops"
 block="# BEGIN crypto-trader-ops (ADR-047)
 CRYPTO_TRADER_DIR=$REPO
 */5 * * * * $scripts/autodeploy.sh >>$OPS_STATE/autodeploy.log 2>&1
+1-59/5 * * * * $scripts/dashboard_check.sh >>$OPS_STATE/dashboard.log 2>&1
 2-59/15 * * * * $scripts/watchdog.sh >>$OPS_STATE/watchdog.log 2>&1
 20 * * * * $scripts/push_status.sh >>$OPS_STATE/push_status.log 2>&1
 # END crypto-trader-ops"

@@ -141,6 +141,12 @@ names: turn off Chrome → Settings → Privacy and security → Security → **
 try Safari. `--bg` keeps the setting across restarts. To stop sharing:
 `sudo tailscale serve reset`.
 
+If the page **stops loading** but other sites work: check that Tailscale is on and
+connected on that device (menu bar icon on a Mac; it can disconnect after sleep), then
+reload. On the server, `bash scripts/ops/dashboard_check.sh` probes the page, restarts only
+the dashboard if it does not answer, and alerts your phone; it runs every 5 minutes and with
+each watchdog run (ADR-050). `cat data/ops/dashboard.txt` shows its last result.
+
 The page refreshes itself every 60 seconds and is never cached. Prices move every minute;
 equity, positions, and trades change when the bots run, every 4 hours.
 

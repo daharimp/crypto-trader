@@ -74,6 +74,15 @@ services:
     command: ["ui", "serve", "--host", "0.0.0.0", "--port", "8787"]
     # Reason: published on the server's localhost only; Tailscale serves it to your devices.
     ports: ["127.0.0.1:8787:8787"]
+    # Reason: `docker compose ps` then shows (healthy)/(unhealthy), so a hung page is visible
+    # even while the container runs. scripts/ops/dashboard_check.sh does the restarting (ADR-050).
+    healthcheck:
+      test: ["CMD", "/app/.venv/bin/python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8787/api/status', timeout=10)"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
     volumes:
       - ./data:/app/data:ro
       - ./configs:/app/configs:ro

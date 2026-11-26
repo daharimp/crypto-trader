@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import threading
 import time
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -50,6 +51,9 @@ STATIC = {
 }
 
 CACHE_SECONDS = 60
+# Reason: a client (or the Tailscale proxy) that opens a connection and never finishes its
+# request would otherwise hold a server thread forever; enough of those and the page hangs.
+REQUEST_TIMEOUT_SECONDS = 30
 
 
 class Sources:
@@ -85,16 +89,34 @@ class Sources:
         self.perps_paper = perps_paper
         self.perps_degen = perps_degen
         self._cache: dict[tuple[str, str], tuple[float, list[list[float]]]] = {}
+        self._locks: dict[tuple[str, str], threading.Lock] = {}
+        self._locks_guard = threading.Lock()
+
+    def _lock(self, key: tuple[str, str]) -> threading.Lock:
+        with self._locks_guard:
+            return self._locks.setdefault(key, threading.Lock())
 
     def rows(self, symbol: str, timeframe: str) -> list[list[float]]:
-        """Cached raw public candles (one fetch per symbol and timeframe per minute)."""
+        """
+        Cached raw public candles (one fetch per symbol and timeframe per minute).
+
+        Concurrent requests for the same candles wait for one fetch instead of each calling
+        Kraken. If a refresh fails, the last good candles are served (they carry their own
+        timestamps, so the page still shows how old they are); with none cached, it raises.
+        """
         key = (symbol, timeframe)
-        hit = self._cache.get(key)
-        if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
-            return hit[1]
-        rows = self.fetch(symbol, timeframe)
-        self._cache[key] = (time.monotonic(), rows)
-        return rows
+        with self._lock(key):
+            hit = self._cache.get(key)
+            if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
+                return hit[1]
+            try:
+                rows = self.fetch(symbol, timeframe)
+            except Exception:
+                if hit:
+                    return hit[1]
+                raise
+            self._cache[key] = (time.monotonic(), rows)
+            return rows
 
     def bars(self, market: str, timeframe: str) -> list[Bar]:
         """Complete bars for one market, from the cached candles."""
@@ -129,17 +151,22 @@ def make_handler(src: Sources) -> type[BaseHTTPRequestHandler]:
 
     class Handler(BaseHTTPRequestHandler):
         server_version = "trader-ui"
+        timeout = REQUEST_TIMEOUT_SECONDS
 
         def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
             return  # Reason: keep request lines out of the trading logs.
 
         def _send(self, code: int, body: bytes, ctype: str) -> None:
-            self.send_response(code)
-            self.send_header("Content-Type", ctype)
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.send_response(code)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("X-Content-Type-Options", "nosniff")
+                self.end_headers()
+                self.wfile.write(body)
+            except (BrokenPipeError, ConnectionResetError, TimeoutError):
+                # Reason: the phone left (app switch, lock screen); nothing to send it.
+                self.close_connection = True
 
         def _json(self, code: int, obj: Any) -> None:
             self._send(code, json.dumps(obj).encode(), "application/json")

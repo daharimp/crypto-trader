@@ -236,6 +236,10 @@ To change a setting: edit its `value` in `configs/perps/jupiter-degen.yaml`, rai
 by one, set `approved_on` to today, then `docker compose restart perps-degen`. Run
 `perps validate --account degen` first; a `TBD` or out-of-range value stops the account
 (exit 3 or 2) instead of guessing. A new buffer or collateral applies to new positions only.
+The run continues: at its first cycle after the restart the account writes one
+`SETTINGS_CHANGED` line into its event log, with the old and new value of each changed
+setting and both versions, and sends it as an alert (ADR-056). No alert means the account
+did not see a change: check that the file was saved and the service restarted.
 To start this account over, archive the old run (ADR-041, as in 2c):
 
 ```bash
@@ -332,7 +336,8 @@ Check: `perps validate --account top10` ends with `cooldown after a losing trade
 (`off` when the line is absent). The value must be above 0 and at most 168; `TBD` stops the
 account (exit 3); a misspelled key is refused (exit 2). Each wait is written to the event
 log as `COOLDOWN_STARTED` with the time it ends; it is not a phone alert. To switch it off,
-remove the line, raise `version` and restart: waits already running end with it.
+remove the line, raise `version` and restart: waits already running end with it. Either
+way the first cycle after the restart writes one `SETTINGS_CHANGED` line and alert (2d).
 
 ### Optional: a size range per trade, chosen inside by confidence (ADR-054)
 
@@ -363,7 +368,12 @@ size fixed and only records the score. Each `OPENED` line in the event log then 
 `PERP_CONFIDENCE_UNAVAILABLE`; it never falls back to a default size. With a range on, the
 account also asks Kraken for daily candles, one more request per coin each cycle. To switch
 it off, remove the `min_collateral_per_position_pct` line, set the one size you want on the
-other line, raise `version` and restart.
+other line, raise `version` and restart. Either way the first cycle after the restart
+writes one `SETTINGS_CHANGED` line and alert (2d).
+
+The range and the cooldown were also replayed together on the ten-coin account: each still
+helped beside the other, the cooldown more, and the range still made the largest fall
+deeper (`research/EXP-2026-028-results.txt`; a simulation of past prices, not a forecast).
 
 ## 3. Create the Kraken API key (owner, on kraken.com)
 

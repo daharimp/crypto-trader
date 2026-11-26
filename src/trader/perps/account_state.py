@@ -6,6 +6,7 @@ version is read with a default, so a state file written by older code still load
 
 from __future__ import annotations
 
+from dataclasses import fields
 from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
@@ -83,3 +84,61 @@ def load_account(params: PerpsParams, d: dict[str, Any]) -> PaperPerpsAccount:
             Decimal(p.get("realized_usd", "0")),
         )
     return acct
+
+
+def _plain(value: Any) -> Any:
+    """A setting as a JSON-ready value; equal numbers written differently come out equal."""
+    if isinstance(value, Decimal):
+        return format(value.normalize(), "f")
+    if isinstance(value, tuple):
+        return [_plain(v) for v in value]
+    return value
+
+
+def settings_record(params: PerpsParams) -> dict[str, Any]:
+    """
+    Every resolved setting of the account except its market list, as JSON-ready values.
+
+    Args:
+        params (PerpsParams): The account's settings.
+
+    Returns:
+        dict[str, Any]: Setting name to value; numbers as text, an option that is off as None.
+    """
+    return {f.name: _plain(getattr(params, f.name)) for f in fields(params) if f.name != "markets"}
+
+
+def settings_change(meta: dict[str, Any], params: PerpsParams) -> dict[str, Any] | None:
+    """
+    What changed in the settings since the run was last saved; records the new ones.
+
+    A run keeps going when a value changes (only another signal, timeframe or market list
+    needs a new run), so the change is written into the run's own history (ADR-056).
+
+    Args:
+        meta (dict[str, Any]): The session's saved facts; ``settings`` and
+            ``config_version`` are updated in place.
+        params (PerpsParams): The settings the account runs under now.
+
+    Returns:
+        dict[str, Any] | None: The fields of a ``SETTINGS_CHANGED`` event (both versions, and
+        each changed setting with its old and new value), or None when nothing changed. A
+        run saved before settings were recorded only knows its version: another version is
+        then reported without values, the same version is not reported.
+    """
+    now = settings_record(params)
+    was, was_version = meta.get("settings"), meta.get("config_version")
+    meta["settings"], meta["config_version"] = now, params.version
+    versions = {"from_version": was_version, "to_version": params.version}
+    if was is None:
+        return None if was_version == params.version else versions
+    changed = {
+        k: {"from": was.get(k), "to": v}
+        for k, v in now.items()
+        if k != "version" and was.get(k) != v
+    }
+    # Reason: newer code may record a setting that older code did not know; a setting that
+    # is new and off is not a change.
+    if not changed and was_version == params.version:
+        return None
+    return {**versions, "changed": changed}

@@ -1,0 +1,276 @@
+EXP-2026-028: do the cooldown and the size range still help when both are on?
+================================================================================
+Date: 2026-11-26. Research only; changes no configuration. Plan (committed and pushed
+before any run with both rules on): EXP-2026-028-plan.md. Run: research/run_exp028.py.
+Simulated results on historical data with modelled costs. Not a forecast; profit is not
+guaranteed or implied.
+
+The account is the ten-coin hourly paper account as it runs (1% of equity posted per
+position, 30% stop, 4/8/12R ladder, buffer 8, 5x ceiling, main's costs), at 100 times its
+$2,500 balance, on the four slices of EXP-2026-025 and EXP-2026-026:
+  B1  BTC ETH BNB XRP SOL TRX HYPE ZEC DOGE LINK, 2020-10-01 to 2024-01-01
+  B2  the same ten coins, 2024-01-01 to 2026-11-25
+  B3  LTC BCH ADA DOT XLM XMR EOS XTZ THETA UNI, 2020-10-01 to 2026-11-25 (fresh)
+  B4  BTC ETH LTC BNB XRP ADA TRX XLM EOS NEO, 2018-08-01 to 2020-01-01 (fresh)
+Engine: the one merged with PR 71. Both rules run as built into the paper account
+(risk.cooldown_after_loss_hours of ADR-053; risk.min_collateral_per_position_pct with the
+score of trader.perps.confidence, ADR-054), not as research copies. Range 0.5% to 1.5%.
+
+Runs per slice: N neither (1% flat, the account as it runs today); C_h cooldown only; R
+range only; CR_h both; T_h the flat twin of CR_h (the same cooldown at one fixed size
+equal to CR_h's average size, so only the placement of size differs). h is 4 hours (the
+length recommended, the one judged), and 12 and 24 hours (the owner's other options).
+
+Verdict under the plan's rules
+- Rule 1, does the range still earn its place beside the cooldown (Sharpe of CR_4 above
+  T_4 on at least three of four slices, including one of the two fresh ones)?
+  YES: +0.072, +0.025, +0.097, -0.033. Three of four; of the fresh slices B3 is above
+  and B4 is below.
+- Rule 2, does the cooldown still help beside the range (Sharpe of CR_4 above R on at
+  least three of four slices and not more than 0.05 lower on any)?
+  YES: +0.109, +0.164, +0.115, +0.056. Four of four.
+- The other lengths, each judged on its own by the same two rules: both hold at 12 hours
+  (rule 1 on four of four, rule 2 on four of four) and at 24 hours (rule 1 on three of
+  four with B4 below, rule 2 on four of four).
+- So by the plan the recommendation stands: the cooldown and the range together in the
+  ten-coin paper account. Whether either is switched on, and the cooldown's length, are
+  the owner's decisions (UD-34, UD-35); nothing here changes a setting.
+
+What belongs beside that verdict
+1. The two do not get in each other's way, and they do not multiply either. Added up,
+   the cooldown's gain alone and the range's gain alone come to about what the two give
+   together: at 4 hours the combined change in Sharpe against the account as it runs is
+   +0.187, +0.213, +0.244, -0.002, and the sum of the two separate changes is +0.194,
+   +0.237, +0.276, -0.025 (table near the end). The range changes no trade, only its
+   size: the account with both makes the same number of entries and starts the same
+   number of cooldowns as the cooldown alone on every slice at every length, and compared
+   event by event on B2 and B4 at 4 and 24 hours the two logs agree in time, kind, coin,
+   side and reason throughout (exploratory; that script is kept with the run outputs, not
+   in the repository).
+2. The cooldown is the larger and steadier of the two. Beside the range it adds +0.06 to
+   +0.16 at 4 hours (+0.03 to +0.30 at 12, +0.06 to +0.39 at 24), and at 4 hours its 90%
+   interval excludes zero on B2 and B3. The range adds about what it added alone (alone,
+   EXP-2026-026: +0.08, +0.05, +0.13, -0.06): small, and still mostly inside the noise.
+   At 4 hours three of the four intervals include zero and the fourth (B3) starts at
+   +0.004. The fresh-slice condition is met by B3 only; on the 2018-2019 slice the range
+   lowers Sharpe at 4 and 24 hours.
+3. The range still deepens the falls, cooldown or not. Against its twin of the same
+   average size, the account with both has a deeper largest drop on all four slices
+   (19.1% against 16.3%, 13.2% against 12.6%, 26.7% against 23.5%, 13.0% against 11.4%)
+   and a worse worst day on all four (-3.7% against -3.6%, -3.2% against -2.2%, -5.4%
+   against -5.0%, -4.0% against -3.9%). Its return a year is higher on all four (20.6
+   against 16.6, 13.1 against 11.3, 7.6 against 5.3, 14.9 against 13.6) and its return
+   over largest drop on three.
+4. Against the account as it runs today (N), both together: return a year 20.6% against
+   15.9%, 13.1% against 9.3%, 7.6% against 3.4%, 14.9% against 14.0%; Sharpe 1.38 against
+   1.19, 0.99 against 0.78, 0.55 against 0.30, 0.93 against 0.93; largest drop 19.1%
+   against 17.9%, 13.2% against 15.1%, 26.7% against 23.6%, 13.0% against 11.8%. Higher
+   return on all four slices, higher Sharpe on three and level on the fourth, a deeper
+   largest drop on three.
+5. It costs trades, and the owner asked for more of them. The cooldown removes 26% of the
+   entries at 4 hours on every slice (116.9 to 86.9 a month on B1), 37% to 39% at 12 and
+   46% to 47% at 24, the same with the range as without. With both on, Sharpe rises with
+   the length on three slices (4 / 12 / 24 hours: B1 1.38 / 1.40 / 1.45, B2 0.99 / 1.13 /
+   1.22, B3 0.55 / 0.56 / 0.64) and not on B4 (0.93 / 0.90 / 0.93). Four hours keeps the
+   most trades for the paper data; a longer wait buys a higher simulated Sharpe with fewer
+   trades. That trade-off is the owner's (UD-34).
+6. At twice the costs the picture holds. Both against the twin: +0.134, +0.107, +0.165,
+   +0.016; both against range only: +0.188, +0.302, +0.206, +0.178. With both on at twice
+   the costs the account makes 11.2%, 3.8%, -1.3% and 6.9% a year (Sharpe 0.81, 0.35,
+   -0.01, 0.49), against 5.3%, -2.0%, -6.8% and 3.8% (0.46, -0.10, -0.42, 0.32) for the
+   account as it runs (those four from EXP-2026-025). The cooldown starts a little more
+   often there (2,140 times against 2,053 on B1), which is what doubled fees do to trades
+   that end near zero.
+
+Checks before any run with both rules was read (run_exp028.py check; all pass)
+B1, neither rule: 10414 events against exp024_lib.run: identical
+B1, built cooldown 4h: 10121 events against exp024_lib.run: identical
+B4, built range 0.5% to 1.5%: 4637 events against exp026_lib.run(native=True): identical
+
+The N, C_h and R rows below then equal the rows printed for the same slices in
+EXP-2026-025-results.txt (B0 and the three cooldowns; the 4-hour cooldown also at twice
+the costs) and EXP-2026-026-results.txt (the composite's wide range), every printed
+digit. No run refused an open for want of a score (the run script stops if one does).
+
+Verdict tables (run_exp028.py verdict)
+Columns: average collateral a position over the run's entries; return a year; Sharpe
+(daily, 365 days); largest drop; worst day; return a year over largest drop; entries a
+month; how many times the cooldown started. Differences carry a 90% interval from a
+paired block bootstrap of daily returns (10-day blocks, 2,000 draws). The third column of
+each difference line (both against cooldown only at 1%) is not part of a rule; it is the
+twin comparison again at a slightly different flat size, and agrees with it.
+
+== B1
+run     |    size |   a year | Sharpe |   drop | worst day | ret/drop | entries/mo | waits
+N       |   1.00% |    15.9% |   1.19 |  17.9% |     -3.9% |     0.89 |      116.9 |     0
+C4      |   1.00% |    17.5% |   1.31 |  17.1% |     -3.7% |     1.02 |       86.9 |  2053
+C12     |   1.00% |    16.9% |   1.30 |  17.5% |     -3.7% |     0.97 |       73.4 |  1719
+C24     |   1.00% |    17.7% |   1.37 |  15.8% |     -3.6% |     1.12 |       63.0 |  1490
+R       |   0.94% |    18.6% |   1.27 |  19.9% |     -3.8% |     0.93 |      116.9 |     0
+CR4     |   0.95% |    20.6% |   1.38 |  19.1% |     -3.7% |     1.08 |       86.9 |  2053
+T4      |   0.95% |    16.6% |   1.31 |  16.3% |     -3.6% |     1.02 |       86.9 |  2053
+CR12    |   0.95% |    20.7% |   1.40 |  19.4% |     -3.7% |     1.07 |       73.4 |  1719
+T12     |   0.95% |    16.1% |   1.30 |  16.7% |     -3.6% |     0.96 |       73.4 |  1719
+CR24    |   0.96% |    21.8% |   1.45 |  17.9% |     -3.8% |     1.22 |       63.0 |  1490
+T24     |   0.96% |    17.0% |   1.37 |  15.3% |     -3.5% |     1.12 |       63.0 |  1490
+C4x2    |   1.00% |     8.3% |   0.68 |  29.3% |     -3.8% |     0.28 |       85.8 |  2140
+Rx2     |   0.94% |     8.2% |   0.62 |  30.9% |     -3.9% |     0.27 |      117.1 |     0
+CR4x2   |   0.95% |    11.2% |   0.81 |  29.5% |     -3.7% |     0.38 |       85.8 |  2140
+T4x2    |   0.95% |     7.9% |   0.68 |  28.0% |     -3.6% |     0.28 |       85.8 |  2140
+
+== B2
+run     |    size |   a year | Sharpe |   drop | worst day | ret/drop | entries/mo | waits
+N       |   1.00% |     9.3% |   0.78 |  15.1% |     -2.3% |     0.62 |      113.8 |     0
+C4      |   1.00% |    11.8% |   0.97 |  13.2% |     -2.3% |     0.90 |       84.5 |  1904
+C12     |   1.00% |    13.6% |   1.11 |  12.1% |     -2.4% |     1.12 |       70.6 |  1554
+C24     |   1.00% |    14.3% |   1.18 |  11.8% |     -2.4% |     1.21 |       60.8 |  1330
+R       |   0.95% |    10.6% |   0.83 |  14.9% |     -3.2% |     0.71 |      113.8 |     0
+CR4     |   0.95% |    13.1% |   0.99 |  13.2% |     -3.2% |     0.99 |       84.5 |  1904
+T4      |   0.95% |    11.3% |   0.97 |  12.6% |     -2.2% |     0.90 |       84.5 |  1904
+CR12    |   0.96% |    15.2% |   1.13 |  12.7% |     -3.3% |     1.20 |       70.6 |  1554
+T12     |   0.96% |    13.0% |   1.11 |  11.6% |     -2.3% |     1.12 |       70.6 |  1554
+CR24    |   0.96% |    16.5% |   1.22 |  12.9% |     -3.3% |     1.27 |       60.8 |  1330
+T24     |   0.96% |    13.7% |   1.18 |  11.4% |     -2.4% |     1.20 |       60.8 |  1330
+C4x2    |   1.00% |     2.2% |   0.24 |  23.8% |     -2.3% |     0.09 |       83.7 |  1958
+Rx2     |   0.95% |    -0.3% |   0.04 |  28.3% |     -3.2% |    -0.01 |      113.8 |     0
+CR4x2   |   0.95% |     3.8% |   0.35 |  22.8% |     -3.2% |     0.17 |       83.7 |  1958
+T4x2    |   0.95% |     2.1% |   0.24 |  22.8% |     -2.2% |     0.09 |       83.7 |  1958
+
+== B3
+run     |    size |   a year | Sharpe |   drop | worst day | ret/drop | entries/mo | waits
+N       |   1.00% |     3.4% |   0.30 |  23.6% |     -5.3% |     0.14 |      130.5 |     0
+C4      |   1.00% |     5.6% |   0.45 |  24.5% |     -5.2% |     0.23 |       96.1 |  4396
+C12     |   1.00% |     5.8% |   0.47 |  21.3% |     -5.1% |     0.27 |       80.1 |  3609
+C24     |   1.00% |     6.6% |   0.54 |  20.8% |     -5.3% |     0.32 |       68.9 |  3073
+R       |   0.95% |     5.7% |   0.43 |  25.1% |     -5.5% |     0.23 |      130.5 |     0
+CR4     |   0.95% |     7.6% |   0.55 |  26.7% |     -5.4% |     0.29 |       96.1 |  4396
+T4      |   0.95% |     5.3% |   0.45 |  23.5% |     -5.0% |     0.23 |       96.1 |  4396
+CR12    |   0.96% |     7.8% |   0.56 |  22.6% |     -5.4% |     0.35 |       80.1 |  3609
+T12     |   0.96% |     5.6% |   0.47 |  20.6% |     -4.9% |     0.27 |       80.1 |  3609
+CR24    |   0.97% |     9.1% |   0.64 |  20.7% |     -5.5% |     0.44 |       68.9 |  3073
+T24     |   0.97% |     6.5% |   0.54 |  20.2% |     -5.2% |     0.32 |       68.9 |  3073
+C4x2    |   1.00% |    -3.4% |  -0.17 |  46.1% |     -5.2% |    -0.07 |       95.1 |  4561
+Rx2     |   0.95% |    -4.4% |  -0.21 |  50.1% |     -5.6% |    -0.09 |      130.6 |     0
+CR4x2   |   0.96% |    -1.3% |  -0.01 |  42.1% |     -5.4% |    -0.03 |       95.1 |  4561
+T4x2    |   0.96% |    -3.2% |  -0.17 |  44.5% |     -5.0% |    -0.07 |       95.1 |  4561
+
+== B4
+run     |    size |   a year | Sharpe |   drop | worst day | ret/drop | entries/mo | waits
+N       |   1.00% |    14.0% |   0.93 |  11.8% |     -4.3% |     1.19 |      119.5 |     0
+C4      |   1.00% |    14.5% |   0.96 |  12.2% |     -4.2% |     1.19 |       88.1 |   945
+C12     |   1.00% |    13.1% |   0.89 |  12.5% |     -4.2% |     1.04 |       75.3 |   801
+C24     |   1.00% |    14.3% |   0.97 |  13.3% |     -3.3% |     1.08 |       64.5 |   675
+R       |   0.93% |    13.4% |   0.87 |  12.4% |     -3.9% |     1.08 |      119.5 |     0
+CR4     |   0.93% |    14.9% |   0.93 |  13.0% |     -4.0% |     1.14 |       88.1 |   945
+T4      |   0.93% |    13.6% |   0.96 |  11.4% |     -3.9% |     1.19 |       88.1 |   945
+CR12    |   0.94% |    14.5% |   0.90 |  13.3% |     -4.1% |     1.09 |       75.3 |   801
+T12     |   0.94% |    12.4% |   0.89 |  11.9% |     -4.0% |     1.04 |       75.3 |   801
+CR24    |   0.95% |    14.9% |   0.93 |  13.9% |     -3.2% |     1.07 |       64.5 |   675
+T24     |   0.95% |    13.6% |   0.97 |  12.6% |     -3.2% |     1.07 |       64.5 |   675
+C4x2    |   1.00% |     6.3% |   0.48 |  13.6% |     -4.2% |     0.46 |       87.6 |   975
+Rx2     |   0.93% |     3.8% |   0.31 |  14.9% |     -4.0% |     0.26 |      119.5 |     0
+CR4x2   |   0.94% |     6.9% |   0.49 |  14.4% |     -4.0% |     0.48 |       87.6 |   975
+T4x2    |   0.94% |     5.9% |   0.48 |  12.8% |     -4.0% |     0.47 |       87.6 |   975
+
+== Cooldown 4 hours: Sharpe differences per slice [90% interval]
+B1: both - flat twin +0.072 [-0.07, +0.20] | both - range only +0.109 [-0.02, +0.23] | both - cooldown only at 1% +0.071 [-0.07, +0.20]
+B2: both - flat twin +0.025 [-0.14, +0.18] | both - range only +0.164 [+0.06, +0.27] | both - cooldown only at 1% +0.025 [-0.14, +0.18]
+B3: both - flat twin +0.097 [+0.00, +0.19] | both - range only +0.115 [+0.04, +0.19] | both - cooldown only at 1% +0.097 [+0.00, +0.19]
+B4: both - flat twin -0.033 [-0.27, +0.16] | both - range only +0.056 [-0.10, +0.18] | both - cooldown only at 1% -0.035 [-0.27, +0.16]
+rule 1 (range still earns its place): above the twin on 3 of 4, 1 of 2 fresh: HOLDS
+rule 2 (cooldown still helps): above range-only on 4 of 4, lowest +0.056: HOLDS
+
+== Cooldown 12 hours: Sharpe differences per slice [90% interval]
+B1: both - flat twin +0.097 [-0.04, +0.22] | both - range only +0.127 [-0.03, +0.28] | both - cooldown only at 1% +0.096 [-0.04, +0.22]
+B2: both - flat twin +0.024 [-0.13, +0.17] | both - range only +0.302 [+0.14, +0.48] | both - cooldown only at 1% +0.024 [-0.13, +0.17]
+B3: both - flat twin +0.089 [-0.01, +0.18] | both - range only +0.126 [-0.00, +0.25] | both - cooldown only at 1% +0.089 [-0.01, +0.18]
+B4: both - flat twin +0.012 [-0.21, +0.20] | both - range only +0.026 [-0.19, +0.22] | both - cooldown only at 1% +0.010 [-0.22, +0.19]
+rule 1 (range still earns its place): above the twin on 4 of 4, 2 of 2 fresh: HOLDS
+rule 2 (cooldown still helps): above range-only on 4 of 4, lowest +0.026: HOLDS
+
+== Cooldown 24 hours: Sharpe differences per slice [90% interval]
+B1: both - flat twin +0.075 [-0.06, +0.20] | both - range only +0.181 [-0.03, +0.38] | both - cooldown only at 1% +0.075 [-0.07, +0.20]
+B2: both - flat twin +0.041 [-0.11, +0.19] | both - range only +0.390 [+0.15, +0.62] | both - cooldown only at 1% +0.040 [-0.11, +0.19]
+B3: both - flat twin +0.101 [+0.01, +0.19] | both - range only +0.206 [+0.04, +0.36] | both - cooldown only at 1% +0.101 [+0.01, +0.19]
+B4: both - flat twin -0.037 [-0.23, +0.12] | both - range only +0.058 [-0.24, +0.35] | both - cooldown only at 1% -0.038 [-0.23, +0.12]
+rule 1 (range still earns its place): above the twin on 3 of 4, 1 of 2 fresh: HOLDS
+rule 2 (cooldown still helps): above range-only on 4 of 4, lowest +0.058: HOLDS
+
+== Twice the costs, cooldown 4 hours: Sharpe differences per slice
+B1: both - flat twin +0.134 [-0.01, +0.26] | both - range only +0.188 | both - cooldown only at 1% +0.134
+B2: both - flat twin +0.107 [-0.07, +0.27] | both - range only +0.302 | both - cooldown only at 1% +0.108
+B3: both - flat twin +0.165 [+0.07, +0.26] | both - range only +0.206 | both - cooldown only at 1% +0.166
+B4: both - flat twin +0.016 [-0.23, +0.21] | both - range only +0.178 | both - cooldown only at 1% +0.014
+
+The two effects added up (a reading of the same runs; not part of a rule)
+Change in Sharpe against N: the cooldown alone, the range alone, their sum, and both
+together.
+length slice |  N Sharpe | cooldown |   range |     sum |    both | both minus sum
+ 4h    B1    |     1.190 |   +0.116 |  +0.078 |  +0.194 |  +0.187 |         -0.007
+ 4h    B2    |     0.779 |   +0.188 |  +0.049 |  +0.237 |  +0.213 |         -0.024
+ 4h    B3    |     0.301 |   +0.147 |  +0.129 |  +0.276 |  +0.244 |         -0.032
+ 4h    B4    |     0.932 |   +0.033 |  -0.058 |  -0.025 |  -0.002 |         +0.024
+12h    B1    |     1.190 |   +0.109 |  +0.078 |  +0.187 |  +0.206 |         +0.018
+12h    B2    |     0.779 |   +0.326 |  +0.049 |  +0.375 |  +0.351 |         -0.025
+12h    B3    |     0.301 |   +0.166 |  +0.129 |  +0.295 |  +0.255 |         -0.040
+12h    B4    |     0.932 |   -0.043 |  -0.058 |  -0.101 |  -0.033 |         +0.068
+24h    B1    |     1.190 |   +0.185 |  +0.078 |  +0.263 |  +0.260 |         -0.003
+24h    B2    |     0.779 |   +0.398 |  +0.049 |  +0.447 |  +0.439 |         -0.008
+24h    B3    |     0.301 |   +0.235 |  +0.129 |  +0.364 |  +0.335 |         -0.028
+24h    B4    |     0.932 |   +0.038 |  -0.058 |  -0.020 |  -0.000 |         +0.020
+
+The real bot loop with both settings (research/live_path_range.py <data> <cache> 30
+<configs> 4): PerpsSession, the code the server runs, driven hour by hour over the last
+30 days of candles (to 2026-11-24) for the ten-coin account with the 0.5% to 1.5% range
+and a 4-hour cooldown held in memory, fed like the exchange (719 completed candles and
+the forming one, for 1h, 4h and 1d), against the replay above on the same window at the
+$2,500 balance. Money differences are in dollars; an entry's collateral differs by at
+most three cents because a score from 719 candles differs from the replay's in the third
+decimal. Every cooldown ends at the same time on both sides.
+live path: 720 hourly cycles, 30 candle requests a cycle
+with a cooldown of 4 hours after a losing trade on both sides
+events: live path 146, replay 146; same sequence: True
+  entry: 59 compared, largest difference $0.0000, 59 equal
+  size_usd: 59 compared, largest difference $0.1500, 23 equal
+  collateral_usd: 59 compared, largest difference $0.0300, 23 equal
+  fee_usd: 59 compared, largest difference $0.0000, 59 equal
+  exit: 55 compared, largest difference $0.0014, 49 equal
+  pnl_usd: 55 compared, largest difference $0.0100, 47 equal
+  fees_usd: 55 compared, largest difference $0.0100, 54 equal
+  cooldowns: 32 started, 32 end at the same time in the replay
+scores: 59 opens, largest difference 0.0010; sizes used 0.64% to 1.42% of equity, mean 1.00%
+
+A running account switched to the new settings (research/live_path_switch.py; ADR-056)
+The same loop, started as the account runs today (1% flat, no cooldown, settings version
+1), then restarted part of the way through on the same saved state under the range and
+the 4-hour cooldown as version 2. That is how a settings change reaches the server: the
+file changes, the service restarts, the run continues. Run twice, switching after 15 and
+after 5 of the 30 days (the window is busy in its first week and quiet after, so the
+earlier switch puts more trades after it). All values are held in memory; no settings
+file is written. Every check holds in both.
+30 days to 2026-11-24, switched after 15 days (2026-11-09 00:00 UTC): 144 events before, 34 after
+  ok   until the switch the run is the plain account's, event for event (144)
+  ok   one SETTINGS_CHANGED, the first event of the first cycle after the restart, with the three changed values and versions 1 to 2
+  ok   of the 10 positions open at the switch, the 9 that the first new cycle did not close keep side, size, collateral, entry and stop
+  ok   the saved run is the same run: same start, cycles counted on, version now 2
+  ok   no open before the switch carries a score (69); every open after it does, sized inside the range (5: 0.76% to 1.11%)
+  ok   cooldowns start only after the switch (2), and no coin opens during its own
+  ok   no open was refused for want of a score
+  ok   candle requests a cycle: 20 before, 30 after (daily candles are read once the range is on)
+
+30 days to 2026-11-24, switched after 5 days (2026-10-30 00:00 UTC): 76 events before, 104 after
+  ok   until the switch the run is the plain account's, event for event (76)
+  ok   one SETTINGS_CHANGED, the first event of the first cycle after the restart, with the three changed values and versions 1 to 2
+  ok   of the 10 positions open at the switch, the 9 that the first new cycle did not close keep side, size, collateral, entry and stop
+  ok   the saved run is the same run: same start, cycles counted on, version now 2
+  ok   no open before the switch carries a score (40); every open after it does, sized inside the range (29: 0.76% to 1.34%)
+  ok   cooldowns start only after the switch (14), and no coin opens during its own
+  ok   no open was refused for want of a score
+  ok   candle requests a cycle: 20 before, 30 after (daily candles are read once the range is on)
+
+In each run one of the ten open positions had its signal change in the first hour after
+the switch and was closed by the account's ordinary rule. Switched after 15 days it
+closed at a profit and its coin reopened the other way under the new sizing (score 0.58,
+1.08% posted). Switched after 5 days it closed at a small loss and the new cooldown
+started at once, so that coin waited four hours. The other nine positions kept their
+side, size, collateral, entry and stop in both runs.

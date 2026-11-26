@@ -4,10 +4,13 @@ Drives ``PerpsSession`` (the code the server runs) hour by hour over stored cand
 ten-coin hourly account with a 0.5% to 1.5% range, feeding it the way the exchange does (719
 completed candles and the forming one, for 1h, 4h and 1d), and compares its events, sizes
 and scores with the research replay of the composite's wide-range account (EXP-2026-026) on
-the same window. The range lives only in memory here; no settings file is read or written
-for it.
+the same window. With ``cooldown_hours`` both sides also run the cooldown after a losing
+trade (ADR-053) and the replay is the account's own rules through ``run_exp028.run``
+(EXP-2026-028). The size, the range and the cooldown are set in memory here, whatever the
+settings file holds; no settings file is written.
 
 Usage: python research/live_path_range.py <data_dir> <cache_dir> [days] [configs_dir]
+           [cooldown_hours]
 """
 
 from __future__ import annotations
@@ -24,6 +27,8 @@ from typing import Any
 
 import exp024_lib as lib
 import exp026_lib as x
+import run_exp026 as r26
+import run_exp028 as r28
 
 from trader.perps.candles import PacedFetcher
 from trader.perps.params import PerpsParams, load_perps_params
@@ -35,7 +40,15 @@ END = datetime(2026, 11, 24, tzinfo=UTC)
 LOW, HIGH = D("0.5"), D("1.5")
 STEP = {"1h": timedelta(hours=1), "4h": timedelta(hours=4), "1d": timedelta(days=1)}
 DAY_MS, HOUR_MS = 86_400_000, 3_600_000
-KINDS = {"OPENED", "CLOSED", "TAKE_PROFIT", "LIQUIDATED", "OPEN_REJECTED", "DAY_HALTED"}
+KINDS = {
+    "OPENED",
+    "CLOSED",
+    "TAKE_PROFIT",
+    "LIQUIDATED",
+    "OPEN_REJECTED",
+    "DAY_HALTED",
+    "COOLDOWN_STARTED",
+}
 MONEY = ("entry", "exit", "size_usd", "collateral_usd", "pnl_usd", "fees_usd", "fee_usd")
 Rows = list[list[float]]
 
@@ -127,8 +140,16 @@ def main() -> None:
     data, cache = Path(sys.argv[1]), Path(sys.argv[2])
     days = int(sys.argv[3]) if len(sys.argv) > 3 else 30
     configs = Path(sys.argv[4]) if len(sys.argv) > 4 else Path("configs")
+    hours = D(sys.argv[5]) if len(sys.argv) > 5 else None
     start = END - timedelta(days=days)
-    flat = load_perps_params(configs, "top10.yaml")
+    # Reason: the experiment's own values, so the script reads the same whatever the
+    # settings file holds by now.
+    flat = dataclasses.replace(
+        load_perps_params(configs, "top10.yaml"),
+        min_collateral_per_position_pct=None,
+        max_collateral_per_position_pct=D(1),
+        cooldown_after_loss_hours=hours,
+    )
     ranged = dataclasses.replace(
         flat, min_collateral_per_position_pct=LOW, max_collateral_per_position_pct=HIGH
     )
@@ -142,7 +163,13 @@ def main() -> None:
     def sizer(scores: x.Scores) -> Decimal:
         return (LOW + (HIGH - LOW) * scores["MC"]).quantize(D("0.0001"))
 
-    result, entries = x.run(flat, feed, start, END, coins=coins, scorer=scorer, sizer=sizer)
+    entries: list[x.Entry] = []
+    if hours is None:
+        result, entries = x.run(flat, feed, start, END, coins=coins, scorer=scorer, sizer=sizer)
+    else:
+        print(f"with a cooldown of {hours} hours after a losing trade on both sides")
+        native = r28.Cached(r26.Native(feed, scorer))
+        result = r28.run(ranged, feed, start, END, coins=coins, scorer=native)
     replay = [
         e for e in result.events if e["event"] in KINDS and e.get("reason") != "END_OF_REPLAY"
     ]
@@ -160,11 +187,23 @@ def main() -> None:
             f"  {f}: {len(rows)} compared, largest difference ${max(rows):.4f}, "
             f"{sum(1 for g in rows if g == 0)} equal"
         )
+    waits = [e for e in live if e["event"] == "COOLDOWN_STARTED"]
+    if waits:
+        ends = sum(e["until_utc"] == by_key.get(key(e), {}).get("until_utc") for e in waits)
+        print(f"  cooldowns: {len(waits)} started, {ends} end at the same time in the replay")
     research = {(en.market, en.at_utc[:13]): en for en in entries}
+    native_scores = {
+        (e["market"], key(e)[0][:13]): D(e["confidence"])
+        for e in replay
+        if e["event"] == "OPENED" and "confidence" in e
+    }
     score_gap, sizes = D(0), []
     for e in (e for e in live if e["event"] == "OPENED"):
-        en = research[e["market"], key(e)[0][:13]]
-        score_gap = max(score_gap, abs(D(e["confidence"]) - en.scores["MC"]))
+        at = e["market"], key(e)[0][:13]
+        # Reason: with a cooldown the entries are a subset of the research run's, so the
+        # replay's own journaled score is the one to compare with.
+        want = native_scores[at] if hours is not None else research[at].scores["MC"]
+        score_gap = max(score_gap, abs(D(e["confidence"]) - want))
         sizes.append(D(e["collateral_pct"]))
     print(
         f"scores: {len(sizes)} opens, largest difference {score_gap:.4f}; sizes used "

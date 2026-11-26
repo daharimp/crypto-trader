@@ -27,6 +27,7 @@ from typing import Any
 from .account_state import dump_account as _dump_account
 from .account_state import iso as _iso
 from .account_state import load_account as _load_account
+from .account_state import settings_change, settings_record
 from .backtest import Bar, sma_stance
 from .confidence import confidence_at
 from .math import PerpSide, typical_daily_move
@@ -37,7 +38,7 @@ STATE_VERSION = 1
 TIMEFRAMES = {"1h": timedelta(hours=1), "4h": timedelta(hours=4)}
 # Seconds the exchange gets to publish a bar after it closes, before the session reads it.
 SETTLE_SECONDS = 90
-NOTIFY = {"OPENED", "CLOSED", "LIQUIDATED", "DAY_HALTED", "TAKE_PROFIT"}
+NOTIFY = {"OPENED", "CLOSED", "LIQUIDATED", "DAY_HALTED", "TAKE_PROFIT", "SETTINGS_CHANGED"}
 
 # (symbol, timeframe) -> [[open_time_ms, open, high, low, close, volume], ...] oldest first;
 # the last row is the still-forming candle.
@@ -93,6 +94,20 @@ def describe(event: dict[str, Any]) -> str:
         return (
             f"LIQUIDATED {side} {m} at {event['mark']}: "
             f"lost ${event['collateral_lost_usd']} collateral"
+        )
+    if kind == "SETTINGS_CHANGED":
+        changed = event.get("changed")
+        what = "this run did not record its earlier values"
+        if changed is not None:
+            off = "not set"
+            what = "; ".join(
+                f"{k} from {off if v['from'] is None else v['from']} "
+                f"to {off if v['to'] is None else v['to']}"
+                for k, v in changed.items()
+            )
+        return (
+            f"settings changed, version {event['from_version']} to {event['to_version']}: "
+            f"{what or 'no value changed'}. The run continues; nothing is reset"
         )
     return str(kind)
 
@@ -309,6 +324,7 @@ class PerpsSession:
                 "trend_timeframe": self.trend_timeframe,
                 "markets": sorted(self.params.markets),
                 "config_version": self.params.version,
+                "settings": settings_record(self.params),
                 "started_at": _iso(now),
                 "start_equity_usd": str(self.acct.cash_usd),
                 "peak_equity_usd": str(self.acct.cash_usd),
@@ -320,6 +336,10 @@ class PerpsSession:
         else:
             last = datetime.fromisoformat(self.meta["last_bar"])
             new = [t for t in done if t > last]
+            # Reason: a run continues under changed settings, so the change goes into its
+            # own history (ADR-056); only with a cycle that saves, so it is written once.
+            if new and (change := settings_change(self.meta, self.params)) is not None:
+                self.acct._log(now, "SETTINGS_CHANGED", **change)
         acct = self.acct
         equity_points: list[dict[str, Any]] = []
         for t in new:

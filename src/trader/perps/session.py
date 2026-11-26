@@ -27,7 +27,8 @@ from typing import Any
 from .backtest import Bar, sma_stance
 from .math import PerpSide, typical_daily_move
 from .params import PerpsParams
-from .simulator import PaperPerpsAccount, PerpPosition
+from .position import PerpPosition
+from .simulator import PaperPerpsAccount
 
 STATE_VERSION = 1
 TIMEFRAMES = {"1h": timedelta(hours=1), "4h": timedelta(hours=4)}
@@ -64,6 +65,7 @@ def _dump_account(acct: PaperPerpsAccount) -> dict[str, Any]:
         "fees_paid_usd": str(acct.fees_paid_usd),
         "stopped_today": sorted(acct.stopped_today),
         "day_halted": acct.day_halted,
+        "cooldown_until": {m: _iso(t) for m, t in sorted(acct.cooldown_until.items())},
         "positions": {
             m: {
                 "side": p.side.value,
@@ -76,6 +78,7 @@ def _dump_account(acct: PaperPerpsAccount) -> dict[str, Any]:
                 "initial_stop": None if p.initial_stop is None else str(p.initial_stop),
                 "tps_hit": p.tps_hit,
                 "moved_stop": None if p.moved_stop is None else str(p.moved_stop),
+                "realized_usd": str(p.realized_usd),
             }
             for m, p in acct.positions.items()
         },
@@ -91,6 +94,11 @@ def _load_account(params: PerpsParams, d: dict[str, Any]) -> PaperPerpsAccount:
     # Reason: state files written before ADR-038 have neither key.
     acct.stopped_today = set(d.get("stopped_today", []))
     acct.day_halted = bool(d.get("day_halted", False))
+    if params.cooldown_after_loss_hours is not None:
+        # Reason: waits saved while the setting was on end with it; state written before
+        # ADR-053 has neither this key nor a position's ``realized_usd``.
+        waits = d.get("cooldown_until", {}).items()
+        acct.cooldown_until = {m: datetime.fromisoformat(t) for m, t in waits}
     for m, p in d["positions"].items():
         acct.positions[m] = PerpPosition(
             m,
@@ -105,6 +113,7 @@ def _load_account(params: PerpsParams, d: dict[str, Any]) -> PaperPerpsAccount:
             None if p.get("initial_stop") is None else Decimal(p["initial_stop"]),
             int(p.get("tps_hit", 0)),
             None if p.get("moved_stop") is None else Decimal(p["moved_stop"]),
+            Decimal(p.get("realized_usd", "0")),
         )
     return acct
 
@@ -401,6 +410,9 @@ class PerpsSession:
             }
             if len(fills) == len(bars):
                 acct.halted = self.halted()
+                # Reason: events carry the time the fill happens; a cooldown is counted
+                # from the candle's close instead, as in the replays (ADR-053).
+                at = now if newest else closes_at
                 per_day = round(timedelta(days=1) / step)
                 for m in bars:
                     closes = [b.close for b in bars[m] if b.open_time_utc <= t]
@@ -411,8 +423,8 @@ class PerpsSession:
                         acct.daily_moves.pop(m, None)
                     else:
                         acct.daily_moves[m] = move
-                    acct.apply_signal(m, self.signal(closes), fills, now if newest else closes_at)
-                acct.check_day_loss(fills, now if newest else closes_at)
+                    acct.apply_signal(m, self.signal(closes), fills, at, closes_at)
+                acct.check_day_loss(fills, at)
                 equity = acct.equity(fills)
                 peak = max(Decimal(self.meta["peak_equity_usd"]), equity)
                 drop = (peak - equity) / peak * 100 if peak > 0 else Decimal(0)

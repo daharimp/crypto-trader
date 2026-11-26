@@ -146,7 +146,7 @@ def validate(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)
     """Check an account's perps config. Exit 3 lists every unresolved value."""
     params = _params_or_exit(account)
     stop = params.stop_loss_pct_of_collateral
-    tps = params.take_profits
+    tps, rest = params.take_profits, params.cooldown_after_loss_hours
     ladder = (
         "off"
         if tps is None
@@ -157,7 +157,8 @@ def validate(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)
         f"(paper only); {params.max_collateral_per_position_pct}% collateral per position, "
         f"buffer {params.liquidation_buffer_daily_moves or 'off'} daily moves, "
         f"stop {f'{stop}% of collateral' if stop else 'off'}, "
-        f"daily loss limit {params.daily_loss_limit_pct}%, take-profit ladder {ladder}"
+        f"daily loss limit {params.daily_loss_limit_pct}%, take-profit ladder {ladder}, "
+        f"cooldown after a losing trade {f'{rest} hours' if rest else 'off'}"
     )
 
 

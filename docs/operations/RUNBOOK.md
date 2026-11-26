@@ -314,6 +314,26 @@ A coin needs a Kraken pair in `_KRAKEN_PAIRS` (`src/trader/ui/data.py`); without
 account refuses to start (exit 2) and names the coin. To change a setting, follow 2d with
 `--account top10` and `perps-top10`.
 
+### Optional: rest a coin after a losing trade (ADR-053)
+
+Off in every account until the owner picks a length. When it is on, a coin whose trade
+closed with a loss after fees opens nothing for that many hours; the other coins trade on.
+In the replays of this account it raised the risk-adjusted return at 4, 12 and 24 hours and
+cut the number of entries by 26%, 38% and 46% (`research/EXP-2026-025-results.txt`; a
+simulation of past prices, not a forecast). To switch it on for any perps account, add one
+line under `risk:` in its settings file, raise `version`, and restart the account; the saved
+run continues, nothing is reset:
+
+```yaml
+  cooldown_after_loss_hours: {value: 4, status: approved, ref: UD-34, approved_by: owner, approved_on: "YYYY-MM-DD", note: "why this length"}
+```
+
+Check: `perps validate --account top10` ends with `cooldown after a losing trade 4 hours`
+(`off` when the line is absent). The value must be above 0 and at most 168; `TBD` stops the
+account (exit 3); a misspelled key is refused (exit 2). Each wait is written to the event
+log as `COOLDOWN_STARTED` with the time it ends; it is not a phone alert. To switch it off,
+remove the line, raise `version` and restart: waits already running end with it.
+
 ## 3. Create the Kraken API key (owner, on kraken.com)
 
 Kraken Pro → Settings → API → Create key. Grant **only**:

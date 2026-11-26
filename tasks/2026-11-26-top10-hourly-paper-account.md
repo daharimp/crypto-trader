@@ -15,6 +15,7 @@ reset; nothing is live.
 - [x] Tests: tests/unit/test_perps_top10.py, tests/integration/test_start_new_script.py
 - [ ] Confirm on the server: `perps-top10` running, first hourly cycles in the status push
 - [ ] Dashboard view for the account (needs Kraken prices for coins Jupiter does not list)
-- [ ] EXP-2026-025: cooldown, stop guard, correlation sizing, time limit (plan committed)
-- [ ] EXP-2026-026: does any confidence measure earn a size range (plan committed)
-- [ ] Size range per account as a setting; a measure chooses inside it only if it passes
+- [x] EXP-2026-025: cooldown, stop guard, correlation sizing, time limit (results in
+      `tasks/2026-11-26-cooldown-after-loss-and-confidence-research.md`)
+- [x] EXP-2026-026: does any confidence measure earn a size range (same file)
+- [x] Size range per account as a setting: moved to the same file

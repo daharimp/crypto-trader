@@ -139,10 +139,17 @@ class PerpsParams:
     # closed there); the last step closes whatever is left. TP1 moves the stop to breakeven
     # (fees covered), TP2 moves it to TP1. None means no ladder.
     take_profits: tuple[tuple[Decimal, Decimal], ...] | None = None
+    # Optional (ADR-053): after a trade that lost money (fees included) closes, its market
+    # opens nothing for this many hours, counted from the candle that closed it. None
+    # means no cooldown.
+    cooldown_after_loss_hours: Decimal | None = None
 
 
 BUFFER_KEY = "liquidation_buffer_daily_moves"
 STOP_KEY = "stop_loss_pct_of_collateral"
+COOLDOWN_KEY = "cooldown_after_loss_hours"
+# Reason: a wait longer than a week is almost certainly a typing mistake.
+COOLDOWN_MAX_HOURS = Decimal(168)
 DEFAULT_FILE = "jupiter.yaml"
 # ADR-045: all five or none; the third level closes the rest of the position.
 LADDER_KEYS = (
@@ -220,7 +227,7 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
                 refs.add(pv.ref if pv else "UD-23")
             else:
                 values[k] = Decimal(pv.value)
-    for key, top in ((BUFFER_KEY, None), (STOP_KEY, Decimal(100))):
+    for key, top in ((BUFFER_KEY, None), (STOP_KEY, Decimal(100)), (COOLDOWN_KEY, None)):
         opt = cfg.risk.get(key)
         if opt is None:
             if key == STOP_KEY:
@@ -236,6 +243,13 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
             raise ValueError(f"risk.{key} must be positive" + (f" and below {top}" if top else ""))
         else:
             values[key] = Decimal(opt.value)
+    if values.get(COOLDOWN_KEY, Decimal(0)) > COOLDOWN_MAX_HOURS:
+        raise ValueError(f"risk.{COOLDOWN_KEY} must be at most {COOLDOWN_MAX_HOURS} hours")
+    known = {*RISK_KEYS, *LADDER_KEYS, BUFFER_KEY, STOP_KEY, COOLDOWN_KEY}
+    if unknown := sorted(set(cfg.risk) - known):
+        # Reason: a misspelled optional key would otherwise switch its protection off
+        # without a word; refuse the file instead (ADR-053).
+        raise ValueError(f"unknown risk settings: {unknown}")
     ladder = _ladder(cfg, missing, refs, STOP_KEY in values)
     start = cfg.starting_collateral_usd
     if start.value == "TBD":
@@ -327,9 +341,10 @@ def settings_summary(p: PerpsParams) -> dict[str, Any]:
 
     Returns:
         dict[str, Any]: Version, collateral %, buffer, leverage cap, stop %, daily limit,
-        take-profit ladder; an optional setting that is off is None.
+        take-profit ladder, cooldown; an optional setting that is off is None.
     """
     opt = (p.liquidation_buffer_daily_moves, p.stop_loss_pct_of_collateral)
+    cooldown = p.cooldown_after_loss_hours
     return {
         "config_version": p.version,
         "collateral_pct": str(p.max_collateral_per_position_pct),
@@ -340,4 +355,5 @@ def settings_summary(p: PerpsParams) -> dict[str, Any]:
         "take_profits": None
         if p.take_profits is None
         else [{"at_r": str(r), "close_pct": str(pct)} for r, pct in p.take_profits],
+        "cooldown_after_loss_hours": None if cooldown is None else str(cooldown),
     }

@@ -39,24 +39,30 @@ class PerpValue(BaseModel):
         return self
 
 
+# The markets Jupiter Perps lists; a ``jupiter_perps`` file may name no other.
+JUPITER_MARKETS = ("SOL", "ETH", "BTC")
+
+
 class PerpMarketCfg(BaseModel):
-    """A tradable perps market and the token mint used to read its public price."""
+    """A tradable perps market; a Jupiter market also names the mint its price is read from."""
 
     model_config = ConfigDict(extra="forbid")
 
-    market: Literal["SOL", "ETH", "BTC"]
-    price_mint: str = Field(min_length=32, max_length=44)
+    market: str = Field(pattern=r"^[A-Z][A-Z0-9]{1,9}$")
+    price_mint: str | None = Field(default=None, min_length=32, max_length=44)
 
 
 class PerpsConfigFile(BaseModel):
-    """Shape of ``configs/perps/jupiter.yaml``."""
+    """Shape of a file under ``configs/perps/`` (one per paper account)."""
 
     model_config = ConfigDict(extra="forbid")
 
     schema_version: Literal["1.0.0"]
     kind: Literal["PerpsConfig"]
     version: int = Field(ge=1)
-    venue: Literal["jupiter_perps"]
+    # ``generic_perps`` (ADR-051) models no particular venue: any coin with public candles,
+    # at the costs the file states. It has no price mints because nothing is read on-chain.
+    venue: Literal["jupiter_perps", "generic_perps"]
     # Reason: paper is the only mode; a live mode needs its own ADR and gates.
     mode: Literal["paper"]
     starting_collateral_usd: PerpValue
@@ -64,6 +70,26 @@ class PerpsConfigFile(BaseModel):
     costs: dict[str, PerpValue]
     venue_limits: dict[str, PerpValue]
     risk: dict[str, PerpValue]
+
+    @model_validator(mode="after")
+    def _markets_fit_venue(self) -> PerpsConfigFile:
+        names = [m.market for m in self.markets]
+        if len(set(names)) != len(names):
+            # Reason: a repeated market would silently collapse into one position slot.
+            raise ValueError("markets must not repeat")
+        for m in self.markets:
+            if self.venue == "jupiter_perps":
+                if m.market not in JUPITER_MARKETS:
+                    raise ValueError(f"jupiter_perps lists only {JUPITER_MARKETS}, not {m.market}")
+                if m.price_mint is None:
+                    raise ValueError(f"jupiter_perps market {m.market} needs a price_mint")
+            elif m.price_mint is not None:
+                raise ValueError(f"generic_perps market {m.market} takes no price_mint")
+        return self
+
+    def price_mints(self) -> dict[str, str]:
+        """Market to price mint, for the markets that have one (Jupiter files: all of them)."""
+        return {m.market: m.price_mint for m in self.markets if m.price_mint is not None}
 
 
 COST_KEYS = ("open_fee_bps", "close_fee_bps", "borrow_rate_pct_per_hour")
@@ -85,6 +111,8 @@ class PerpsParams:
 
     version: int
     starting_collateral_usd: Decimal
+    # Market to price mint, in the file's order (the order decisions are taken in); the mint
+    # is "" for a ``generic_perps`` market.
     markets: dict[str, str]
     open_fee_bps: Decimal
     close_fee_bps: Decimal
@@ -222,7 +250,7 @@ def resolve(cfg: PerpsConfigFile) -> PerpsParams:
     return PerpsParams(
         version=cfg.version,
         starting_collateral_usd=Decimal(start.value),
-        markets={m.market: m.price_mint for m in cfg.markets},
+        markets={m.market: m.price_mint or "" for m in cfg.markets},
         max_open_positions=int(values.pop("max_open_positions")),
         take_profits=ladder,
         **values,

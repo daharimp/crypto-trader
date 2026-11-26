@@ -11,7 +11,7 @@ OPS_REMOTE="${OPS_REMOTE:-git@github-ops:daharimp/crypto-trader-ops.git}"
 # Reason: the paper services automation may (re)start. `live` is deliberately absent, so no
 # script here can ever start real-money trading.
 # shellcheck disable=SC2034  # used by the scripts that source this file
-PAPER_SERVICES=(paper perps perps-degen perps-spot-perps review dashboard)
+PAPER_SERVICES=(paper perps perps-degen perps-spot-perps perps-top10 review dashboard)
 
 mkdir -p "$OPS_STATE"
 cd "$REPO"

@@ -4,6 +4,9 @@ source "$(dirname "$0")/common.sh"
 # Reason: runs first, under its own lock, so a hung dashboard is restarted even on servers
 # whose crontab predates the 5-minute dashboard job (ADR-050).
 bash "$(dirname "$0")/dashboard_check.sh" || true
+# Reason: a service added by the last deploy is created here, under its own lock, before the
+# health check counts it as missing (ADR-051).
+bash "$(dirname "$0")/start_new.sh" || true
 take_lock 120
 trim_log watchdog.log
 

@@ -1,0 +1,228 @@
+EXP-2026-023 signal slice. Paper-only replay; development 2020-10..2023-12 (left),
+holdout 2024-01..2026-11-21 (right). Costs 7 bps a side + borrow 0.0016%/h; no funding.
+Section 1: n = trades (exit fills in 'by exit'), win = share with net > 0, gross / cost /
+net = summed P&L as % of the account's equity at entry, per year (not compounded), g/tr
+and c/tr = gross P&L and cost per trade in bps of position size (cost = fees + borrow).
+
+== 1. Where the money comes from: main buffer 4 (live), live signal
+dev : 1000 trades, net $93,384 (account $93,384, gap $0.00); costs 55%/y of equity = fees 30 + borrow 25; average open size 0.95x equity long, 0.82x short
+hold: 925 trades, net $7,402 (account $7,402, gap $0.00); costs 69%/y of equity = fees 38 + borrow 31; average open size 1.13x equity long, 1.08x short
+total                        |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  all trades                 |  1000  39%  219.3   54.6  164.6   103    26 |   925  35%  168.3   69.4   98.9    61    25
+by exit (per exit fill)      |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  signal flip                |   681  51%  178.2   34.3  143.9   127    25 |   670  44%  154.0   46.8  107.2    80    24
+  stop (opening)             |   275   0% -241.5   12.4 -253.9  -402    21 |   226   0% -219.2   15.3 -234.5  -326    23
+  stop after a TP            |    19  63%   21.5    1.9   19.6   840    75 |    14  57%   16.1    1.8   14.3   580    63
+  TP1 (25%)                  |    81 100%   72.2    1.8   70.4  1566    40 |    70 100%   69.6    1.8   67.7  1277    34
+  TP2 (25%)                  |    39 100%   69.4    1.5   67.9  2958    63 |    30 100%   59.3    1.6   57.7  2279    63
+  TP3 (rest)                 |    22 100%  117.5    2.2  115.3  4532    84 |    15 100%   88.5    2.1   86.4  3022    71
+  end                        |     3  67%    2.0    0.5    1.5   280    69 |     -                                      
+by regime at entry           |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  trending (50/200)          |   417  41%  162.2   26.2  136.0   183    30 |   372  34%   58.3   29.6   28.6    53    27
+  ranging (10/30 decides)    |   583  38%   57.0   28.4   28.6    46    23 |   553  35%  110.0   39.8   70.2    67    24
+by side                      |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  long                       |   531  40%  179.0   28.8  150.1   162    26 |   475  36%   86.9   35.6   51.4    62    25
+  short                      |   469  38%   40.3   25.8   14.5    40    25 |   450  34%   81.3   33.8   47.5    61    25
+by coin                      |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  BTC                        |   300  37%   77.3   22.7   54.7    92    27 |   293  34%   56.8   29.2   27.5    50    26
+  ETH                        |   370  39%   56.4   20.7   35.7    67    24 |   313  36%   65.2   21.8   43.4    75    25
+  SOL                        |   330  40%   85.5   11.3   74.2   195    26 |   319  35%   46.3   18.4   27.9    63    25
+by holding time              |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  <=8h                       |   287  29%  -47.9    9.5  -57.3   -75    15 |   275  25%  -49.9   12.2  -62.1   -61    15
+  8-24h                      |   235  29%  -66.0    8.0  -74.1  -138    17 |   195  29%  -60.8    9.9  -70.7  -103    17
+  1-3d                       |   218  28%  -51.9    9.9  -61.8  -113    21 |   204  24%  -58.1   12.8  -70.9   -97    21
+  3-7d                       |   144  50%   32.5    9.2   23.2   110    31 |   145  46%   80.2   14.1   66.1   185    33
+  >7d                        |   116  91%  352.7   18.1  334.6  1382    71 |   106  78%  257.0   20.5  236.5   859    68
+regime x how it ended        |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  range: flip out <=24h      |   215  37%    7.6    7.2    0.3    16    16 |   214  33%   -2.3   10.0  -12.3    -4    16
+  range: flip out 1-3d       |    87  52%   29.8    3.7   26.1   173    21 |    99  35%   15.3    6.0    9.2    54    21
+  range: flip out >3d        |   121  68%   72.2    9.4   62.7   289    38 |   117  64%  103.4   14.6   88.9   295    41
+  range: stop (opening)      |   148   0% -130.4    6.2 -136.6  -405    19 |   109   0% -106.7    6.4 -113.1  -329    20
+  range: ladder exit / end   |    12 100%   77.9    1.8   76.1  2529    60 |    14 100%  100.4    2.9   97.5  1854    53
+  trend: flip out <=24h      |   163  44%    6.4    5.2    1.2    19    15 |   148  37%   -1.7    6.8   -8.5    -4    15
+  trend: flip out 1-3d       |    31  48%    4.9    1.3    3.5    74    20 |    28  46%    1.6    1.8   -0.2    19    21
+  trend: flip out >3d        |    64  81%  101.1    8.4   92.7   768    64 |    64  70%   92.8    9.3   83.4   549    55
+  trend: stop (opening)      |   127   0% -111.1    6.2 -117.2  -399    22 |   117   0% -112.5    8.9 -121.4  -323    26
+  trend: ladder exit / end   |    32  97%  160.9    5.1  155.9  2215    70 |    15 100%   78.1    2.9   75.3  1564    57
+
+== 1. Where the money comes from: spot-perps (1x), live signal
+dev : 907 trades, net $15,227 (account $15,227, gap $0.00); costs 12%/y of equity = fees 6 + borrow 6; average open size 0.24x equity long, 0.20x short
+hold: 820 trades, net $1,224 (account $1,224, gap $0.00); costs 12%/y of equity = fees 6 + borrow 6; average open size 0.23x equity long, 0.22x short
+total                        |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  all trades                 |   907  39%   85.3   12.0   73.3   204    29 |   820  35%   28.4   12.1   16.3    67    28
+by exit (per exit fill)      |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  signal flip                |   718  49%  130.0   10.0  119.9   392    30 |   735  39%   48.3   10.9   37.4   127    29
+  stop (opening)             |   186   0%  -49.8    1.7  -51.5  -580    20 |    82   0%  -24.6    1.0  -25.5  -577    23
+  end                        |     3 100%    5.1    0.2    4.9  3657   149 |     3 100%    4.7    0.2    4.5  2998   126
+by regime at entry           |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  trending (50/200)          |   326  42%   48.7    5.0   43.7   324    33 |   306  35%    8.6    4.6    4.0    54    29
+  ranging (10/30 decides)    |   581  38%   36.6    7.0   29.6   136    26 |   514  35%   19.8    7.5   12.3    74    28
+by side                      |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  long                       |   451  41%   78.7    6.2   72.5   378    30 |   415  36%   16.9    6.1   10.8    78    28
+  short                      |   456  38%    6.6    5.7    0.8    31    27 |   405  35%   11.5    6.0    5.5    55    28
+by coin                      |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  BTC                        |   266  38%   17.4    3.8   13.6   142    31 |   257  33%    7.1    3.9    3.2    53    29
+  ETH                        |   332  39%   12.5    4.2    8.3    82    28 |   274  37%   11.4    4.1    7.3    80    29
+  SOL                        |   309  40%   55.4    4.0   51.4   388    28 |   289  36%    9.9    4.1    5.8    66    28
+by holding time              |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  <=8h                       |   279  28%  -14.4    1.9  -16.3  -112    15 |   246  27%   -8.1    1.9  -10.0   -64    15
+  8-24h                      |   208  34%  -12.6    1.6  -14.2  -131    17 |   148  31%   -7.8    1.3   -9.1  -102    17
+  1-3d                       |   195  31%   -8.6    1.9  -10.5   -96    21 |   194  24%  -12.7    2.2  -14.8  -126    21
+  3-7d                       |   131  53%    7.0    1.9    5.1   116    31 |   137  39%    1.0    2.3   -1.3    14    32
+  >7d                        |    94  84%  113.9    4.6  109.2  2625   107 |    95  82%   56.0    4.5   51.5  1136    92
+regime x how it ended        |     n  win  gross   cost    net  g/tr  c/tr |     n  win  gross   cost    net  g/tr  c/tr
+  range: flip out <=24h      |   210  38%    1.7    1.5    0.1    17    16 |   206  29%   -3.7    1.7   -5.4   -35    16
+  range: flip out 1-3d       |   106  43%    5.8    1.1    4.8   119    22 |   127  28%   -2.2    1.4   -3.6   -33    22
+  range: flip out >3d        |   132  70%   61.9    3.1   58.8  1016    51 |   139  62%   36.3    3.9   32.4   503    54
+  range: stop (opening)      |   132   0%  -35.4    1.1  -36.6  -581    19 |    41   0%  -12.3    0.5  -12.8  -579    21
+  range: ladder exit / end   |     1 100%    2.6    0.1    2.5  5635   298 |     1 100%    1.7    0.1    1.6  3294   154
+  trend: flip out <=24h      |   166  42%    1.3    1.2    0.1    17    16 |   155  34%   -2.2    1.2   -3.4   -27    15
+  trend: flip out 1-3d       |    35  40%    0.0    0.3   -0.3     0    21 |    34  35%   -0.6    0.4   -0.9   -31    21
+  trend: flip out >3d        |    69  75%   59.3    2.9   56.5  1863    90 |    74  57%   20.7    2.4   18.3   539    62
+  trend: stop (opening)      |    54   0%  -14.4    0.6  -15.0  -577    23 |    41   0%  -12.3    0.5  -12.8  -576    24
+  trend: ladder exit / end   |     2 100%    2.5    0.1    2.4  2668    74 |     2 100%    3.0    0.1    2.8  2850   111
+
+== 2. Churn-reducing variants (grid and selection rule fixed in the docstring)
+
+The signal alone: changes per coin per month, share of them on ranging bars, share
+of them on a bar where the ER < 0.05 flag itself changed, share of time flat.
+variant                    |  flips  range  at sw   flat |  flips  range  at sw   flat
+(ER < 0.05 flag itself)    |    9.2    50%   100%     0% |    9.3    50%   100%     0%
+live                       |    7.1    65%    65%     0% |    7.5    65%    66%     0%
+a1 hysteresis exit>0.08    |    4.3    71%    23%     0% |    4.7    70%    26%     0%
+a2 hysteresis exit>0.12    |    4.3    66%    17%     0% |    4.6    65%    20%     0%
+b1 confirm 2 bars          |    4.9    70%     3%     0% |    5.3    70%     2%     0%
+b2 confirm 3 bars          |    4.1    71%     2%     0% |    4.3    73%     3%     0%
+c1 min hold 6 bars         |    5.4    67%    38%     0% |    5.5    68%    41%     0%
+c2 min hold 12 bars        |    4.3    70%    34%     0% |    4.8    69%    34%     0%
+d range -> flat            |    9.4    49%    97%    31% |    9.5    49%    98%    35%
+e plain 50/200             |    1.0    71%    12%     0% |    1.0    74%     7%     0%
+
+-- main buffer 4 (live)
+variant                    |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay
+live                       |  207.2%  1.70  57%  25.6   29%   55% -18.0% |   61.0%  0.96  74%  26.7   26%   64% -19.2%
+a1 hysteresis exit>0.08    |  259.6%  1.87  53%  17.9   39%   48% -17.7% |   43.7%  0.85  75%  19.4   39%   54% -19.2%
+a2 hysteresis exit>0.12    |  236.7%  1.76  60%  18.0   39%   48% -17.7% |   77.6%  1.06  73%  19.0   37%   54% -19.2%
+b1 confirm 2 bars          |  185.7%  1.64  66%  20.0   39%   47% -17.9% |   53.7%  0.91  77%  20.6   35%   56% -19.1%
+b2 confirm 3 bars          |  157.7%  1.51  64%  18.8   42%   44% -16.5% |   28.7%  0.73  71%  18.6   41%   52% -19.2%
+c1 min hold 6 bars         |  179.0%  1.59  60%  21.8   37%   48% -17.7% |   71.6%  1.03  72%  21.4   35%   58% -19.2%
+c2 min hold 12 bars        |  184.5%  1.58  63%  19.3   39%   47% -17.1% |   10.8%  0.57  79%  21.5   41%   57% -19.2%
+d range -> flat            |  218.3%  1.85  52%  17.7   25%   40% -18.0% |   12.7%  0.54  66%  17.6   28%   42% -15.7%
+e plain 50/200             |  139.3%  1.44  70%   9.6   66%   33% -16.5% |   23.9%  0.68  78%  10.3   69%   40% -19.1%
+
+-- main buffer 8
+variant                    |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay
+live                       |  113.2%  1.74  40%  22.4    7%   27% -10.8% |   42.7%  0.91  56%  23.3    6%   32% -10.6%
+a1 hysteresis exit>0.08    |  125.1%  1.83  43%  14.1   12%   22% -10.8% |   46.0%  0.95  45%  14.9    8%   26% -10.6%
+a2 hysteresis exit>0.12    |  124.1%  1.77  44%  14.0   11%   23% -10.5% |   61.4%  1.12  43%  14.7    8%   26% -10.6%
+b1 confirm 2 bars          |  104.2%  1.66  57%  15.9   12%   22% -11.4% |   44.0%  0.93  51%  16.7    8%   28% -10.6%
+b2 confirm 3 bars          |  104.6%  1.66  54%  13.9   13%   21% -12.2% |   48.0%  0.98  33%  13.8   10%   26% -10.6%
+c1 min hold 6 bars         |  112.8%  1.73  40%  17.3   11%   23% -10.5% |   45.2%  0.95  48%  17.4    9%   28% -10.6%
+c2 min hold 12 bars        |   99.5%  1.58  42%  14.6   14%   22% -10.9% |   23.3%  0.65  59%  15.8   12%   27% -10.6%
+d range -> flat            |  127.1%  1.99  34%  15.4    6%   19% -10.8% |   16.3%  0.55  53%  15.2    7%   21% -10.2%
+e plain 50/200             |   81.4%  1.42  55%   5.2   39%   15% -11.1% |   32.4%  0.80  58%   5.4   43%   19% -10.6%
+
+-- spot-perps (1x)
+variant                    |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay
+live                       |   82.7%  1.86  29%  23.3   21%   12% -14.3% |   14.8%  0.72  24%  23.6   10%   12%  -6.4%
+a1 hysteresis exit>0.08    |   95.2%  1.95  24%  15.5   29%   10% -14.7% |   14.0%  0.68  21%  15.9   16%   10%  -6.6%
+a2 hysteresis exit>0.12    |   89.7%  1.87  29%  15.6   29%   10% -14.7% |   17.9%  0.82  20%  15.5   15%   10%  -6.5%
+b1 confirm 2 bars          |   67.8%  1.61  30%  17.3   29%   10% -18.3% |   16.2%  0.77  21%  17.0   14%   10%  -6.5%
+b2 confirm 3 bars          |   88.0%  1.82  26%  15.7   29%   10% -15.2% |   18.5%  0.85  19%  14.3   18%   10%  -6.5%
+c1 min hold 6 bars         |   81.8%  1.79  29%  19.2   29%   10% -14.0% |   15.2%  0.74  21%  18.1   16%   10%  -6.4%
+c2 min hold 12 bars        |   73.9%  1.70  27%  17.1   32%   10% -16.1% |    5.9%  0.37  26%  17.2   21%   10%  -6.5%
+d range -> flat            |   89.6%  2.02  22%  15.7   16%    8% -12.7% |    5.3%  0.36  22%  15.7   11%    8%  -6.1%
+e plain 50/200             |  103.0%  1.63  61%   6.6   57%    7% -32.7% |   15.7%  0.76  22%   5.8   49%    7%  -6.5%
+
+Ranking on development only (Sharpe: buffer 4, buffer 8, spot-perps, mean);
+holdout shown next to it, not used. 'all 3' = beats live on development everywhere.
+variant                    |        development Sharpe |            holdout Sharpe | all 3
+d range -> flat            |  1.85  1.99  2.02   1.95 |  0.54  0.55  0.36   0.48 | yes
+a1 hysteresis exit>0.08    |  1.87  1.83  1.95   1.88 |  0.85  0.95  0.68   0.82 | yes
+a2 hysteresis exit>0.12    |  1.76  1.77  1.87   1.80 |  1.06  1.12  0.82   1.00 | yes
+live                       |  1.70  1.74  1.86   1.77 |  0.96  0.91  0.72   0.86 | -
+c1 min hold 6 bars         |  1.59  1.73  1.79   1.70 |  1.03  0.95  0.74   0.91 | no
+b2 confirm 3 bars          |  1.51  1.66  1.82   1.66 |  0.73  0.98  0.85   0.85 | no
+b1 confirm 2 bars          |  1.64  1.66  1.61   1.64 |  0.91  0.93  0.77   0.87 | no
+c2 min hold 12 bars        |  1.58  1.58  1.70   1.62 |  0.57  0.65  0.37   0.53 | no
+e plain 50/200             |  1.44  1.42  1.63   1.50 |  0.68  0.80  0.76   0.75 | no
+Pick on development alone: d range -> flat
+
+Sharpe minus live's Sharpe, with a 90% paired block-bootstrap interval (an interval
+that spans zero means the difference cannot be told from noise).
+variant                    |   main buffer 4 dev |  main buffer 4 hold |   main buffer 8 dev |  main buffer 8 hold |      spot-perps dev |     spot-perps hold
+live (its own Sharpe)      | +1.70 [+0.80,+2.63] | +0.96 [+0.03,+1.83] | +1.74 [+0.77,+2.68] | +0.91 [-0.06,+1.82] | +1.86 [+1.00,+2.81] | +0.72 [-0.16,+1.53]
+a1 hysteresis exit>0.08    | +0.16 [-0.10,+0.42] | -0.11 [-0.49,+0.29] | +0.10 [-0.17,+0.37] | +0.03 [-0.34,+0.45] | +0.09 [-0.15,+0.34] | -0.04 [-0.33,+0.29]
+a2 hysteresis exit>0.12    | +0.06 [-0.29,+0.39] | +0.10 [-0.37,+0.59] | +0.03 [-0.33,+0.41] | +0.21 [-0.28,+0.72] | +0.01 [-0.28,+0.28] | +0.11 [-0.31,+0.52]
+b1 confirm 2 bars          | -0.06 [-0.35,+0.22] | -0.04 [-0.34,+0.23] | -0.08 [-0.42,+0.25] | +0.02 [-0.28,+0.31] | -0.25 [-0.48,-0.04] | +0.05 [-0.22,+0.32]
+b2 confirm 3 bars          | -0.19 [-0.58,+0.20] | -0.23 [-0.59,+0.14] | -0.08 [-0.44,+0.27] | +0.07 [-0.34,+0.46] | -0.04 [-0.37,+0.25] | +0.13 [-0.24,+0.50]
+c1 min hold 6 bars         | -0.11 [-0.39,+0.17] | +0.07 [-0.21,+0.35] | -0.00 [-0.30,+0.32] | +0.04 [-0.21,+0.26] | -0.07 [-0.35,+0.18] | +0.02 [-0.20,+0.24]
+c2 min hold 12 bars        | -0.13 [-0.53,+0.28] | -0.39 [-0.78,+0.04] | -0.16 [-0.56,+0.25] | -0.26 [-0.63,+0.11] | -0.16 [-0.41,+0.09] | -0.35 [-0.73,+0.03]
+d range -> flat            | +0.15 [-0.30,+0.61] | -0.42 [-1.01,+0.12] | +0.25 [-0.18,+0.68] | -0.36 [-0.87,+0.12] | +0.16 [-0.19,+0.49] | -0.36 [-0.81,+0.07]
+e plain 50/200             | -0.26 [-0.99,+0.44] | -0.28 [-1.01,+0.43] | -0.32 [-0.97,+0.34] | -0.11 [-0.84,+0.58] | -0.23 [-0.96,+0.61] | +0.04 [-0.57,+0.62]
+
+== 3. Cost sensitivity (open fee, close fee and borrow all multiplied; 1x = live)
+Higher fees also move the fee-inclusive stop and the assessed leverage slightly.
+
+-- main buffer 4 (live)
+signal @ cost multiple           |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay
+live                       @ 0x  |  416.3%  2.29  54%  25.4   28%    0% -18.3% |  215.0%  1.65  63%  26.0   23%    0% -18.6%
+live                       @ 1x  |  207.2%  1.70  57%  25.6   29%   55% -18.0% |   61.0%  0.96  74%  26.7   26%   64% -19.2%
+live                       @ 2x  |   49.0%  0.89  85%  26.2   32%   98% -17.7% |  -15.6%  0.29  92%  27.2   28%  123% -18.2%
+live                       @ 3x  |  -18.5%  0.21  96%  26.8   35%  131% -17.6% |  -61.5% -0.51  99%  28.0   32%  178% -18.9%
+      growth per year turns negative: dev about 2.7x; hold about 1.8x
+d range -> flat            @ 0x  |  360.9%  2.31  44%  17.4   24%    0% -18.3% |   76.7%  1.10  61%  17.3   25%    0% -16.0%
+d range -> flat            @ 1x  |  218.3%  1.85  52%  17.7   25%   40% -18.0% |   12.7%  0.54  66%  17.6   28%   42% -15.7%
+d range -> flat            @ 2x  |   99.6%  1.26  74%  18.0   27%   73% -17.7% |  -29.5% -0.06  87%  18.1   30%   83% -15.5%
+d range -> flat            @ 3x  |   25.4%  0.67  83%  18.5   30%  100% -17.6% |  -56.2% -0.65  96%  18.7   34%  125% -15.3%
+      growth per year turns negative: dev about 3.6x, 4x -16%; hold about 1.3x
+a1 hysteresis exit>0.08    @ 0x  |  439.4%  2.32  49%  17.6   37%    0% -17.8% |  150.8%  1.41  61%  18.6   35%    0% -18.6%
+a1 hysteresis exit>0.08    @ 1x  |  259.6%  1.87  53%  17.9   39%   48% -17.7% |   43.7%  0.85  75%  19.4   39%   54% -19.2%
+a1 hysteresis exit>0.08    @ 2x  |   95.8%  1.19  68%  18.6   42%   87% -17.5% |  -17.0%  0.30  89%  20.0   42%  105% -18.2%
+a1 hysteresis exit>0.08    @ 3x  |   19.0%  0.64  90%  19.2   45%  117% -17.5% |  -57.6% -0.38  98%  21.0   45%  155% -19.0%
+      growth per year turns negative: dev about 3.4x, 4x -29%; hold about 1.7x
+live, borrow only @ 3x           |   71.5%  1.04  79%  26.1   32%   95% -17.9% |  -11.8%  0.34  89%  27.1   27%  118% -19.0%
+live, borrow only @ 6.25x        |  -29.6%  0.05  97%  26.8   35%  143% -17.7% |  -68.5% -0.71  99%  27.9   31%  200% -18.0%
+
+-- main buffer 8
+signal @ cost multiple           |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay
+live                       @ 0x  |  178.9%  2.27  33%  22.3    7%    0% -10.7% |   96.8%  1.49  40%  23.3    6%    0% -10.6%
+live                       @ 1x  |  113.2%  1.74  40%  22.4    7%   27% -10.8% |   42.7%  0.91  56%  23.3    6%   32% -10.6%
+live                       @ 2x  |   68.3%  1.27  55%  22.5    8%   51% -10.8% |    2.6%  0.32  73%  23.3    6%   63% -10.6%
+live                       @ 3x  |   27.5%  0.73  76%  22.5    8%   71% -11.8% |  -27.4% -0.30  86%  23.5    7%   92% -10.5%
+      growth per year turns negative: dev about 4.0x, 4x -1%; hold about 2.1x
+d range -> flat            @ 0x  |  171.4%  2.36  26%  15.3    6%    0% -10.7% |   44.4%  1.01  49%  15.1    6%    0% -10.2%
+d range -> flat            @ 1x  |  127.1%  1.99  34%  15.4    6%   19% -10.8% |   16.3%  0.55  53%  15.2    7%   21% -10.2%
+d range -> flat            @ 2x  |   90.2%  1.61  46%  15.4    6%   36% -10.8% |   -5.6%  0.11  61%  15.2    8%   41% -10.3%
+d range -> flat            @ 3x  |   56.1%  1.19  60%  15.4    7%   52% -11.8% |  -24.3% -0.37  77%  15.3    8%   61% -10.4%
+      growth per year turns negative: dev about 5.4x, 4x +30%, 5x +8%, 6x -10%; hold about 1.7x
+a1 hysteresis exit>0.08    @ 0x  |  188.9%  2.33  36%  13.9   11%    0% -10.8% |   89.6%  1.41  38%  14.9    7%    0% -10.6%
+a1 hysteresis exit>0.08    @ 1x  |  125.1%  1.83  43%  14.1   12%   22% -10.8% |   46.0%  0.95  45%  14.9    8%   26% -10.6%
+a1 hysteresis exit>0.08    @ 2x  |   85.9%  1.46  49%  14.1   13%   42% -10.9% |   10.8%  0.46  61%  15.1    9%   52% -10.6%
+a1 hysteresis exit>0.08    @ 3x  |   46.7%  1.00  70%  14.2   14%   60% -11.5% |  -15.5% -0.02  76%  15.1   10%   77% -10.5%
+      growth per year turns negative: dev about 4.9x, 4x +20%, 5x -2%; hold about 2.4x
+live, borrow only @ 3x           |   66.0%  1.24  57%  22.4    8%   51% -10.8% |    4.0%  0.34  71%  23.3    6%   63% -10.5%
+live, borrow only @ 6.25x        |   10.6%  0.45  82%  22.5    8%   84% -11.5% |  -39.1% -0.61  90%  23.4    7%  110% -10.5%
+
+-- spot-perps (1x)
+signal @ cost multiple           |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay |    CAGR  Shrp   DD tr/mo stop% fee/y   wDay
+live                       @ 0x  |  103.4%  2.17  26%  23.1   19%    0% -14.1% |   29.1%  1.23  17%  23.6    9%    0%  -6.4%
+live                       @ 1x  |   82.7%  1.86  29%  23.3   21%   12% -14.3% |   14.8%  0.72  24%  23.6   10%   12%  -6.4%
+live                       @ 2x  |   62.9%  1.54  34%  23.4   21%   23% -14.8% |    1.8%  0.19  36%  23.8   11%   24%  -6.5%
+live                       @ 3x  |   46.2%  1.23  45%  23.4   22%   35% -14.9% |  -10.2% -0.35  50%  23.9   13%   36%  -6.6%
+      growth per year turns negative: dev about 6.2x, 4x +30%, 5x +16%, 6x +2%, 8x -20%; hold about 2.1x
+d range -> flat            @ 0x  |  103.4%  2.23  22%  15.7   15%    0% -12.6% |   13.3%  0.73  18%  15.7   10%    0%  -6.1%
+d range -> flat            @ 1x  |   89.6%  2.02  22%  15.7   16%    8% -12.7% |    5.3%  0.36  22%  15.7   11%    8%  -6.1%
+d range -> flat            @ 2x  |   75.6%  1.79  22%  15.8   17%   16% -12.8% |   -3.4% -0.07  30%  15.9   12%   16%  -6.2%
+d range -> flat            @ 3x  |   63.2%  1.58  30%  15.9   18%   24% -12.9% |  -10.1% -0.44  42%  15.9   12%   24%  -6.2%
+      growth per year turns negative: dev above 8x, 4x +51%, 5x +40%, 6x +28%, 8x +10%; hold about 1.6x
+a1 hysteresis exit>0.08    @ 0x  |  115.9%  2.23  24%  15.3   27%    0% -14.3% |   25.3%  1.09  16%  15.7   15%    0%  -6.5%
+a1 hysteresis exit>0.08    @ 1x  |   95.2%  1.95  24%  15.5   29%   10% -14.7% |   14.0%  0.68  21%  15.9   16%   10%  -6.6%
+a1 hysteresis exit>0.08    @ 2x  |   78.3%  1.71  28%  15.6   31%   19% -14.8% |    3.2%  0.25  27%  15.9   17%   20%  -6.7%
+a1 hysteresis exit>0.08    @ 3x  |   62.8%  1.46  39%  15.7   32%   29% -15.0% |   -6.5% -0.17  43%  16.0   19%   30%  -6.7%
+      growth per year turns negative: dev about 7.7x, 4x +47%, 5x +32%, 6x +19%, 8x -3%; hold about 2.3x
+
+Funding: the replay charges a flat borrow of 0.0016%/h (about 14% of position size a
+year) on both sides and no funding. The real borrow rate moves with pool utilization; a
+funding venue would add a charge that a trend follower usually pays. Each extra 10% a
+year on position size costs about 10% x the average open size (section 1) of equity.

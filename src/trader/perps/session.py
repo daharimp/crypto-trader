@@ -31,6 +31,8 @@ from .simulator import PaperPerpsAccount, PerpPosition
 
 STATE_VERSION = 1
 TIMEFRAMES = {"1h": timedelta(hours=1), "4h": timedelta(hours=4)}
+# Seconds the exchange gets to publish a bar after it closes, before the session reads it.
+SETTLE_SECONDS = 90
 NOTIFY = {"OPENED", "CLOSED", "LIQUIDATED", "DAY_HALTED", "TAKE_PROFIT"}
 
 # (symbol, timeframe) -> [[open_time_ms, open, high, low, close, volume], ...] oldest first;
@@ -173,6 +175,10 @@ class PerpsSession:
     # Optional (ADR-041): one JSON line per processed bar with the account's equity, so an
     # archived run keeps its full equity curve, not only the day-change points.
     equity_path: Path | None = None
+    # Seconds to wait after a bar closes before reading it: the exchange needs a moment to
+    # publish it, and an account that reads many markets waits longer so that its requests
+    # do not land in the same second as the other accounts' (ADR-051).
+    settle_seconds: int = SETTLE_SECONDS
     # Whether this session has a run on disk (loaded or saved); see ``_save``.
     _on_disk: bool = field(default=False, init=False, repr=False)
 
@@ -185,6 +191,8 @@ class PerpsSession:
             or TIMEFRAMES[self.trend_timeframe] <= TIMEFRAMES[self.timeframe]
         ):
             raise ValueError("trend_timeframe must be a longer timeframe than timeframe")
+        if not 0 <= self.settle_seconds < TIMEFRAMES[self.timeframe] / timedelta(seconds=1):
+            raise ValueError("settle_seconds must be shorter than one bar")
         if not self.symbols:
             self.symbols = {m: f"{m}/USD" for m in self.params.markets}
         if self.state_path.exists():
@@ -270,14 +278,14 @@ class PerpsSession:
             now (datetime): Wall time (UTC).
 
         Returns:
-            bool: True on the first run, or once the next bar has closed (plus 90 seconds
-            for the exchange to publish it).
+            bool: True on the first run, or once the next bar has closed (plus
+            ``settle_seconds``, 90 by default, for the exchange to publish it).
         """
         last = self.meta.get("last_bar")
         if last is None:
             return True
         closes_at = datetime.fromisoformat(last) + 2 * TIMEFRAMES[self.timeframe]
-        return now >= closes_at + timedelta(seconds=90)
+        return now >= closes_at + timedelta(seconds=self.settle_seconds)
 
     def _bars(self, timeframe: str | None = None) -> dict[str, list[Bar]]:
         out: dict[str, list[Bar]] = {}

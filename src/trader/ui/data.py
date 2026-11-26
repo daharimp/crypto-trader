@@ -31,14 +31,35 @@ MARKETS = {
 TIMEFRAMES = ("1h", "4h", "1d")
 Fetcher = Callable[[str, str], list[list[float]]]
 KRAKEN_OHLC = "https://api.kraken.com/0/public/OHLC"
+# Kraken's own pair names (its AssetPairs "altname"; read 2026-11-26). The chart markets
+# above plus the coins of the top-ten paper account (ADR-051).
 _KRAKEN_PAIRS = {
     "BTC/USD": "XBTUSD",
     "ETH/USD": "ETHUSD",
     "SOL/USD": "SOLUSD",
     "XRP/USD": "XRPUSD",
     "SUI/USD": "SUIUSD",
+    "BNB/USD": "BNBUSD",
+    "TRX/USD": "TRXUSD",
+    "HYPE/USD": "HYPEUSD",
+    "ZEC/USD": "ZECUSD",
+    "DOGE/USD": "XDGUSD",
+    "LINK/USD": "LINKUSD",
 }
 _MINUTES = {"1h": 60, "4h": 240, "1d": 1440}
+
+
+def kraken_has(symbol: str) -> bool:
+    """
+    Whether ``kraken_public_ohlc`` knows the Kraken pair for a symbol.
+
+    Args:
+        symbol (str): e.g. ``BTC/USD``.
+
+    Returns:
+        bool: True if candles can be requested for it.
+    """
+    return symbol in _KRAKEN_PAIRS
 
 
 def kraken_public_ohlc(symbol: str, timeframe: str) -> list[list[float]]:
@@ -46,7 +67,7 @@ def kraken_public_ohlc(symbol: str, timeframe: str) -> list[list[float]]:
     Public Kraken candles over plain HTTPS GET (no keys, no ccxt).
 
     Args:
-        symbol (str): A value of ``MARKETS``, e.g. ``BTC/USD``.
+        symbol (str): A symbol ``kraken_has`` accepts, e.g. ``BTC/USD``.
         timeframe (str): ``1h``, ``4h`` or ``1d``.
 
     Returns:
@@ -55,6 +76,8 @@ def kraken_public_ohlc(symbol: str, timeframe: str) -> list[list[float]]:
     Raises:
         ValueError: On an unknown symbol or an error answer from Kraken.
     """
+    if symbol not in _KRAKEN_PAIRS:
+        raise ValueError(f"no Kraken pair is listed here for {symbol}")
     q = urllib.parse.urlencode({"pair": _KRAKEN_PAIRS[symbol], "interval": _MINUTES[timeframe]})
     req = urllib.request.Request(f"{KRAKEN_OHLC}?{q}", headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=20) as resp:  # noqa: S310 (fixed https URL)

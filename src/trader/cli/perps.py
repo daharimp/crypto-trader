@@ -34,14 +34,23 @@ ACCOUNTS = {
     "main": ("jupiter.yaml", "perps-paper", "[perps paper]"),
     "degen": ("jupiter-degen.yaml", "perps-degen", "[perps degen]"),
     "spot-perps": ("jupiter-spot-perps.yaml", "perps-spot-perps", "[spot perps]"),
+    "top10": ("top10.yaml", "perps-top10", "[perps top10]"),
 }
 ACCOUNT_HELP = (
-    "Paper account: main (the running one), degen (ADR-038), or spot-perps (spot's trend "
-    "rule long and short at 1x, ADR-044)."
+    "Paper account: main (the running one), degen (ADR-038), spot-perps (spot's trend "
+    "rule long and short at 1x, ADR-044), or top10 (ten coins, hourly, ADR-051)."
 )
 # Reason: spot code is long-only by the safety rules, so spot's trend rule runs both ways in
 # this paper perps account (ADR-044); it must always run that rule, whatever --signal says.
 FIXED_SIGNALS = {"spot-perps": DEFAULT_SIGNAL}
+DEFAULT_TIMEFRAME = "4h"
+# Reason: the owner chose hourly decisions for the ten-coin account (UD-33); a start on
+# another timeframe would begin a different run, so it is refused instead (ADR-051).
+FIXED_TIMEFRAMES = {"top10": "1h"}
+# Accounts that read many markets: name -> (seconds between candle requests, seconds to wait
+# after a bar closes). Twenty requests a cycle are spaced out, and the later start keeps
+# them out of the second in which the three-coin accounts ask for the same pairs (ADR-051).
+PACING: dict[str, tuple[float, int]] = {"top10": (1.0, 180)}
 
 
 def resolve_signal(account: str, requested: str | None) -> str:
@@ -63,6 +72,28 @@ def resolve_signal(account: str, requested: str | None) -> str:
         return requested or DEFAULT_SIGNAL
     if requested not in (None, fixed):
         raise ValueError(f"account {account} only runs {fixed}, not {requested}")
+    return fixed
+
+
+def resolve_timeframe(account: str, requested: str | None) -> str:
+    """
+    The timeframe an account decides on.
+
+    Args:
+        account (str): Account name from ``ACCOUNTS``.
+        requested (str | None): ``--timeframe`` value, or None for the account's default.
+
+    Returns:
+        str: ``1h`` or ``4h``.
+
+    Raises:
+        ValueError: If the account has a fixed timeframe and another one was requested.
+    """
+    fixed = FIXED_TIMEFRAMES.get(account)
+    if fixed is None:
+        return requested or DEFAULT_TIMEFRAME
+    if requested not in (None, fixed):
+        raise ValueError(f"account {account} only runs on {fixed}, not {requested}")
     return fixed
 
 
@@ -134,7 +165,7 @@ def validate(account: str = typer.Option("main", "--account", help=ACCOUNT_HELP)
 def prices() -> None:
     """Print current public USD prices from Jupiter (read-only)."""
     try:
-        markets: dict[str, str] = {m.market: m.price_mint for m in load_perps_file().markets}
+        markets = load_perps_file().price_mints()
         for market, price in fetch_prices(markets).items():
             typer.echo(f"{market}: {price}")
     except PriceUnavailableError as exc:
@@ -195,10 +226,13 @@ app.add_typer(paper_app, name="paper")
 @paper_app.command("run")
 def paper_run(
     once: bool = typer.Option(False, "--once", help="Process due bars once, then exit."),
-    timeframe: str = typer.Option(
-        "4h",
+    timeframe: str | None = typer.Option(
+        None,
         "--timeframe",
-        help="How often to check: 4h, or 1h (the trend still comes from 4h candles).",
+        help=(
+            "How often to check: 4h (default), or 1h (the trend still comes from 4h "
+            "candles). top10 always runs on 1h."
+        ),
     ),
     signal_name: str | None = typer.Option(
         None,
@@ -216,24 +250,40 @@ def paper_run(
 
     Exit 3 if any perps value is unapproved; exit 2 if the saved state does not match.
     """
-    from trader.perps.session import PerpsSession, SessionStateError
+    from trader.perps.candles import PacedFetcher
+    from trader.perps.session import (
+        SETTLE_SECONDS,
+        CandleFetcher,
+        PerpsSession,
+        SessionStateError,
+    )
     from trader.perps.signals import make_signal
     from trader.risk.controls import PersistedKillSwitch
     from trader.session.alerts import Alerter
-    from trader.ui.data import kraken_public_ohlc
+    from trader.ui.data import kraken_has, kraken_public_ohlc
 
     params = _params_or_exit(account)
     try:
         signal_name = resolve_signal(account, signal_name)
+        timeframe = resolve_timeframe(account, timeframe)
+        no_feed = [m for m in params.markets if not kraken_has(f"{m}/USD")]
+        if no_feed:
+            # Reason: a market without candles could never be marked or stopped, so the
+            # account does not start at all (fail closed) instead of failing every cycle.
+            raise ValueError(f"no public candle feed is listed for {', '.join(no_feed)}")
     except ValueError as exc:
         typer.echo(f"perps session not started: {exc}", err=True)
         raise typer.Exit(EXIT_INVALID) from None
     alerter = Alerter.from_env(ACCOUNTS[account][2])
     state_path, events_path = account_paths(data_root(), account)
+    paced = PACING.get(account)
+    fetch: CandleFetcher = (
+        PacedFetcher(kraken_public_ohlc, spacing_s=paced[0]) if paced else kraken_public_ohlc
+    )
     try:
         session = PerpsSession(
             params,
-            kraken_public_ohlc,
+            fetch,
             state_path,
             events_path,
             notify=alerter.send,
@@ -244,6 +294,7 @@ def paper_run(
             timeframe=timeframe,
             trend_timeframe="4h" if timeframe == "1h" else None,
             equity_path=account_equity_path(data_root(), account),
+            settle_seconds=paced[1] if paced else SETTLE_SECONDS,
         )
     except (SessionStateError, ValueError) as exc:
         typer.echo(f"perps session not started: {exc}", err=True)

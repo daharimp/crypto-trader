@@ -17,7 +17,15 @@ from typing import Any
 
 # Reason: these are the services `docker compose up -d` should keep running; `live` and the
 # cli/builder profiles are intentionally absent (live is never started by automation).
-EXPECTED_SERVICES = ("paper", "perps", "perps-degen", "perps-spot-perps", "review", "dashboard")
+EXPECTED_SERVICES = (
+    "paper",
+    "perps",
+    "perps-degen",
+    "perps-spot-perps",
+    "perps-top10",
+    "review",
+    "dashboard",
+)
 # Reason: same 5/10/15% steps as the review assistant's drawdown alerts (ADR-046).
 DRAWDOWN_STEPS = ((15.0, "critical"), (10.0, "alert"), (5.0, "warn"))
 SEVERITY_RANK = {"warn": 1, "alert": 2, "critical": 3}

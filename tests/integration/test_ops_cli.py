@@ -11,7 +11,15 @@ from typer.testing import CliRunner
 from trader.cli.main import app
 
 ROOT = Path(__file__).resolve().parents[2]
-SERVICES = ("paper", "perps", "perps-degen", "perps-spot-perps", "review", "dashboard")
+SERVICES = (
+    "paper",
+    "perps",
+    "perps-degen",
+    "perps-spot-perps",
+    "perps-top10",
+    "review",
+    "dashboard",
+)
 
 
 def test_health_writes_snapshot_and_alerts_once(

@@ -23,6 +23,7 @@ git log -1 --format='%H %cI %s' >"$dest/deployed-commit.txt"
   echo "## deployed (last auto-deploy)"; cat "$OPS_STATE/deployed-sha" 2>/dev/null || echo none
   echo; echo "## auto-deploy hold"; head -1 "$OPS_STATE/deploy-hold" 2>/dev/null || echo off
   echo; echo "## containers"; docker compose ps --format '{{.Service}} {{.State}} {{.Status}}' 2>&1
+  echo; echo "## dashboard check (ADR-050)"; cat data/ops/dashboard.txt 2>/dev/null || echo "not run yet"
   echo; echo "## tailscale serve"; tailscale serve status 2>&1 | head -20 || echo "tailscale not installed"
   for svc in "${PAPER_SERVICES[@]}"; do
     echo; echo "## logs: $svc (last 15 lines)"; docker compose logs --no-color --tail 15 "$svc" 2>&1

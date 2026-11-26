@@ -47,3 +47,13 @@
 - **Consequences:** merging to main deploys within about 5 minutes, so main must stay
   deployable (CI runs on every pull request). One-time setup is `scripts/ops/install.sh` on
   the server plus adding its printed key to the ops repository (RUNBOOK 8b).
+- **Amendment (2026-11-26, status push outage):** from Nov 24 00:43 UTC every hourly push was
+  rejected as non-fast-forward for about 48 hours. The daily review commits `reviews/` to
+  the ops repository, and `push_status.sh` ran `git pull --rebase` while the fresh snapshot
+  was still uncommitted, so git refused, the error was hidden, and the push then failed.
+  Now the script commits first, fetches, rebases onto `origin/main` (falling back to a
+  merge with `-X ours`, so remote commits such as `reviews/` are always kept and the
+  server's newer snapshot wins inside its own files), retries once, and never force-pushes.
+  A failed push alerts the phone on the first failure, every 6 hours while it lasts, and
+  once on recovery (marker `$OPS_STATE/push-failed`). `notify` now reads `$REPO/.env` by
+  full path so it works after a script changes directory.

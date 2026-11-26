@@ -30,6 +30,9 @@ bootstrap interval (20-day blocks, 2000 draws), because small differences are no
 PRE-SET COST GRID. Live and the two top-ranked variants at 0x, 1x, 2x and 3x costs (open fee,
 close fee and borrow scaled together); 4x to 8x are run only to find where growth turns
 negative. Funding is not modelled; the note printed with that table says what that means.
+
+Added after the first run, description only (they select nothing): how often the ER < 0.05
+flag itself changes, the regime x exit table, and the borrow-only rows for the live signal.
 """
 
 from __future__ import annotations
@@ -38,6 +41,7 @@ import bisect
 import dataclasses
 import math
 import sys
+from collections import namedtuple
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -46,6 +50,7 @@ from pathlib import Path
 
 import exp023_lib as lib
 import numpy as np
+
 from trader.perps.backtest import sma_stance
 from trader.perps.math import PerpSide
 from trader.perps.params import PerpsParams
@@ -54,11 +59,13 @@ from trader.regimes import trend as tr
 D = Decimal
 Factory = Callable[[], lib.SignalFn]
 Signals = dict[str, list[PerpSide | None]]
+Flags = dict[str, list[bool]]
 ENTER = tr.RANGE_EFFICIENCY_BELOW
 LABEL = "signal-churn1"  # cache prefix; bump the number whenever a variant's logic changes
 WINDOWS = ("dev", "hold")
 YEARS = {w: (b - a).days / 365.25 for w, (a, b) in lib.WINDOWS.items()}
 COST_MULTS, COST_EXTRA = (0, 1, 2, 3), (4, 5, 6, 8)
+BORROW_ONLY = (D(3), D("6.25"))  # 6.25x = 0.01%/h, the cautious rate the config used before
 SETTINGS: tuple[tuple[str, str, dict[str, Decimal]], ...] = (
     ("main buffer 4 (live)", "main", {}),
     ("main buffer 8", "main", {"liquidation_buffer_daily_moves": D(8)}),
@@ -66,109 +73,84 @@ SETTINGS: tuple[tuple[str, str, dict[str, Decimal]], ...] = (
 )
 
 
-def hysteresis(exit_above: Decimal) -> Factory:
+@dataclass
+class Hysteresis:
     """Range mode starts at ER < 0.05 and ends only at ER > ``exit_above``."""
 
-    def factory() -> lib.SignalFn:
-        ranging = False
+    exit_above: Decimal
+    ranging: bool = False
 
-        def fn(closes: list[Decimal]) -> PerpSide | None:
-            nonlocal ranging
-            er = tr.efficiency_ratio(closes)
-            if er is None:
-                ranging = False  # Reason: the live rule counts "not measurable" as trending.
-            elif er < ENTER:
-                ranging = True
-            elif er > exit_above:
-                ranging = False
-            if len(closes) < tr.SLOW:
-                return None
-            if ranging:
-                return sma_stance(closes, tr.RANGE_FAST, tr.RANGE_SLOW)
-            return sma_stance(closes, tr.FAST, tr.SLOW)
-
-        return fn
-
-    return factory
-
-
-def confirm(bars: int) -> Factory:
-    """The live signal's new direction counts once it has shown ``bars`` bars in a row."""
-
-    def factory() -> lib.SignalFn:
-        raw = lib.live_signal()
-        last: PerpSide | None = None
-        out: PerpSide | None = None
-        streak = 0
-
-        def fn(closes: list[Decimal]) -> PerpSide | None:
-            nonlocal last, out, streak
-            now = raw(closes)
-            streak = streak + 1 if now == last else 1
-            last = now
-            if now != out and streak >= bars:
-                out = now
-            return out
-
-        return fn
-
-    return factory
-
-
-def min_hold(bars: int) -> Factory:
-    """After a change of direction the signal may not change again for ``bars`` bars."""
-
-    def factory() -> lib.SignalFn:
-        raw = lib.live_signal()
-        out: PerpSide | None = None
-        since = bars
-
-        def fn(closes: list[Decimal]) -> PerpSide | None:
-            nonlocal out, since
-            now = raw(closes)
-            since += 1
-            if now != out and since >= bars:
-                out, since = now, 0
-            return out
-
-        return fn
-
-    return factory
-
-
-def range_flat() -> lib.SignalFn:
-    """No position while ranging (ER < 0.05); the 50/200 averages otherwise."""
-
-    def fn(closes: list[Decimal]) -> PerpSide | None:
-        if len(closes) < tr.SLOW or tr.is_ranging(closes):
+    def __call__(self, closes: list[Decimal]) -> PerpSide | None:
+        er = tr.efficiency_ratio(closes)
+        if er is None:
+            self.ranging = False  # Reason: the live rule counts "not measurable" as trending.
+        elif er < ENTER:
+            self.ranging = True
+        elif er > self.exit_above:
+            self.ranging = False
+        if len(closes) < tr.SLOW:
             return None
+        if self.ranging:
+            return sma_stance(closes, tr.RANGE_FAST, tr.RANGE_SLOW)
         return sma_stance(closes, tr.FAST, tr.SLOW)
-
-    return fn
-
-
-# THE GRID (see the module docstring). name: (cache key, factory)
-GRID: dict[str, tuple[str, Factory]] = {
-    "a1 hysteresis exit>0.08": ("a1", hysteresis(D("0.08"))),
-    "a2 hysteresis exit>0.12": ("a2", hysteresis(D("0.12"))),
-    "b1 confirm 2 bars": ("b1", confirm(2)),
-    "b2 confirm 3 bars": ("b2", confirm(3)),
-    "c1 min hold 6 bars": ("c1", min_hold(6)),
-    "c2 min hold 12 bars": ("c2", min_hold(12)),
-    "d range -> flat": ("d", range_flat),
-    "e plain 50/200": ("e", lib.plain_50_200),
-}
 
 
 @dataclass
-class Leg:
-    """One exit of (part of) a trade; ``cost`` includes its share of the opening fee."""
+class Confirm:
+    """The live signal's new direction counts once it has shown ``bars`` bars in a row."""
 
-    label: str
-    gross: float
-    cost: float
-    size: float
-    hours: float
+    bars: int
+    raw: lib.SignalFn = field(default_factory=lib.live_signal)
+    last: PerpSide | None = None
+    out: PerpSide | None = None
+    streak: int = 0
+
+    def __call__(self, closes: list[Decimal]) -> PerpSide | None:
+        now = self.raw(closes)
+        self.streak = self.streak + 1 if now == self.last else 1
+        self.last = now
+        if now != self.out and self.streak >= self.bars:
+            self.out = now
+        return self.out
+
+
+@dataclass
+class MinHold:
+    """After a change of direction the signal may not change again for ``bars`` bars."""
+
+    bars: int
+    raw: lib.SignalFn = field(default_factory=lib.live_signal)
+    out: PerpSide | None = None
+    since: int = 10**6
+
+    def __call__(self, closes: list[Decimal]) -> PerpSide | None:
+        now = self.raw(closes)
+        self.since += 1
+        if now != self.out and self.since >= self.bars:
+            self.out, self.since = now, 0
+        return self.out
+
+
+def range_flat(closes: list[Decimal]) -> PerpSide | None:
+    """No position while ranging (ER < 0.05); the 50/200 averages otherwise."""
+    if len(closes) < tr.SLOW or tr.is_ranging(closes):
+        return None
+    return sma_stance(closes, tr.FAST, tr.SLOW)
+
+
+# THE GRID (see the module docstring). name: (cache key, factory called once per coin)
+GRID: dict[str, tuple[str, Factory]] = {
+    "a1 hysteresis exit>0.08": ("a1", lambda: Hysteresis(D("0.08"))),
+    "a2 hysteresis exit>0.12": ("a2", lambda: Hysteresis(D("0.12"))),
+    "b1 confirm 2 bars": ("b1", lambda: Confirm(2)),
+    "b2 confirm 3 bars": ("b2", lambda: Confirm(3)),
+    "c1 min hold 6 bars": ("c1", lambda: MinHold(6)),
+    "c2 min hold 12 bars": ("c2", lambda: MinHold(12)),
+    "d range -> flat": ("d", lambda: range_flat),
+    "e plain 50/200": ("e", lib.plain_50_200),
+}
+# One exit of (part of) a trade; ``cost`` includes its share of the opening fee.
+Leg = namedtuple("Leg", "label gross cost size hours")
 
 
 @dataclass
@@ -186,26 +168,17 @@ class Trade:
     open_fee: float
     borrow: float = 0.0
     legs: list[Leg] = field(default_factory=list)
-
-    @property
-    def gross(self) -> float:
-        return sum(x.gross for x in self.legs)
-
-    @property
-    def cost(self) -> float:
-        return sum(x.cost for x in self.legs)
-
-    @property
-    def hours(self) -> float:
-        return self.legs[-1].hours
+    gross: float = 0.0  # the three below are filled in when the trade ends
+    cost: float = 0.0
+    hours: float = 0.0
 
 
+Key = Callable[[Trade], str] | None
 EXITS = {"SIGNAL_CHANGED": "signal flip", "TAKE_PROFIT_3": "TP3 (rest)", "END_OF_REPLAY": "end"}
+REGIME = {False: "trending (50/200)", True: "ranging (10/30 decides)"}
 
 
-def trades_of(
-    res: lib.Result, params: PerpsParams, ranging: dict[str, list[bool]], index: dict
-) -> list[Trade]:
+def trades_of(res: lib.Result, params: PerpsParams, ranging: Flags, index: dict) -> list[Trade]:
     """Rebuild trades from ``Result.events`` (OPENED, TAKE_PROFIT, CLOSED, LIQUIDATED)."""
     share = float(params.max_collateral_per_position_pct) / 100
     fee = float(params.close_fee_bps) / 1e4
@@ -246,6 +219,7 @@ def trades_of(
         t.left -= closed
         t.collateral -= coll
         if kind != "TAKE_PROFIT":
+            t.gross, t.cost, t.hours = sum(x[1] for x in t.legs), sum(x[2] for x in t.legs), hours
             done.append(live.pop(m))
     return done
 
@@ -269,28 +243,22 @@ def bcell(items: list[Item], years: float) -> str:
     )
 
 
-def hold_bucket(hours: float) -> str:
-    """Holding-time bucket of a trade."""
-    for limit, name in ((8, "<=8h"), (24, "8-24h"), (72, "1-3d"), (168, "3-7d")):
-        if hours <= limit:
-            return name
-    return ">7d"
+def span(hours: float, limits: tuple[tuple[float, str], ...], rest: str) -> str:
+    """Holding-time bucket."""
+    return next((name for limit, name in limits if hours <= limit), rest)
 
 
-def regime_hold(t: Trade) -> str:
-    """Regime at entry crossed with a coarse holding time."""
-    span = "<=24h" if t.hours <= 24 else "1-3d" if t.hours <= 72 else ">3d"
-    return f"{'range' if t.ranging else 'trend'} entry, held {span}"
+def regime_exit(t: Trade) -> str:
+    """Regime at entry crossed with how the trade ended (and how fast, for signal flips)."""
+    regime, last = "range" if t.ranging else "trend", t.legs[-1].label
+    if last == "signal flip":
+        return f"{regime}: flip out {span(t.hours, ((24, '<=24h'), (72, '1-3d')), '>3d')}"
+    return f"{regime}: {last if last == 'stop (opening)' else 'ladder exit / end'}"
 
 
-def breakdown(
-    title: str,
-    trades: dict[str, list[Trade]],
-    key: Callable[[Trade], str] | None,
-    order: list[str],
-) -> None:
+def breakdown(title: str, trades: dict[str, list[Trade]], key: Key) -> None:
     """One table: rows are buckets, columns development | holdout. ``key`` None = per exit."""
-    rows: dict[str, dict[str, list[Item]]] = {k: {w: [] for w in WINDOWS} for k in order}
+    rows: dict[str, dict[str, list[Item]]] = {}
     for w in WINDOWS:
         for t in trades[w]:
             if key is None:
@@ -300,9 +268,25 @@ def breakdown(
             for k, item in pairs:
                 rows.setdefault(k, {w: [] for w in WINDOWS})[w].append(item)
     print(f"{title:28} | {BH} | {BH}")
-    for k, by in rows.items():
-        if by["dev"] or by["hold"]:
-            print(f"  {k:26} | {bcell(by['dev'], YEARS['dev'])} | {bcell(by['hold'], YEARS['hold'])}")
+    for k in sorted(rows, key=lambda k: (ORDER.index(k) if k in ORDER else 99, k)):
+        by = rows[k]
+        print(f"  {k:26} | {bcell(by['dev'], YEARS['dev'])} | {bcell(by['hold'], YEARS['hold'])}")
+
+
+HOLD = ((8, "<=8h"), (24, "8-24h"), (72, "1-3d"), (168, "3-7d"))
+ORDER = ["signal flip", "stop (opening)", "stop after a TP", "TP1 (25%)", "TP2 (25%)", "TP3 (rest)"]
+ORDER += [*REGIME.values(), "long", "short", "BTC", "ETH", "SOL", *(n for _, n in HOLD), ">7d"]
+ENDS = ("flip out <=24h", "flip out 1-3d", "flip out >3d", "stop (opening)", "ladder exit / end")
+ORDER += [f"{r}: {x}" for r in ("range", "trend") for x in ENDS]
+TABLES: tuple[tuple[str, Key], ...] = (
+    ("total", lambda t: "all trades"),
+    ("by exit (per exit fill)", None),
+    ("by regime at entry", lambda t: REGIME[t.ranging]),
+    ("by side", lambda t: t.side),
+    ("by coin", lambda t: t.market),
+    ("by holding time", lambda t: span(t.hours, HOLD, ">7d")),
+    ("regime x how it ended", regime_exit),
+)
 
 
 def money_report(
@@ -310,12 +294,6 @@ def money_report(
 ) -> None:
     """Section 1 for one account: where the net P&L of the live setting comes from."""
     print(f"\n== 1. Where the money comes from: {name}, live signal")
-    print(
-        "Columns per window (development | holdout): n = trades (exits in the first table), "
-        "win = share with net > 0,\ngross / cost / net = summed P&L as % of the account's "
-        "equity at entry, per year (not compounded),\ng/tr and c/tr = gross P&L and cost "
-        "per trade in bps of position size (cost = fees both sides + borrow)."
-    )
     for w in WINDOWS:
         ts, y = trades[w], YEARS[w]
         net = sum(t.gross - t.cost for t in ts)
@@ -333,48 +311,27 @@ def money_report(
             f"borrow {borrow:.0f}; average open size {expo['long']:.2f}x equity long, "
             f"{expo['short']:.2f}x short"
         )
-    everything = ["all trades"]
-    breakdown("total", trades, lambda t: "all trades", everything)
-    exits = ["signal flip", "stop (opening)", "stop after a TP", "TP1 (25%)", "TP2 (25%)"]
-    breakdown("by exit (per exit fill)", trades, None, [*exits, "TP3 (rest)", "liquidated"])
-    breakdown(
-        "by regime at entry",
-        trades,
-        lambda t: "ranging (10/30 decides)" if t.ranging else "trending (50/200)",
-        [],
-    )
-    breakdown("by side", trades, lambda t: t.side, ["long", "short"])
-    breakdown("by coin", trades, lambda t: t.market, ["BTC", "ETH", "SOL"])
-    breakdown(
-        "by holding time",
-        trades,
-        lambda t: hold_bucket(t.hours),
-        ["<=8h", "8-24h", "1-3d", "3-7d", ">7d"],
-    )
-    spans = ("<=24h", "1-3d", ">3d")
-    breakdown(
-        "regime x holding time",
-        trades,
-        regime_hold,
-        [f"{r} entry, held {s}" for r in ("range", "trend") for s in spans],
-    )
+    for title, key in TABLES:
+        breakdown(title, trades, key)
 
 
-def churn(sig: Signals, ranging: dict[str, list[bool]], times: list[datetime], w: str) -> str:
-    """Signal changes per coin per month, share of them on ranging bars, share of time flat."""
+def churn(sig: Signals, ranging: Flags, times: list[datetime], w: str) -> str:
+    """Signal changes per coin per month; share on ranging bars; share on a bar where the
+    ER < 0.05 flag itself changed; share of time flat."""
     j0, j1 = (bisect.bisect_left(times, t) for t in lib.WINDOWS[w])
-    flips = in_range = flat = 0
+    flips = in_range = at_switch = flat = 0
     for m in lib.COINS:
-        s = sig[m]
+        s, r = sig[m], ranging[m]
         for j in range(j0, j1):
             flat += s[j] is None
             if j > 0 and s[j] != s[j - 1]:
                 flips += 1
-                in_range += ranging[m][j]
+                in_range += r[j]
+                at_switch += r[j] != r[j - 1]
     per_month = flips / len(lib.COINS) / (YEARS[w] * 12)
     return (
         f"{per_month:6.1f} {in_range / max(flips, 1) * 100:5.0f}% "
-        f"{flat / (len(lib.COINS) * (j1 - j0)) * 100:5.0f}%"
+        f"{at_switch / max(flips, 1) * 100:5.0f}% {flat / (len(lib.COINS) * (j1 - j0)) * 100:5.0f}%"
     )
 
 
@@ -402,13 +359,11 @@ def boot(a: np.ndarray, b: np.ndarray | None = None, block: int = 20, draws: int
     return f"{point:+5.2f} [{lo:+5.2f},{hi:+5.2f}]"
 
 
-def with_costs(p: PerpsParams, k: int) -> PerpsParams:
-    """The account with open fee, close fee and borrow all multiplied by ``k``."""
+def with_costs(p: PerpsParams, fees: Decimal | int, borrow: Decimal | int) -> PerpsParams:
+    """The account with both trading fees multiplied by ``fees`` and borrow by ``borrow``."""
+    scaled = {"open_fee_bps": p.open_fee_bps * fees, "close_fee_bps": p.close_fee_bps * fees}
     return dataclasses.replace(
-        p,
-        open_fee_bps=p.open_fee_bps * k,
-        close_fee_bps=p.close_fee_bps * k,
-        borrow_rate_pct_per_hour=p.borrow_rate_pct_per_hour * k,
+        p, **scaled, borrow_rate_pct_per_hour=p.borrow_rate_pct_per_hour * borrow
     )
 
 
@@ -416,33 +371,39 @@ def breakeven(points: list[tuple[int, float]]) -> str:
     """Cost multiple where growth per year crosses zero (straight line between two runs)."""
     for (k0, c0), (k1, c1) in zip(points, points[1:], strict=False):
         if c0 > 0 >= c1:
-            return f"{k0 + (k1 - k0) * c0 / (c0 - c1):.1f}x"
-    return f">{points[-1][0]}x" if points[-1][1] > 0 else f"<={points[0][0]}x"
+            return f"about {k0 + (k1 - k0) * c0 / (c0 - c1):.1f}x"
+    return f"above {points[-1][0]}x" if points[-1][1] > 0 else f"at or below {points[0][0]}x"
 
 
 def cost_table(feed: lib.Feed, sname: str, p: PerpsParams, picks: dict[str, Signals]) -> None:
     """Section 3 for one setting: the same replays with every cost multiplied."""
+
+    def stats(q: PerpsParams, sig: Signals, w: str) -> dict[str, float]:
+        return lib.run(q, feed, *lib.WINDOWS[w], signals=sig).stats
+
     print(f"\n-- {sname}\n{'signal @ cost multiple':32} | {lib.HEADER} | {lib.HEADER}")
     for vname, sig in picks.items():
         cagr: dict[str, list[tuple[int, float]]] = {w: [] for w in WINDOWS}
         for k in COST_MULTS:
-            stats = [lib.run(with_costs(p, k), feed, *lib.WINDOWS[w], signals=sig).stats for w in WINDOWS]
-            for w, s in zip(WINDOWS, stats, strict=True):
-                cagr[w].append((k, s["cagr"]))
-            print(f"{vname[:26]:26} @ {k}x  | {lib.cell(stats[0])} | {lib.cell(stats[1])}", flush=True)
+            row = {w: stats(with_costs(p, k, k), sig, w) for w in WINDOWS}
+            for w in WINDOWS:
+                cagr[w].append((k, row[w]["cagr"]))
+            print(f"{vname[:26]:26} @ {k}x  | {lib.cell(row['dev'])} | {lib.cell(row['hold'])}")
         for w in WINDOWS:
             for k in COST_EXTRA:
                 if cagr[w][-1][1] <= 0:
                     break
-                s = lib.run(with_costs(p, k), feed, *lib.WINDOWS[w], signals=sig).stats
-                cagr[w].append((k, s["cagr"]))
+                cagr[w].append((k, stats(with_costs(p, k, k), sig, w)["cagr"]))
         tail = "; ".join(
-            f"{w}: growth turns negative at about {breakeven(cagr[w])} ("
-            + ", ".join(f"{k}x {c:+.0f}%" for k, c in cagr[w][len(COST_MULTS) :])
-            + ")"
+            f"{w} {breakeven(cagr[w])}"
+            + "".join(f", {k}x {c:+.0f}%" for k, c in cagr[w][len(COST_MULTS) :])
             for w in WINDOWS
         )
-        print(f"{'':32}   {tail.replace(' ()', '')}", flush=True)
+        print(f"{'':6}growth per year turns negative: {tail}", flush=True)
+    for k in BORROW_ONLY if sname.startswith("main") else ():
+        row = {w: stats(with_costs(p, 1, k), picks["live"], w) for w in WINDOWS}
+        label = f"live, borrow only @ {k}x"
+        print(f"{label:32} | {lib.cell(row['dev'])} | {lib.cell(row['hold'])}", flush=True)
 
 
 def main() -> None:
@@ -454,7 +415,7 @@ def main() -> None:
         sigs[name] = feed.signals(f"{LABEL}-{key}", factory)
     # Reason: hysteresis that leaves at the entry threshold is the live rule, so it must match
     # the harness's live signal bar for bar; this guards the re-implemented pieces above.
-    assert feed.signals(f"{LABEL}-selfcheck", hysteresis(ENTER)) == sigs["live"], "self-check"
+    assert feed.signals(f"{LABEL}-selfcheck", lambda: Hysteresis(ENTER)) == sigs["live"]
     ranging = {m: [tr.is_ranging(c) for c, _ in feed.views(m)] for m in lib.COINS}
     index = {t: j for j, t in enumerate(feed.times)}
 
@@ -465,31 +426,36 @@ def main() -> None:
         for vname, sig in sigs.items():
             for w in WINDOWS:
                 runs[sname, vname, w] = lib.run(params[sname], feed, *lib.WINDOWS[w], signals=sig)
+    names = [s[0] for s in SETTINGS]
+    cash = {s: float(params[s].starting_collateral_usd) for s in names}
 
-    print("EXP-2026-023 signal slice. Paper-only replay; development 2020-10..2023-12, holdout")
-    print("2024-01..2026-11-21. Costs 7 bps a side + borrow 0.0016%/h; funding is not modelled.")
-    for sname in (SETTINGS[0][0], SETTINGS[2][0]):
+    print("EXP-2026-023 signal slice. Paper-only replay; development 2020-10..2023-12 (left),")
+    print("holdout 2024-01..2026-11-21 (right). Costs 7 bps a side + borrow 0.0016%/h; no funding.")
+    print(
+        "Section 1: n = trades (exit fills in 'by exit'), win = share with net > 0, gross / cost /"
+    )
+    print("net = summed P&L as % of the account's equity at entry, per year (not compounded), g/tr")
+    print("and c/tr = gross P&L and cost per trade in bps of position size (cost = fees + borrow).")
+    for sname in (names[0], names[2]):
         res = {w: runs[sname, "live", w] for w in WINDOWS}
         trades = {w: trades_of(res[w], params[sname], ranging, index) for w in WINDOWS}
-        money_report(sname, float(params[sname].starting_collateral_usd), res, trades)
+        money_report(sname, cash[sname], res, trades)
 
     print("\n== 2. Churn-reducing variants (grid and selection rule fixed in the docstring)")
-    head = f"{'flips':>6} {'range':>6} {'flat':>6}"
-    print(f"\nThe signal alone (changes per coin per month, share of changes on ranging bars,")
-    print(f"share of time flat):\n{'variant':26} | {head} | {head}")
-    for vname, sig in sigs.items():
+    head = f"{'flips':>6} {'range':>6} {'at sw':>6} {'flat':>6}"
+    print("\nThe signal alone: changes per coin per month, share of them on ranging bars, share")
+    print("of them on a bar where the ER < 0.05 flag itself changed, share of time flat.")
+    print(f"{'variant':26} | {head} | {head}")
+    for vname, sig in {"(ER < 0.05 flag itself)": ranging, **sigs}.items():
         cells = [churn(sig, ranging, feed.times, w) for w in WINDOWS]
         print(f"{vname:26} | {cells[0]} | {cells[1]}")
-    for sname, _, _ in SETTINGS:
+    for sname in names:
         print(f"\n-- {sname}\n{'variant':26} | {lib.HEADER} | {lib.HEADER}")
         for vname in sigs:
             cells = [lib.cell(runs[sname, vname, w].stats) for w in WINDOWS]
             print(f"{vname:26} | {cells[0]} | {cells[1]}")
 
-    names = [s[0] for s in SETTINGS]
-    sharpe = {
-        (v, w): [runs[s, v, w].stats["sharpe"] for s in names] for v in sigs for w in WINDOWS
-    }
+    sharpe = {(v, w): [runs[s, v, w].stats["sharpe"] for s in names] for v in sigs for w in WINDOWS}
     ranked = sorted(sigs, key=lambda v: -sum(sharpe[v, "dev"]))
     print("\nRanking on development only (Sharpe: buffer 4, buffer 8, spot-perps, mean);")
     print("holdout shown next to it, not used. 'all 3' = beats live on development everywhere.")
@@ -502,36 +468,31 @@ def main() -> None:
         wins = all(a > b for a, b in zip(sharpe[v, "dev"], sharpe["live", "dev"], strict=True))
         mark = "-" if v == "live" else "yes" if wins else "no"
         print(f"{v:26} | {cells[0]} | {cells[1]} | {mark}")
-    pick = ranked[0]
-    print(f"Pick on development alone: {pick}" + (" (no change)" if pick == "live" else ""))
+    print(f"Pick on development alone: {ranked[0]}" + (" (no change)" * (ranked[0] == "live")))
 
-    cash = {s: float(params[s].starting_collateral_usd) for s in names}
     rets = {k: daily_returns(r, cash[k[0]]) for k, r in runs.items()}
     print("\nSharpe minus live's Sharpe, with a 90% paired block-bootstrap interval (an interval")
     print("that spans zero means the difference cannot be told from noise).")
-    print(f"{'variant':26} | " + " | ".join(f"{s[:14] + ' ' + w:>20}" for s in names for w in WINDOWS))
+    print(
+        f"{'variant':26} | "
+        + " | ".join(f"{s.split(' (')[0] + ' ' + w:>19}" for s in names for w in WINDOWS)
+    )
     for v in sigs:
-        if v == "live":
-            cells = [boot(rets[s, v, w]) for s in names for w in WINDOWS]
-            print(f"{'live (its own Sharpe)':26} | " + " | ".join(cells), flush=True)
-            continue
-        cells = [boot(rets[s, v, w], rets[s, "live", w]) for s in names for w in WINDOWS]
-        print(f"{v:26} | " + " | ".join(cells), flush=True)
+        own = v == "live"  # live's row shows its own Sharpe, the others the difference to it
+        cells = [
+            boot(rets[s, v, w], None if own else rets[s, "live", w]) for s in names for w in WINDOWS
+        ]
+        print(f"{'live (its own Sharpe)' if own else v:26} | " + " | ".join(cells), flush=True)
 
     print("\n== 3. Cost sensitivity (open fee, close fee and borrow all multiplied; 1x = live)")
     print("Higher fees also move the fee-inclusive stop and the assessed leverage slightly.")
-    top = [v for v in ranked if v != "live"][:2]
-    picks = {v: sigs[v] for v in ["live", *top]}
+    picks = {v: sigs[v] for v in ["live", *[v for v in ranked if v != "live"][:2]]}
     for sname in names:
         cost_table(feed, sname, params[sname], picks)
-    print(
-        "\nFunding: the replay charges a flat borrow of 0.0016%/h (about 14% of position size "
-        "a year) on both\nsides and no funding. Jupiter Perps charges borrow, not funding, but "
-        "its real rate moves with pool\nutilization, which is highest in strong trends, when "
-        "this bot holds the most. On a funding venue a\ntrend follower is usually on the paying "
-        "side. Read the 2x and 3x rows as the cautious case: each\nextra 10% a year on position "
-        "size costs about 10% x the average open size (section 1) of equity a year."
-    )
+    print("\nFunding: the replay charges a flat borrow of 0.0016%/h (about 14% of position size a")
+    print("year) on both sides and no funding. The real borrow rate moves with pool utilization; a")
+    print("funding venue would add a charge that a trend follower usually pays. Each extra 10% a")
+    print("year on position size costs about 10% x the average open size (section 1) of equity.")
 
 
 if __name__ == "__main__":

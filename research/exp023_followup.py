@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Any
 
 import exp023_lib as lib
+
 from trader.perps.math import PerpSide
 
 D = Decimal

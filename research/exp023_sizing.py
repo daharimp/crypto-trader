@@ -14,20 +14,25 @@ Grids, written here before this slice ran a single holdout replay:
 
 Rules, also fixed beforehand:
 
-1. "Under a bar" means max drawdown below it in BOTH windows. The least risk reduction is
-   the passing setting with the largest average gross exposure in development.
-2. Each capped setting is paired with two uncapped ones (same buffer or stop, smaller
-   collateral): one with the same average gross exposure in development, one with the same
-   development max drawdown. The collateral of both is solved on development only.
+1. "Under a bar" means max drawdown below it in BOTH windows. Passing settings are listed
+   largest average gross exposure (development) first: the first row is the least risk
+   reduction, the first row without a cap the least reduction by size alone.
+2. Each capped setting is paired with uncapped twins (same buffer or stop, less collateral):
+   one with the same average gross exposure and one with the same max drawdown, both solved
+   on development only.
 3. Robustness compares live, buffer=8, and the main setting with the highest development
    return per year among those with development max drawdown under 15% (holdout unused).
 
+Added after the first full run, to explain what the cap does (no grid or rule changed): a
+third twin, "equal split" (collateral = cap / (3 x stop%): the cap's risk budget shared by
+three coins), and the entry-size table at the end of question 2.
+
 Windows: development 2020-10-01..2023-12-31, holdout 2024-01-01..2026-11-21; every run
 starts fresh at $2,500. "expo" is the average over UTC day ends of open position size as %
-of equity. Max drawdown in the grid tables is the harness's (equity at every 4h bar);
-question 3 also shows it from day-end equity. Costs: 7 bps a side and the configured borrow
-rate; funding, slippage and price impact are not modelled, so every drawdown printed here is
-a floor for what live trading can show, not an estimate of it.
+of equity (development/holdout). Max drawdown is the harness's (equity at every 4h bar);
+question 3 also shows it from day-end equity; calendar year 2026 ends on 2026-11-21.
+Slippage and price impact are not modelled and equity is never marked inside a bar, so
+every drawdown printed here is a floor for what live trading can show, not an estimate.
 
 Usage: python research/exp023_sizing.py <data_dir> <cache_dir>
 """
@@ -50,11 +55,11 @@ import exp023_lib as lib
 D = Decimal
 MAIN_COLLATERAL = ("2", "3", "5", "7.5", "10")
 MAIN_BUFFER = ("4", "6", "8", "12")
-MAIN_CAPS = (None, "6", "3")
+MAIN_CAPS = (None, D(6), D(3))
 MAIN_STOP = D(30)
 SPOT_COLLATERAL = ("5", "7.5", "10", "15")
 SPOT_STOP = ("6", "10")
-SPOT_CAPS = (None, "1.5")
+SPOT_CAPS = (None, D("1.5"))
 BARS = (15.0, 20.0, 30.0)  # max drawdown bars, %; the owner's go-live bar is the first
 GO_LIVE_DD = 15.0
 DEV, HOLD = lib.WINDOWS["dev"], lib.WINDOWS["hold"]
@@ -64,6 +69,7 @@ SECOND = timedelta(seconds=1)
 MOVERS = ("OPENED", "TAKE_PROFIT", "CLOSED", "LIQUIDATED")
 ROLLING_STARTS = 62  # first of every month, 2020-10 .. 2025-11
 QUARTER_STARTS = 24  # 2020-10 .. 2026-07
+FULL_SIZE = 0.8  # an entry with at least this share of the configured collateral is "full"
 
 
 @dataclass(frozen=True)
@@ -81,10 +87,6 @@ class Setting:
         """Short name used in the tables."""
         mid = f"stop={self.stop}" if self.buffer is None else f"b={self.buffer}"
         return f"c={self.collateral} {mid} cap={'-' if self.cap is None else self.cap}"
-
-    def cap_can_bind(self) -> bool:
-        """Whether three full positions on one side would pass the cap."""
-        return self.cap is None or self.cap < 3 * self.collateral * self.stop / 100
 
 
 @dataclass(frozen=True)
@@ -104,10 +106,6 @@ class Row:
     s: Setting
     dev: Run
     hold: Run
-
-    def worst_dd(self) -> float:
-        """The larger of the two windows' max drawdowns, %."""
-        return max(self.dev.stats["dd"], self.hold.stats["dd"])
 
 
 def _day(e: dict[str, Any]) -> date:
@@ -146,18 +144,20 @@ class Lab:
         self.base = {name: lib.account(name)[0] for name in ("main", "spot-perps")}
         self.memo: dict[tuple[Setting, datetime, datetime], Run] = {}
 
-    def run(self, s: Setting, start: datetime, end: datetime) -> Run:
+    def replay(self, s: Setting, start: datetime, end: datetime) -> lib.Result:
         """Replay one setting over ``[start, end)`` from a fresh $2,500 account."""
+        changed: dict[str, Any] = {"max_collateral_per_position_pct": s.collateral}
+        changed["stop_loss_pct_of_collateral"] = s.stop
+        if s.buffer is not None:
+            changed["liquidation_buffer_daily_moves"] = s.buffer
+        params = dataclasses.replace(self.base[s.account], **changed)
+        return lib.run(params, self.feed, start, end, group_cap=s.cap)
+
+    def run(self, s: Setting, start: datetime, end: datetime) -> Run:
+        """The memoised summary of one replay."""
         key = (s, start, end)
         if key not in self.memo:
-            changed: dict[str, Any] = {
-                "max_collateral_per_position_pct": s.collateral,
-                "stop_loss_pct_of_collateral": s.stop,
-            }
-            if s.buffer is not None:
-                changed["liquidation_buffer_daily_moves"] = s.buffer
-            params = dataclasses.replace(self.base[s.account], **changed)
-            res = lib.run(params, self.feed, start, end, group_cap=s.cap)
+            res = self.replay(s, start, end)
             self.memo[key] = Run(res.stats, res.daily_equity, *_exposure(res))
         return self.memo[key]
 
@@ -166,26 +166,17 @@ class Lab:
         return Row(s, self.run(s, *DEV), self.run(s, *HOLD))
 
 
-def main_grid() -> list[Setting]:
-    """The pre-set main grid."""
+def grid(account: str) -> list[Setting]:
+    """The pre-set grid of one account, without the caps that cannot bind."""
+    main = account == "main"
     out = [
-        Setting("main", D(c), MAIN_STOP, D(b), None if cap is None else D(cap))
-        for b in MAIN_BUFFER
-        for c in MAIN_COLLATERAL
-        for cap in MAIN_CAPS
+        Setting(account, D(c), MAIN_STOP if main else D(x), D(x) if main else None, cap)
+        for x in (MAIN_BUFFER if main else SPOT_STOP)
+        for c in (MAIN_COLLATERAL if main else SPOT_COLLATERAL)
+        for cap in (MAIN_CAPS if main else SPOT_CAPS)
     ]
-    return [s for s in out if s.cap_can_bind()]
-
-
-def spot_grid() -> list[Setting]:
-    """The pre-set spot-perps grid."""
-    out = [
-        Setting("spot-perps", D(c), D(stop), None, None if cap is None else D(cap))
-        for stop in SPOT_STOP
-        for c in SPOT_COLLATERAL
-        for cap in SPOT_CAPS
-    ]
-    return [s for s in out if s.cap_can_bind()]
+    # Reason: three full positions risk 3 x collateral x stop%; a cap at or above never binds.
+    return [s for s in out if s.cap is None or s.cap < 3 * s.collateral * s.stop / 100]
 
 
 def _cell(r: Run) -> str:
@@ -198,45 +189,38 @@ def _cell(r: Run) -> str:
 
 
 CELL_HEAD = f"{'CAGR':>8} {'Shrp':>5} {'maxDD':>6} {'wDay':>7} {'C/DD':>5}"
+LINE_HEAD = (
+    f"{'setting':24} | {'expo d/h':>8} {'tr/mo':>5} {'stop%':>5} {'fee/y':>5} | "
+    f"{CELL_HEAD} | {CELL_HEAD}"
+)
 
 
 def _line(label: str, r: Row) -> str:
     d = r.dev.stats
     return (
-        f"{label:24} | {r.dev.expo:4.0f}% {d['trades_mo']:5.1f} {d['stop_share']:4.0f}% "
-        f"{d['fee_drag']:4.0f}% | {_cell(r.dev)} | {_cell(r.hold)}"
+        f"{label:24} | {r.dev.expo:3.0f}/{r.hold.expo:3.0f}% {d['trades_mo']:5.1f} "
+        f"{d['stop_share']:4.0f}% {d['fee_drag']:4.0f}% | {_cell(r.dev)} | {_cell(r.hold)}"
     )
 
 
-LINE_HEAD = (
-    f"{'setting':24} | {'expo':>5} {'tr/mo':>5} {'stop%':>5} {'fee/y':>5} | {CELL_HEAD} | {CELL_HEAD}"
-)
-
-
-def frontier(lab: Lab, title: str, grid: list[Setting], live: Setting) -> list[Row]:
+def frontier(lab: Lab, title: str, account: str, live: Setting) -> list[Row]:
     """Print one account's grid and which settings stay under each drawdown bar."""
     print(f"\n== Question 1: {title}")
-    print("left block development, right block holdout; expo, tr/mo, stop%, fee/y: development")
+    print("left block development, right block holdout; tr/mo, stop%, fee/y: development")
     print(LINE_HEAD)
-    rows = [lab.row(s) for s in grid]
+    rows = [lab.row(s) for s in grid(account)]
     for r in rows:
         print(_line(r.s.label + (" LIVE" if r.s == live else ""), r), flush=True)
     for bar in BARS:
-        ok = sorted((r for r in rows if r.worst_dd() < bar), key=lambda r: -r.dev.expo)
+        ok = [r for r in rows if max(r.dev.stats["dd"], r.hold.stats["dd"]) < bar]
         print(f"\nmax drawdown under {bar:.0f}% in both windows: {len(ok)} of {len(rows)} settings")
-        if not ok:
-            continue
-        top = max(ok, key=lambda r: r.dev.stats["cagr"])
-        print(f"  least risk reduction (largest exposure): {ok[0].s.label}")
-        print(f"  highest development return among them:   {top.s.label}")
-        for r in ok if bar == GO_LIVE_DD else ok[:5]:
+        for r in sorted(ok, key=lambda r: -r.dev.expo):
             print("  " + _line(r.s.label, r))
     ratio = [r.hold.stats["dd"] / r.dev.stats["dd"] for r in rows]
-    worse = sum(1 for x in ratio if x > 1)
     print(
         f"\nholdout max drawdown / development max drawdown: min {min(ratio):.2f}, "
         f"median {statistics.median(ratio):.2f}, max {max(ratio):.2f}; "
-        f"holdout was deeper in {worse} of {len(rows)} settings"
+        f"holdout was deeper in {sum(1 for x in ratio if x > 1)} of {len(rows)} settings"
     )
     return rows
 
@@ -252,7 +236,6 @@ PIVOTS: tuple[tuple[str, Callable[[Run], float], str], ...] = (
     ("return per year / max drawdown", lambda r: r.stats["cagr"] / r.stats["dd"], ".2f"),
     ("log growth / log drawdown (size-free)", _log_ratio, ".2f"),
     ("Sharpe", lambda r: r.stats["sharpe"], ".2f"),
-    ("average gross exposure, % of equity", lambda r: r.expo, ".0f"),
 )
 
 
@@ -271,54 +254,83 @@ def pivots(rows: list[Row]) -> None:
             print(f"{'buffer=' + b:10}" + "".join(f"{x:>14}" for x in cells))
 
 
-def matched(lab: Lab, k: Setting) -> tuple[Setting, Setting]:
-    """Uncapped twins of ``k``: same development exposure, and same development drawdown."""
+def matched(lab: Lab, k: Setting) -> dict[str, Setting]:
+    """Uncapped twins of ``k``: same exposure, same drawdown (development), equal split."""
     plain = dataclasses.replace(k, cap=None)
     target = lab.run(k, *DEV)
     c = k.collateral
     for _ in range(3):
         got = lab.run(dataclasses.replace(plain, collateral=c), *DEV).expo
         c = (c * D(str(target.expo / got))).quantize(D("0.01"))
-    by_expo = dataclasses.replace(plain, collateral=c)
     # Reason: drawdown rises with collateral, so bisect on it (to 0.01% of equity).
     lo, hi = D("0.2"), k.collateral
     for _ in range(10):
         mid = ((lo + hi) / 2).quantize(D("0.01"))
-        if lab.run(dataclasses.replace(plain, collateral=mid), *DEV).stats["dd"] < target.stats["dd"]:
+        twin = dataclasses.replace(plain, collateral=mid)
+        if lab.run(twin, *DEV).stats["dd"] < target.stats["dd"]:
             lo = mid
         else:
             hi = mid
-    return by_expo, dataclasses.replace(plain, collateral=hi)
+    assert k.cap is not None
+    split = (k.cap / (3 * k.stop / 100)).quantize(D("0.01"))
+    return {
+        "same expo": dataclasses.replace(plain, collateral=c),
+        "same dev DD": dataclasses.replace(plain, collateral=hi),
+        "equal split": dataclasses.replace(plain, collateral=split),
+    }
 
 
 def cap_versus_smaller(lab: Lab, rows: list[Row]) -> None:
-    """Question 2: every capped setting against its two uncapped twins."""
+    """Question 2: every capped setting against its uncapped twins."""
     capped = [r for r in rows if r.s.cap is not None]
-    wins = {"expo": [0, 0, 0, 0], "dd": [0, 0, 0, 0]}
-    gaps: dict[str, list[float]] = {"expo": [], "dd": []}
+    wins: dict[tuple[str, str], list[int]] = {}
     print(LINE_HEAD)
     for r in capped:
         print(_line(r.s.label, r))
-        for kind, twin in zip(("expo", "dd"), matched(lab, r.s), strict=True):
+        for kind, twin in matched(lab, r.s).items():
             t = lab.row(twin)
-            print(_line(f"  same {kind}: c={twin.collateral}", t), flush=True)
-            a, b = r.hold.stats, t.hold.stats
-            better = (
-                a["cagr"] > b["cagr"],
-                a["sharpe"] > b["sharpe"],
-                a["dd"] < b["dd"],
-                a["cagr"] / a["dd"] > b["cagr"] / b["dd"],
-            )
-            wins[kind] = [w + int(x) for w, x in zip(wins[kind], better, strict=True)]
-            gaps[kind].append(a["cagr"] / a["dd"] - b["cagr"] / b["dd"])
-    n = len(capped)
-    for kind, text in (("expo", "same exposure"), ("dd", "same development drawdown")):
-        w = wins[kind]
+            print(_line(f"  {kind}: c={twin.collateral}", t), flush=True)
+            for w in ("dev", "hold"):
+                a, b = getattr(r, w).stats, getattr(t, w).stats
+                better = (
+                    a["cagr"] > b["cagr"],
+                    a["sharpe"] > b["sharpe"],
+                    a["dd"] < b["dd"],
+                    a["cagr"] / a["dd"] > b["cagr"] / b["dd"],
+                )
+                old = wins.get((kind, w), [0, 0, 0, 0])
+                wins[(kind, w)] = [x + int(y) for x, y in zip(old, better, strict=True)]
+    print(f"in how many of {len(capped)} pairs the cap beat the uncapped twin:")
+    for (kind, w), v in wins.items():
         print(
-            f"cap against uncapped at the {text}, HOLDOUT, {n} pairs: higher return {w[0]}, "
-            f"higher Sharpe {w[1]}, smaller drawdown {w[2]}, higher return/drawdown {w[3]}; "
-            f"median gap in return/drawdown {statistics.median(gaps[kind]):+.2f}"
+            f"  {kind:12} {'development' if w == 'dev' else 'holdout':12} higher return {v[0]:2d}, "
+            f"higher Sharpe {v[1]:2d}, smaller drawdown {v[2]:2d}, higher return/drawdown {v[3]:2d}"
         )
+
+
+def cap_sizes(lab: Lab, k: Setting) -> None:
+    """Which entries a setting bets most on: full-size against cut-down entries."""
+    for name, window in (("development", DEV), ("holdout", HOLD)):
+        res = lab.replay(k, *window)
+        live: dict[str, list[float]] = {}  # market -> [full size?, collateral, P&L so far]
+        done: dict[bool, list[float]] = {True: [], False: []}  # P&L, % of collateral
+        for e in res.events:
+            m = str(e.get("market"))
+            if e["event"] == "OPENED":
+                usd = float(e["collateral_usd"])
+                share = usd / res.daily_equity[_day(e)] * 100 / float(k.collateral)
+                live[m] = [float(share >= FULL_SIZE), usd, -float(e["fee_usd"])]
+            elif e["event"] in ("TAKE_PROFIT", "CLOSED"):
+                live[m][2] += float(e["pnl_usd"]) - float(e["fees_usd"])
+                if e["event"] == "CLOSED":
+                    full, usd, pnl = live.pop(m)
+                    done[bool(full)].append(pnl / usd * 100)
+        n = len(done[True]) + len(done[False])
+        text = f"{k.label:17} {name:12} {n:5d} entries, {len(done[True]) / n:4.0%} at full size"
+        for label, xs in (("full-size", done[True]), ("cut-down", done[False])):
+            if xs:
+                text += f"; {label} mean P&L {statistics.fmean(xs):+5.1f}% of collateral"
+        print(text, flush=True)
 
 
 def _month(year: int, month: int, add: int = 0) -> datetime:
@@ -340,25 +352,28 @@ def _path(daily: dict[date, float], until: date | None = None) -> tuple[float, f
     return (eq[-1] / START_USD - 1) * 100, dd, sharpe
 
 
-def _spread(xs: list[float]) -> str:
-    """min, 10th percentile, median, 90th percentile, max."""
-    q = statistics.quantiles(xs, n=10, method="inclusive")
-    return " ".join(f"{x:7.1f}" for x in (min(xs), q[0], statistics.median(xs), q[8], max(xs)))
-
-
 def _share(flags: list[bool]) -> str:
     return f"{sum(flags)}/{len(flags)} ({sum(flags) / len(flags) * 100:.0f}%)"
 
 
-SPREAD_HEAD = f"{'min':>7} {'p10':>7} {'median':>7} {'p90':>7} {'max':>7}"
+def _dist(
+    who: str, what: str, xs: list[float], tag: str = "", hit: list[bool] | None = None
+) -> None:
+    """Print min, 10th percentile, median, 90th percentile, max, and a share if given."""
+    q = statistics.quantiles(xs, n=10, method="inclusive")
+    five = " ".join(f"{x:7.1f}" for x in (min(xs), q[0], statistics.median(xs), q[8], max(xs)))
+    tail = "" if hit is None else f" | {tag} {_share(hit)}"
+    print(f"{who:14} {what:21} {five}{tail}", flush=True)
+
+
+SPREAD_HEAD = f"{'':36} {'min':>7} {'p10':>7} {'median':>7} {'p90':>7} {'max':>7}"
 Picks = list[tuple[str, Setting]]
 Test = tuple[float, float, float, float, datetime]  # days, return %, max DD %, Sharpe, start
 
 
 def by_year(lab: Lab, picks: Picks) -> None:
     """Question 3a: one fresh run per calendar year."""
-    print("\n(a) calendar years, a fresh $2,500 each: return %, max drawdown % from day-end")
-    print("    equity (and from 4h bars in brackets). 2026 ends on 2026-11-21.")
+    print("\n(a) calendar years, a fresh $2,500 each: return %, max DD % day-end (4h bars)")
     print(f"{'year':5} | " + " | ".join(f"{name:^26}" for name, _ in picks))
     for y in range(2021, 2027):
         cells = []
@@ -373,23 +388,16 @@ def rolling(lab: Lab, picks: Picks) -> None:
     """Question 3b: 12-month windows starting on the first of every month."""
     starts = [_month(2020, 10, i) for i in range(ROLLING_STARTS)]
     print(f"\n(b) {len(starts)} rolling 12-month windows, starts 2020-10 .. 2025-11, each fresh")
-    print(f"{'':36} {SPREAD_HEAD}")
+    print(SPREAD_HEAD)
     for name, s in picks:
         runs = [lab.run(s, t, _month(t.year, t.month, 12)) for t in starts]
         paths = [_path(r.daily) for r in runs]
         rets = [p[0] for p in paths]
         day_dd = [p[1] for p in paths]
         bar_dd = [r.stats["dd"] for r in runs]
-        print(f"{name:14} 12-month return %    {_spread(rets)} | lost money {_share([x < 0 for x in rets])}")
-        print(
-            f"{'':14} max DD %, day-end     {_spread(day_dd)} | over 15% "
-            f"{_share([x > GO_LIVE_DD for x in day_dd])}"
-        )
-        print(
-            f"{'':14} max DD %, 4h bars     {_spread(bar_dd)} | over 15% "
-            f"{_share([x > GO_LIVE_DD for x in bar_dd])}",
-            flush=True,
-        )
+        _dist(name, "12-month return %", rets, "lost money", [x < 0 for x in rets])
+        _dist("", "max DD %, day-end", day_dd, "over 15%", [x > GO_LIVE_DD for x in day_dd])
+        _dist("", "max DD %, 4h bars", bar_dd, "over 15%", [x > GO_LIVE_DD for x in bar_dd])
 
 
 def first_hundred(lab: Lab, picks: Picks) -> None:
@@ -411,17 +419,15 @@ def first_hundred(lab: Lab, picks: Picks) -> None:
             found[name].append((float(days), ret, dd, sharpe, q))
             cells.append(f"{days:4d}d {ret:+8.1f}% dd {dd:5.1f}% {'+' if sharpe > 0 else '-'}")
         print(f"{q:%Y-%m}  | " + " | ".join(cells), flush=True)
-    print(f"\n{'':36} {SPREAD_HEAD}")
+    print("\n" + SPREAD_HEAD)
     for name, s in picks:
         got = found[name]
         rets = [g[1] for g in got]
+        dds = [g[2] for g in got]
         passed = [g[2] < GO_LIVE_DD and g[3] > 0 for g in got]
-        print(f"{name:14} days to 100 entries   {_spread([g[0] for g in got])}")
-        print(f"{'':14} return % at the cut   {_spread(rets)} | lost money {_share([x < 0 for x in rets])}")
-        print(
-            f"{'':14} max DD % at the cut   {_spread([g[2] for g in got])} | over 15% "
-            f"{_share([g[2] > GO_LIVE_DD for g in got])}"
-        )
+        _dist(name, "days to 100 entries", [g[0] for g in got])
+        _dist("", "return % at the cut", rets, "lost money", [x < 0 for x in rets])
+        _dist("", "max DD % at the cut", dds, "over 15%", [x > GO_LIVE_DD for x in dds])
         print(f"{'':14} met the bar (DD under 15% and Sharpe above 0): {_share(passed)}")
         _what_follows(lab, s, got, passed)
 
@@ -436,18 +442,19 @@ def _what_follows(lab: Lab, s: Setting, got: list[Test], passed: list[bool]) -> 
             continue
         after = lab.run(s, nxt, _month(nxt.year, nxt.month, 12))
         pairs.append((ret, _path(after.daily)[0], after.stats["dd"], ok))
-    rho = statistics.correlation([p[0] for p in pairs], [p[1] for p in pairs], method="ranked")
-    met = [p for p in pairs if p[3]]
-    missed = [p for p in pairs if not p[3]]
+    both = zip(*((p[0], p[1]) for p in pairs), strict=True)
+    ranks = [[float(sorted(v).index(x)) for x in v] for v in both]
     print(
-        f"{'':14} next 12 months ({len(pairs)} tests with a full year after them): rank "
-        f"correlation of test return with next-year return {rho:+.2f}"
+        f"{'':14} the 12 months after the test ({len(pairs)} tests have a full year after "
+        f"them): rank correlation of test return with next-year return "
+        f"{statistics.correlation(*ranks):+.2f}"
     )
-    for label, group in (("met the bar", met), ("missed the bar", missed)):
+    for label, want in (("met", True), ("missed", False)):
+        group = [p for p in pairs if p[3] is want]
         if group:
             print(
-                f"{'':14}   tests that {label}: next year lost money in "
-                f"{_share([p[1] < 0 for p in group])}, had max DD over 15% in "
+                f"{'':14}   tests that {label} the bar: next year lost money in "
+                f"{_share([p[1] < 0 for p in group])}, had max DD over 15% (4h bars) in "
                 f"{_share([p[2] > GO_LIVE_DD for p in group])}, median return "
                 f"{statistics.median(p[1] for p in group):+.1f}%"
             )
@@ -459,26 +466,23 @@ def main() -> None:
     print("EXP-2026-023 sizing slice (paper only). Grids and rules: see the module docstring.")
     print("Backtest numbers; not a forecast. Live drawdowns are normally deeper than these.")
     live = Setting("main", D(10), MAIN_STOP, D(4))
-    rows = frontier(lab, "main, 30% stop, ladder kept", main_grid(), live)
+    rows = frontier(lab, "main, 30% stop, ladder kept", "main", live)
     pivots(rows)
     spot_live = Setting("spot-perps", D(15), D(6))
-    spot_rows = frontier(lab, "spot-perps, 1x, no ladder", spot_grid(), spot_live)
-
+    spot_rows = frontier(lab, "spot-perps, 1x, no ladder", "spot-perps", spot_live)
     print("\n== Question 2: a same-side cap against simply posting less collateral")
-    print("each capped setting, then the uncapped setting with the same average exposure and")
-    print("the uncapped setting with the same development max drawdown (same buffer or stop)")
+    print("each capped setting, then its uncapped twins (see the module docstring)")
     print("-- main")
     cap_versus_smaller(lab, rows)
     print("-- spot-perps")
     cap_versus_smaller(lab, spot_rows)
-
+    print("-- what the cap does to entry size (main, collateral 10, buffer 4)")
+    for cap in MAIN_CAPS:
+        cap_sizes(lab, dataclasses.replace(live, cap=cap))
     under = [r for r in rows if r.dev.stats["dd"] < GO_LIVE_DD]
     best = max(under, key=lambda r: r.dev.stats["cagr"]).s
-    picks: Picks = [
-        ("live", live),
-        ("buffer=8", dataclasses.replace(live, buffer=D(8))),
-        ("under-15 pick", best),
-    ]
+    wide = dataclasses.replace(live, buffer=D(8))
+    picks: Picks = [("live", live), ("buffer=8", wide), ("under-15 pick", best)]
     print("\n== Question 3: robustness of live and two candidates")
     print(f"under-15 pick (highest development return with development DD under 15%): {best.label}")
     print(LINE_HEAD)

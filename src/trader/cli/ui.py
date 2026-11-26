@@ -66,6 +66,14 @@ def _paper_account(account: str) -> dict[str, Any] | None:
     return {**out, "account": account, "settings": settings_summary(p)}
 
 
+def _top10_markets() -> list[str]:
+    """The ten-coin account's markets from its config, or none if it cannot be read."""
+    try:
+        return [m.market for m in load_perps_file(file_name="top10.yaml").markets]
+    except (ValueError, OSError, ConfigLoadError, PerpsConfigUnresolvedError):
+        return []
+
+
 @app.command("serve")
 def serve_cmd(
     host: str = typer.Option(
@@ -88,6 +96,8 @@ def serve_cmd(
         # writes (cli/perps.py); read only.
         lambda: _paper_account("main"),
         lambda: _paper_account("degen"),
+        lambda: _paper_account("top10"),
+        _top10_markets,
     )
     # Reason: in Docker the server binds 0.0.0.0 inside the container, while compose
     # publishes it on the host's 127.0.0.1 only (docker-compose.yml, ADR-026).

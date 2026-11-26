@@ -47,3 +47,11 @@
 - **Consequences:** merging to main deploys within about 5 minutes, so main must stay
   deployable (CI runs on every pull request). One-time setup is `scripts/ops/install.sh` on
   the server plus adding its printed key to the ops repository (RUNBOOK 8b).
+
+## Amendment (2026-11-26): push failure alert
+
+After about 48 hours of silent status pushes (Nov 24-26), `push_status.sh` counts failed and
+lock-skipped runs in `$OPS_STATE/push_status.failures` and alerts through the same webhook
+on the 2nd in a row, every 24 more (about daily), and on recovery. A whole-server outage
+still cannot alert from the server; the 4-hourly cloud health check (health.json older than
+2 h) stays the backstop for that.

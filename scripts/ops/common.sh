@@ -34,9 +34,39 @@ notify() {
 }
 
 # One ops script at a time, so a health check never runs in the middle of a deploy.
+# An optional second argument names a function to call before skipping (push_status.sh
+# uses it to count skips, so a lock that never frees shows up as an alert).
 take_lock() {
   exec 9>"$OPS_STATE/ops.lock"
-  flock -w "${1:-0}" 9 || { echo "another ops script is running; skipping"; exit 0; }
+  if ! flock -w "${1:-0}" 9; then
+    echo "another ops script is running; skipping"
+    [ -n "${2:-}" ] && "$2" "skipped: another ops script held the lock"
+    exit 0
+  fi
+}
+
+# Failure streaks (ADR-047): alert on the 2nd failure in a row, then once per 24 more
+# (hourly scripts: about once a day), and once more when it recovers.
+# Reason: one failed hourly push is usually a network blip; a silent streak is not.
+streak_fail() {
+  local name="$1" msg="$2" f="$OPS_STATE/$1.failures" n=0
+  [ -f "$f" ] && n="$(cat "$f" 2>/dev/null || echo 0)"
+  [[ "$n" =~ ^[0-9]+$ ]] || n=0
+  n=$((n + 1))
+  echo "$n" >"$f"
+  if [ "$n" -ge 2 ] && [ $(((n - 2) % 24)) -eq 0 ]; then
+    notify "$name failing $n runs in a row: $msg"
+  fi
+}
+
+streak_ok() {
+  local name="$1" f="$OPS_STATE/$1.failures" n=0
+  [ -f "$f" ] && n="$(cat "$f" 2>/dev/null || echo 0)"
+  rm -f "$f"
+  if [[ "$n" =~ ^[0-9]+$ ]] && [ "$n" -ge 2 ]; then
+    notify "$name recovered after $n failed runs"
+  fi
+  return 0
 }
 
 # Keep each log under about 1 MB.

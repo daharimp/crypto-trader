@@ -3,7 +3,11 @@
 # private crypto-trader-ops repo so scheduled reviews can read them without server access.
 # The server's key for that repo cannot write to the bot code repo.
 source "$(dirname "$0")/common.sh"
-take_lock 300
+push_failed() { streak_fail push_status "$1"; }
+take_lock 300 push_failed
+# Reason: before this, a failed clone or `git push` only went to push_status.log and the ops
+# repo went quiet with no alert (Nov 24-26 2026).
+trap 'push_failed "error at line $LINENO (see push_status.log)"' ERR
 trim_log push_status.log
 
 if [ ! -d "$OPS_REPO_DIR/.git" ]; then
@@ -35,5 +39,6 @@ cd "$dest" || exit 1
 git pull --quiet --rebase origin main 2>/dev/null || true
 git add -A
 git -c user.name="crypto-trader server" -c user.email="ops@localhost" \
-  commit --quiet -m "status $(date -u +%FT%TZ)" || exit 0
+  commit --quiet -m "status $(date -u +%FT%TZ)" || { streak_ok push_status; exit 0; }
 git push --quiet origin HEAD:main
+streak_ok push_status

@@ -8,9 +8,14 @@ Per bar *t* (timestamps are the bar's close time, as in ``trader.perps.session.c
 1. mark: accrue borrow, check stops, liquidations and take-profits on the bar's extremes
    for every position whose coin has this bar (a coin without the bar is carried at its
    last close and cannot stop out on it), then roll the UTC day;
-2. decide from closes up to *t* for every coin that has bar *t* and bar *t+1*;
+2. decide from closes up to *t* for every coin that has bar *t* and bar *t+1*, coin by
+   coin in the account's order as the live session does (``apply_signal``: close a
+   position the signal no longer wants, then open), so a binding cap refuses the same
+   coins as live;
 3. fill at the open of bar *t+1*.
 A position in a coin whose data has ended is closed at its last close ("DATA_ENDED").
+Nothing is decided on the last bar of the window: its fills would belong to the next
+window (``exp023_lib`` opens there and closes at once, which costs a round-trip fee).
 
 Signals and typical daily moves are cached per coin, stamped with the candle file's row
 count and last timestamp so a changed file rebuilds its cache.
@@ -125,6 +130,26 @@ class Feed:
         """Signal per coin per bar time. Use a new label for every different signal."""
         return {m: self.signal(m, label, factory) for m in self.coins}
 
+    def native_signal(self, m: str, label: str, factory: Callable[[], base.SignalFn]) -> Series:
+        """Signal of one coin read from this timeframe's own closes (no 4h trend view)."""
+
+        def build() -> Series:
+            fn = factory()
+            hist: list[Decimal] = []
+            out: Series = {}
+            for t in self.order[m]:
+                hist.append(self.rows[m][t][4])
+                out[t] = fn(hist[-base.KEEP :])
+            return out
+
+        return self._series(f"sig-{label}", m, build)
+
+    def native_signals(
+        self, label: str = "native-live", factory: Callable[[], base.SignalFn] = base.live_signal
+    ) -> dict[str, Series]:
+        """The signal read from this timeframe's own candles, per coin per bar time."""
+        return {m: self.native_signal(m, label, factory) for m in self.coins}
+
     def move(self, m: str) -> Series:
         """Typical daily move (ADR-032) of one coin per bar time."""
 
@@ -231,7 +256,7 @@ def run(
         tradable = []
         for m in row:
             nxt = feed.rows[m].get(closes_at)
-            if nxt is not None:
+            if nxt is not None and n < len(times) - 1:
                 px[m] = nxt[1]
                 tradable.append(m)
         wanted: dict[PerpSide, list[str]] = {PerpSide.LONG: [], PerpSide.SHORT: []}
@@ -242,6 +267,9 @@ def run(
             else:
                 acct.daily_moves[m] = move
             target = sig[m].get(t)
+            if group_cap is None:
+                acct.apply_signal(m, target, px, closes_at)
+                continue
             cur = acct.positions.get(m)
             if cur is not None and cur.side != target:
                 acct.close(m, px, closes_at, reason="SIGNAL_CHANGED")
@@ -250,17 +278,16 @@ def run(
             wanted[target].append(m)
         for side, markets in wanted.items():
             for k, m in enumerate(markets):
-                if group_cap is not None:
-                    equity = acct.equity(px)
-                    room = group_cap - _open_risk_pct(acct, side, equity)
-                    # Reason: coins opening together share the room equally.
-                    pct = min(
-                        params.max_collateral_per_position_pct,
-                        max(room, Decimal(0)) / (len(markets) - k) / stop_share,
-                    )
-                    if pct < min_collateral_pct:
-                        continue
-                    acct.params = dataclasses.replace(params, max_collateral_per_position_pct=pct)
+                equity = acct.equity(px)
+                room = (group_cap or Decimal(0)) - _open_risk_pct(acct, side, equity)
+                # Reason: coins opening together share the room equally.
+                pct = min(
+                    params.max_collateral_per_position_pct,
+                    max(room, Decimal(0)) / (len(markets) - k) / stop_share,
+                )
+                if pct < min_collateral_pct:
+                    continue
+                acct.params = dataclasses.replace(params, max_collateral_per_position_pct=pct)
                 acct.open(m, side, px, closes_at)
                 acct.params = params
         if tradable:
@@ -284,11 +311,13 @@ def clusters(events: list[dict[str, Any]]) -> int:
 
 
 def precompute(data: Path, cache: Path, tf: str, coins: list[str]) -> None:
-    """Build the live-signal and daily-move caches for some coins (run several in parallel)."""
+    """Build the signal and daily-move caches for some coins (run several in parallel)."""
     feed = build_feed(data, tf, coins, cache)
     for m in coins:
         feed.signal(m, "live", base.live_signal)
         feed.move(m)
+        if tf != "4h":
+            feed.native_signal(m, "native-live", base.live_signal)
         print(f"cached {tf} {m}", flush=True)
 
 

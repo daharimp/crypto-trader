@@ -1,4 +1,4 @@
-# ADR-054: The dashboard shows the ten-coin paper account, priced from Kraken
+# ADR-055: The dashboard shows the ten-coin paper account, priced from Kraken
 
 - **Status:** Accepted (2026-11-26; owner request, relayed in the project thread, after the
   ten-coin paper account of ADR-051 started)

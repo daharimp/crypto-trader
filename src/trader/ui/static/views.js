@@ -1,5 +1,5 @@
 /* Trader Desk account views (ADR-037): Overview, Positions and Trades for the leverage
-   paper accounts (main and degen, ADR-038; top 10, ADR-054) and the spot account. Read-only: every request is a GET to /api. */
+   paper accounts (main and degen, ADR-038; top 10, ADR-055) and the spot account. Read-only: every request is a GET to /api. */
 (() => {
   'use strict';
   const { $, el, svg, usd, signed, pct, arrow, tone, digits, span, when, stat, meter, get, openSheet } = Desk;
@@ -9,7 +9,7 @@
   let account = 'perps';
   const num = (x) => (x == null || x === '' || Number.isNaN(Number(x)) ? null : Number(x));
   // Reason: the watchlist covers the chart coins; the ten-coin account's other coins come from
-  // /api/top10-prices (ADR-054).
+  // /api/top10-prices (ADR-055).
   const priceOf = (instrument) => { const c = String(instrument).split(/[-/]/)[0]; return D.watch.find((w) => w.market === c)?.price ?? D.quotes[c] ?? null; };
   const card = (...kids) => { const c = el('section', 'card'); c.append(...kids); return c; };
   const heading = (text, right) => { const r = el('div', 'row'); r.append(el('h2', 'label', text)); if (right) r.append(right); return r; };
@@ -24,7 +24,9 @@
   function settingsRows(st) {
     if (!st) return [];
     const off = (v, f) => (v == null ? 'off' : f(v));
-    return [['Collateral per trade', `${st.collateral_pct}% of the account`],
+    // Reason: with a size range (ADR-054) collateral_pct is the largest size, so show both ends.
+    const coll = st.min_collateral_pct == null ? `${st.collateral_pct}%` : `${st.min_collateral_pct}–${st.collateral_pct}%`;
+    return [['Collateral per trade', `${coll} of the account`],
       ['Liquidation buffer', off(st.buffer_daily_moves, (v) => `${v} typical daily moves`)],
       ['Stop', off(st.stop_pct_of_collateral, (v) => `at ${v}% of collateral lost`)],
       ['Bad-day stop', `after a ${st.daily_loss_limit_pct}% loss`], ['Leverage cap', `${st.max_leverage}x`], ['Settings version', `v${st.config_version}`]];

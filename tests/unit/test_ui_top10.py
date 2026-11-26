@@ -1,4 +1,4 @@
-"""ADR-054: the dashboard shows the ten-coin paper account and prices for all its coins."""
+"""ADR-055: the dashboard shows the ten-coin paper account and prices for all its coins."""
 
 from __future__ import annotations
 

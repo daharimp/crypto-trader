@@ -152,7 +152,7 @@ class Sources:
 
     def quotes(self) -> dict[str, float]:
         """
-        Latest public Kraken price of each ten-coin account market (ADR-054).
+        Latest public Kraken price of each ten-coin account market (ADR-055).
 
         Reads the still-forming 4h candle, the same cached rows the watchlist uses, so BTC,
         ETH, SOL and XRP cost no extra request and a failed refresh serves the last good

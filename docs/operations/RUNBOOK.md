@@ -426,6 +426,14 @@ unexpected error. Investigate, fix, then disengage the kill switch.
 > Without the key it skips quietly. Models and the daily call budget are in
 > `configs/assistant.yaml` under `free_trade_reviews` (raise `daily_call_budget` after a
 > one-time $10 OpenRouter credit purchase lifts the free cap from 50 to 1,000 a day).
+>
+> **Debate reviews and memory (ADR-052).** With `debate: true` two free models argue for
+> and against how each trade was run and a third gives the verdict, graded on process, not
+> profit. The judge also sees its past calls on that account and whether they proved right
+> once code checked what the price did after the exit. Each trade's note gains a "How the
+> trade was run" section; `data/reports/trades/lessons.md` holds the scorecard and lessons
+> (read by the daily Claude review), `memory.json` the raw entries. Set `debate: false` to go
+> back to one model per trade.
 
 When a paper perps account has a bad day (it lost the daily limit and stopped for the rest of
 the UTC day), the review assistant reads that account's record, settings and the market, and

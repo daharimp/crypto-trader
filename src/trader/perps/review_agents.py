@@ -64,12 +64,38 @@ class FreeTradeReviews(BaseModel):
     daily_call_budget: int = Field(default=45, ge=1, le=1000)
     lookback_hours: int = Field(default=24, ge=1, le=72)
     timeout_s: int = Field(default=120, ge=10, le=600)
+    # ADR-052: bull and bear arguments from two free models, then a judge's verdict, with a
+    # memory of past verdicts checked against what the price did after each exit. Off by
+    # default; an empty role list falls back to ``models``.
+    debate: bool = False
+    bull_models: list[str] = Field(default_factory=list, max_length=3)
+    bear_models: list[str] = Field(default_factory=list, max_length=3)
+    judge_models: list[str] = Field(default_factory=list, max_length=3)
+    memory_reviews: int = Field(default=5, ge=0, le=20)
+    follow_up_bars: int = Field(default=6, ge=1, le=48)
 
     @model_validator(mode="after")
     def _models_when_enabled(self) -> FreeTradeReviews:
         if self.enabled and not self.models:
             raise ValueError("free_trade_reviews.enabled needs at least one model")
         return self
+
+    def models_for(self, role: str) -> list[str]:
+        """Models for a debate role (``bull``, ``bear``, ``judge``); ``models`` when unset."""
+        chosen = {
+            "bull": self.bull_models,
+            "bear": self.bear_models,
+            "judge": self.judge_models,
+        }.get(role)
+        return list(chosen or self.models)
+
+    def debate_calls(self) -> int:
+        """Most requests one debate can make: bull, bear, judge and the judge's retries."""
+        return 3 + self.retries
+
+    def single_calls(self) -> int:
+        """Most requests one single-model review can make."""
+        return 1 + self.retries
 
 
 class AssistantSettings(BaseModel):

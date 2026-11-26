@@ -13,6 +13,9 @@ based on confidence"). Values still need the owner's yes; nothing is reset; noth
       event for event (`run_exp025.py engine-S1..S4`)
 - [x] Unknown keys under `risk:` are refused
 - [ ] Owner decision UD-34: cooldown length for the ten-coin account (4, 12, 24 hours or none)
-- [ ] Size range per account as a setting (smallest and largest size per trade); the
-      composite chooses inside it only where the owner switches it on
-- [ ] Owner decision: where confidence sizing runs first, and with which range
+- [x] Size range per account as a setting (smallest and largest size per trade), off unless
+      set (ADR-054); the composite chooses inside it only where the owner switches it on;
+      `tests/unit/test_perps_confidence.py`; the built sizing matches the research composite
+      event for event (`run_exp026.py engine-A3`, `engine-B4`) and in a 30-day dry run of
+      the real bot loop
+- [ ] Owner decision UD-35: where confidence sizing runs first, and with which range

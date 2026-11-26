@@ -203,8 +203,9 @@ def run(
     end: datetime,
     *,
     coins: tuple[str, ...] | list[str],
-    scorer: Scorer | None = None,
+    scorer: Any = None,
     sizer: Sizer | None = None,
+    native: bool = False,
 ) -> tuple[base.Result, list[Entry]]:
     """
     Replay one account over ``[start, end)``; optionally score and size every new position.
@@ -215,9 +216,11 @@ def run(
         start (datetime): First bar.
         end (datetime): Bars opening at or after this are not used.
         coins: Coins traded, in the order the account walks them.
-        scorer (Scorer | None): Records the scores of every opened position.
+        scorer: A ``Scorer`` (or anything with its ``at``); records every entry's scores.
         sizer (Sizer | None): Scores -> collateral % of equity for that position (needs
             ``scorer``); flat sizing from ``params`` when omitted.
+        native (bool): Hand the scorer's MC to the account and let its own range rule
+            size the position (ADR-054); ``params`` must then carry the range.
 
     Returns:
         tuple[base.Result, list[Entry]]: Stats, events, daily equity; and the entries.
@@ -281,6 +284,8 @@ def run(
             if sizer is not None:
                 pct = sizer(scores)
                 acct.params = dataclasses.replace(params, max_collateral_per_position_pct=pct)
+            if native:
+                acct.confidence = {m: scores["MC"]}
             decision = acct.open(m, target, px, closes_at)
             acct.params = params
             if decision.approved and scorer is not None:

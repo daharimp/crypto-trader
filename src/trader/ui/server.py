@@ -19,6 +19,7 @@ from .data import (
     Fetcher,
     candles_payload,
     fetch_bars,
+    kraken_has,
     perps_payload,
     watch_payload,
 )
@@ -51,6 +52,12 @@ STATIC = {
 }
 
 CACHE_SECONDS = 60
+# Paper perps account routes -> the Sources reader for each (ADR-038, ADR-051).
+ACCOUNT_ROUTES = {
+    "/api/perps-paper": "perps_paper",
+    "/api/perps-degen": "perps_degen",
+    "/api/perps-top10": "perps_top10",
+}
 # Reason: a client (or the Tailscale proxy) that opens a connection and never finishes its
 # request would otherwise hold a server thread forever; enough of those and the page hangs.
 REQUEST_TIMEOUT_SECONDS = 30
@@ -67,6 +74,8 @@ class Sources:
         prices: Callable[[], dict[str, Any]],
         perps_paper: Callable[[], dict[str, Any] | None] = lambda: None,
         perps_degen: Callable[[], dict[str, Any] | None] = lambda: None,
+        perps_top10: Callable[[], dict[str, Any] | None] = lambda: None,
+        top10_markets: Callable[[], list[str]] = list,
     ) -> None:
         """
         Store the readers.
@@ -79,6 +88,8 @@ class Sources:
             perps_paper (Callable): Returns the forward paper perps account summary, or None
                 when that session has not run yet.
             perps_degen (Callable): The same for the second, degen paper account (ADR-038).
+            perps_top10 (Callable): The same for the ten-coin hourly account (ADR-051).
+            top10_markets (Callable): The ten-coin account's markets, for its prices.
         """
         self.status, self.fetch, self.perps_params, self.prices = (
             status,
@@ -88,6 +99,8 @@ class Sources:
         )
         self.perps_paper = perps_paper
         self.perps_degen = perps_degen
+        self.perps_top10 = perps_top10
+        self.top10_markets = top10_markets
         self._cache: dict[tuple[str, str], tuple[float, list[list[float]]]] = {}
         self._locks: dict[tuple[str, str], threading.Lock] = {}
         self._locks_guard = threading.Lock()
@@ -136,6 +149,30 @@ class Sources:
                 # Reason: the last row is the still-forming candle; its close is the latest price.
                 last[market] = float(rows[-1][4])
         return watch_payload(bars, last)
+
+    def quotes(self) -> dict[str, float]:
+        """
+        Latest public Kraken price of each ten-coin account market (ADR-054).
+
+        Reads the still-forming 4h candle, the same cached rows the watchlist uses, so BTC,
+        ETH, SOL and XRP cost no extra request and a failed refresh serves the last good
+        price. A market whose data fails with nothing cached is left out.
+
+        Returns:
+            dict[str, float]: ``{market: price}``.
+        """
+        prices: dict[str, float] = {}
+        for market in self.top10_markets():
+            symbol = f"{market}/USD"
+            if not kraken_has(symbol):
+                continue
+            try:
+                rows = self.rows(symbol, "4h")
+            except (OSError, ValueError, KeyError, StopIteration):
+                continue
+            if rows:
+                prices[market] = float(rows[-1][4])
+        return prices
 
 
 def make_handler(src: Sources) -> type[BaseHTTPRequestHandler]:
@@ -198,10 +235,10 @@ def make_handler(src: Sources) -> type[BaseHTTPRequestHandler]:
                         self._json(200, perps_payload(src.perps_params, market, bars))
                 elif url.path == "/api/prices":
                     self._json(200, src.prices())
-                elif url.path in ("/api/perps-paper", "/api/perps-degen"):
-                    acct = (
-                        src.perps_paper() if url.path == "/api/perps-paper" else src.perps_degen()
-                    )
+                elif url.path == "/api/top10-prices":
+                    self._json(200, src.quotes())
+                elif url.path in ACCOUNT_ROUTES:
+                    acct = getattr(src, ACCOUNT_ROUTES[url.path])()
                     self._json(
                         200, {"running": False} if acct is None else {"running": True, **acct}
                     )

@@ -1,14 +1,16 @@
 /* Trader Desk account views (ADR-037): Overview, Positions and Trades for the leverage
-   paper accounts (main and degen, ADR-038) and the spot account. Read-only: every request is a GET to /api. */
+   paper accounts (main and degen, ADR-038; top 10, ADR-055) and the spot account. Read-only: every request is a GET to /api. */
 (() => {
   'use strict';
   const { $, el, svg, usd, signed, pct, arrow, tone, digits, span, when, stat, meter, get, openSheet } = Desk;
-  const D = { status: null, watch: [], paper: null, degen: null, errors: {} };
+  const D = { status: null, watch: [], quotes: {}, paper: null, degen: null, top10: null, errors: {} };
   const SIGNALS = { tsmom_30d: '1-month trend', sma_stance_20_50: 'moving-average trend', consensus_sma_tsmom: 'both trend rules agree' };
   const NEAR = 15; // Reason: display only; a position inside 15% of liquidation is drawn amber.
   let account = 'perps';
   const num = (x) => (x == null || x === '' || Number.isNaN(Number(x)) ? null : Number(x));
-  const priceOf = (instrument) => D.watch.find((w) => w.market === String(instrument).split(/[-/]/)[0])?.price ?? null;
+  // Reason: the watchlist covers the chart coins; the ten-coin account's other coins come from
+  // /api/top10-prices (ADR-055).
+  const priceOf = (instrument) => { const c = String(instrument).split(/[-/]/)[0]; return D.watch.find((w) => w.market === c)?.price ?? D.quotes[c] ?? null; };
   const card = (...kids) => { const c = el('section', 'card'); c.append(...kids); return c; };
   const heading = (text, right) => { const r = el('div', 'row'); r.append(el('h2', 'label', text)); if (right) r.append(right); return r; };
 
@@ -17,11 +19,14 @@
   const PERPS = {
     perps: { key: 'paper', name: 'leverage paper account', service: 'perps' },
     degen: { key: 'degen', name: 'degen paper account', service: 'perps-degen' },
+    top10: { key: 'top10', name: 'top-10 paper account', service: 'perps-top10' },
   };
   function settingsRows(st) {
     if (!st) return [];
     const off = (v, f) => (v == null ? 'off' : f(v));
-    return [['Collateral per trade', `${st.collateral_pct}% of the account`],
+    // Reason: with a size range (ADR-054) collateral_pct is the largest size, so show both ends.
+    const coll = st.min_collateral_pct == null ? `${st.collateral_pct}%` : `${st.min_collateral_pct}–${st.collateral_pct}%`;
+    return [['Collateral per trade', `${coll} of the account`],
       ['Liquidation buffer', off(st.buffer_daily_moves, (v) => `${v} typical daily moves`)],
       ['Stop', off(st.stop_pct_of_collateral, (v) => `at ${v}% of collateral lost`)],
       ['Bad-day stop', `after a ${st.daily_loss_limit_pct}% loss`], ['Leverage cap', `${st.max_leverage}x`], ['Settings version', `v${st.config_version}`]];
@@ -52,7 +57,7 @@
       stats: [['Largest drop so far', `${num(a.max_drawdown_pct)?.toFixed(2) ?? '—'}%`], ['Fees and borrow paid', usd(num(a.fees_paid_usd))]],
       health: [['Rule', SIGNALS[a.signal] || a.signal], ['Candles', a.timeframe], ['Candles processed', String(a.cycles)],
         ['Last check', a.last_cycle_utc ? `${span(Date.now() - Date.parse(a.last_cycle_utc))} ago` : '—'], ['Started', when(a.started_at)],
-        ...(which === 'degen' ? settingsRows(a.settings) : [])],
+        ...(which !== 'perps' ? settingsRows(a.settings) : [])],
       note: 'Simulated money; it cannot place a real order. Account value is marked at the last completed candle; gain or loss per position uses the latest Kraken price, before closing fees and borrow. The liquidation price is the one recorded when the position opened. Results are not a forecast; profit is not guaranteed.',
     };
   }
@@ -83,7 +88,7 @@
     };
   }
   // Every account in one view (owner, 2026-11-16): positions grouped by account, trades merged.
-  const NAMES = { perps: 'Leverage · paper', degen: 'Degen · paper', spot: 'Spot' };
+  const NAMES = { perps: 'Leverage · paper', degen: 'Degen · paper', top10: 'Top 10 · paper', spot: 'Spot' };
   function allModel() {
     const parts = Object.keys(NAMES).map((k) => ({ k, m: k in PERPS ? perpsModel(k) : spotModel() }));
     const ok = parts.filter((x) => !x.m.error);
@@ -97,7 +102,7 @@
       title: 'All accounts · combined value',
       stats: ok.map((x) => [NAMES[x.k], usd(x.m.equity)]),
       health: parts.map((x) => [NAMES[x.k], x.m.error ? 'not running' : `${x.m.positions.length} open · ${x.m.trades.length} closed`]),
-      note: 'Every account added together: the two leverage accounts are simulated money; Spot is the spot session (paper until live is approved). Each account keeps its own limits. Results are not a forecast; profit is not guaranteed.',
+      note: 'Every account added together: the three leverage accounts are simulated money; Spot is the spot session (paper until live is approved). Each account keeps its own limits. Results are not a forecast; profit is not guaranteed.',
     };
   }
   const model = () => (account === 'all' ? allModel() : account in PERPS ? perpsModel(account) : spotModel());
@@ -260,7 +265,11 @@
     drawOverview(m); drawPositions(m); drawTrades(m);
   }
   async function refresh() {
-    const [status, watch, paper, degen] = await Promise.allSettled([get('/api/status'), get('/api/watch'), get('/api/perps-paper'), get('/api/perps-degen')]);
+    const [status, watch, paper, degen, top10, quotes] = await Promise.allSettled([get('/api/status'), get('/api/watch'), get('/api/perps-paper'), get('/api/perps-degen'), get('/api/perps-top10'), get('/api/top10-prices')]);
+    D.top10 = top10.status === 'fulfilled' ? top10.value : null;
+    D.errors.top10 = top10.status === 'rejected' ? `Top-10 paper account unavailable: ${top10.reason.message}` : null;
+    // Reason: keep the last prices if this refresh failed, so positions keep a gain/loss.
+    if (quotes.status === 'fulfilled') D.quotes = { ...D.quotes, ...quotes.value };
     D.paper = paper.status === 'fulfilled' ? paper.value : null;
     D.errors.paper = paper.status === 'rejected' ? `Leverage paper account unavailable: ${paper.reason.message}` : null;
     D.degen = degen.status === 'fulfilled' ? degen.value : null;

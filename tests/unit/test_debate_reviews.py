@@ -83,15 +83,45 @@ def test_debate_runs_bull_bear_judge_and_remembers_the_verdict(data: Path) -> No
 
 
 def test_bad_verdict_keeps_the_arguments_and_remembers_nothing(data: Path) -> None:  # noqa: F811
-    post = FakePost(OSError("429"), "bear says no", "junk", "still junk")
+    post = FakePost(OSError("429"), "bear says no", "junk", "still junk", "junk", "junk")
     cur: dict[str, Any] = {"free_done": [], "free_calls": {}}
     rv = fr.FreeReviewer("k", _cfg(), post)
     assert fr.run_pass(cur, rv, data, ["spot"], NOW, _facts, lambda s: None) == 1
-    assert cur["free_calls"][NOW.date().isoformat()] == 4  # failed requests count
+    # 4 for the debate, then 2 for the single review it falls back to (failed calls count)
+    assert cur["free_calls"][NOW.date().isoformat()] == 6
     (md,) = (data / "reports" / "trades" / "spot").glob("*.md")
     assert "Review skipped: no valid answer" in md.read_text()
+    assert "single review: no valid answer" in md.read_text()
     assert "(no argument: request failed" in md.read_text() and "bear says no" in md.read_text()
     assert rm.load_memory(data / "reports") == []
+
+
+def test_failed_debate_falls_back_to_a_single_review(data: Path) -> None:  # noqa: F811
+    # The 2026-11-27 top10 DOGE case: empty bull, error-object bear, judge rejected twice.
+    single = json.dumps(ANALYSIS.model_dump())
+    post = FakePost("", ValueError("error reply"), OSError("400"), OSError("400"), single)
+    cur: dict[str, Any] = {"free_done": [], "free_calls": {}}
+    sent: list[str] = []
+    rv = fr.FreeReviewer("k", _cfg(), post)
+    assert fr.run_pass(cur, rv, data, ["spot"], NOW, _facts, sent.append) == 1
+    assert (
+        cur["free_calls"][NOW.date().isoformat()] == 5
+    )  # 4 for the debate, 1 for the single review
+    assert sent[0].endswith("[free model]") and "review skipped" not in sent[0]
+    saved = json.loads(next((data / "reports" / "trades" / "spot").glob("*.json")).read_text())
+    assert saved["skipped"] is None and saved["reviewer"] == "m/free-a:free"
+    assert "(no argument: empty answer" in saved["debate"]["arguments"]["bull"]  # kept
+    assert rm.load_memory(data / "reports") == []  # a single review is not a verdict
+
+
+def test_failed_debate_skips_the_fallback_when_the_budget_is_spent(
+    data: Path,  # noqa: F811
+) -> None:
+    post = FakePost("", "", "junk", "junk")
+    cur: dict[str, Any] = {"free_done": [], "free_calls": {NOW.date().isoformat(): 40}}
+    rv = fr.FreeReviewer("k", _cfg(), post)
+    assert fr.run_pass(cur, rv, data, ["spot"], NOW, _facts, lambda s: None) == 1
+    assert len(post.calls) == 4 and cur["free_calls"][NOW.date().isoformat()] == 44
 
 
 def test_budget_rations_debates_so_every_trade_gets_a_review(

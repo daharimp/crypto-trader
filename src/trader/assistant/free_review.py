@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import urllib.error
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -63,9 +64,28 @@ def _http_post(
     req = urllib.request.Request(
         url, data=json.dumps(body).encode(), headers=headers, method="POST"
     )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 (https base_url)
-        out: dict[str, Any] = json.loads(resp.read())
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 (https base_url)
+            out: dict[str, Any] = json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        # Reason: "HTTP Error 400: Bad Request" alone cannot be diagnosed from the ops repo;
+        # the provider's error body says why (it never echoes the Authorization header).
+        detail = exc.read()[:300].decode("utf-8", "replace") if exc.fp else ""
+        raise RuntimeError(f"HTTP {exc.code}: {detail or exc.reason}") from exc
     return out
+
+
+def reply_text(resp: dict[str, Any]) -> str:
+    """
+    The answer text of one chat reply.
+
+    Raises:
+        ValueError: When the reply is an error object (no ``choices``), with its message.
+    """
+    choices = resp.get("choices")
+    if not choices:
+        raise ValueError(f"error reply: {str(resp.get('error') or resp)[:200]}")
+    return str(choices[0].get("message", {}).get("content") or "")
 
 
 def parse_answer(text: str, schema: type[BaseModel] = TradeAnalysis) -> Any:
@@ -142,7 +162,7 @@ class FreeReviewer:
                     self.cfg.timeout_s,
                 )
                 model = str(resp.get("model") or models[0])
-                text = str(resp["choices"][0]["message"].get("content") or "")
+                text = reply_text(resp)
             except Exception as exc:  # noqa: BLE001 - an outage or rate limit means skip, not crash
                 reason = f"request failed ({type(exc).__name__}: {str(exc)[:200]})"
                 continue
@@ -325,6 +345,17 @@ def run_pass(
         a, info, n, extra_md, extra = _review_one(reviewer, facts, debate, memory, trade_key(t))
         changed = changed or bool(extra and "verdict" in extra)
         calls[today] += n
+        if (
+            a is None
+            and debate
+            and cfg.daily_call_budget - calls[today] - rest >= (cfg.single_calls())
+        ):
+            # Reason: a failed debate (empty or error replies, no verdict) would leave the
+            # trade with no review for good; a single review still fits the budget it kept.
+            a, single, n = reviewer.review(facts)
+            calls[today] += n
+            debate = False
+            info = single if a else f"{info}; single review: {single}"
         cur["free_calls"] = dict(calls)
         save_trade_report(
             reports,

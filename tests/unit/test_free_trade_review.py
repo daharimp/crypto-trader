@@ -85,6 +85,32 @@ def test_invalid_answer_retries_once_with_the_error_then_skips() -> None:
     assert a is None and n == 1 and "request failed" in why
 
 
+def test_error_replies_keep_the_reason() -> None:
+    def error_object(*a: Any) -> dict[str, Any]:
+        return {"error": {"code": 429, "message": "rate limited upstream"}}
+
+    a, _, n, why = fr.FreeReviewer("k", _cfg(), error_object).ask("s", {}, ["m"], None)
+    assert a is None and n == 1 and "error reply" in why and "rate limited upstream" in why
+    assert fr.reply_text({"choices": [{"message": {"content": None}}]}) == ""
+
+
+def test_http_error_body_is_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    import io
+    import urllib.error
+
+    def refuse(*a: Any, **k: Any) -> Any:
+        body = io.BytesIO(b'{"error":{"message":"reasoning is not supported"}}')
+        raise urllib.error.HTTPError("u", 400, "Bad Request", {}, body)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(fr.urllib.request, "urlopen", refuse)
+    with pytest.raises(RuntimeError, match="HTTP 400: .*reasoning is not supported"):
+        fr._http_post("https://x", {}, {}, 1.0)
+    empty = urllib.error.HTTPError("u", 400, "Bad Request", {}, None)  # type: ignore[arg-type]
+    monkeypatch.setattr(fr.urllib.request, "urlopen", lambda *a, **k: (_ for _ in ()).throw(empty))
+    with pytest.raises(RuntimeError, match="HTTP 400: Bad Request"):
+        fr._http_post("https://x", {}, {}, 1.0)
+
+
 def test_missing_key_or_disabled_means_no_reviewer(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(fr.KEY_ENV, raising=False)
     assert fr.reviewer_from_env(_cfg()) is None

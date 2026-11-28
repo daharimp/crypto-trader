@@ -494,7 +494,8 @@ unexpected error. Investigate, fix, then disengage the kill switch.
 > once code checked what the price did after the exit. Each trade's note gains a "How the
 > trade was run" section; `data/reports/trades/lessons.md` holds the scorecard and lessons
 > (read by the daily Claude review), `memory.json` the raw entries. Set `debate: false` to go
-> back to one model per trade.
+> back to one model per trade. If a debate returns no verdict, the trade gets a single review
+> in the same pass when the budget allows it, and the note keeps each request's error (ADR-057).
 
 When a paper perps account has a bad day (it lost the daily limit and stopped for the rest of
 the UTC day), the review assistant reads that account's record, settings and the market, and
